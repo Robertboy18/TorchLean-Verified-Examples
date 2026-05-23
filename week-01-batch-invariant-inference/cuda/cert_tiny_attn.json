@@ -1,0 +1,117 @@
+{
+  "arch": "sm_70",
+  "counts": {
+    "ptxFmaRnF32": 8,
+    "ptxGlobalLoadF32": 16,
+    "ptxGlobalStoreF32": 1
+  },
+  "cubinPath": "week-01-batch-invariant-inference/cuda/build/tiny_attn_one_row.cubin",
+  "cubinSha256": "bbfd61854967fad4a33079091676bfb95fa31779f98c9e6fb47881ed8eb21840",
+  "dataflow": {
+    "addressMapCorrect": true,
+    "arithmeticModeFmaRN": true,
+    "chainFeedsStore": true,
+    "chainStartsAtZero": true,
+    "inactiveThreadsNoWrite": true,
+    "steps": [
+      {
+        "acc": "0f00000000",
+        "dst": "%f3",
+        "lhs": "%f2",
+        "rhs": "%f1",
+        "valueOffset": 0,
+        "weightOffset": 0
+      },
+      {
+        "acc": "%f3",
+        "dst": "%f6",
+        "lhs": "%f5",
+        "rhs": "%f4",
+        "valueOffset": 16,
+        "weightOffset": 4
+      },
+      {
+        "acc": "%f6",
+        "dst": "%f9",
+        "lhs": "%f8",
+        "rhs": "%f7",
+        "valueOffset": 32,
+        "weightOffset": 8
+      },
+      {
+        "acc": "%f9",
+        "dst": "%f12",
+        "lhs": "%f11",
+        "rhs": "%f10",
+        "valueOffset": 48,
+        "weightOffset": 12
+      },
+      {
+        "acc": "%f12",
+        "dst": "%f15",
+        "lhs": "%f14",
+        "rhs": "%f13",
+        "valueOffset": 64,
+        "weightOffset": 16
+      },
+      {
+        "acc": "%f15",
+        "dst": "%f18",
+        "lhs": "%f17",
+        "rhs": "%f16",
+        "valueOffset": 80,
+        "weightOffset": 20
+      },
+      {
+        "acc": "%f18",
+        "dst": "%f21",
+        "lhs": "%f20",
+        "rhs": "%f19",
+        "valueOffset": 96,
+        "weightOffset": 24
+      },
+      {
+        "acc": "%f21",
+        "dst": "%f24",
+        "lhs": "%f23",
+        "rhs": "%f22",
+        "valueOffset": 112,
+        "weightOffset": 28
+      }
+    ],
+    "storeReg": "%f24",
+    "zeroLiteral": "0f00000000"
+  },
+  "ptxChecks": {
+    "hasBlockIdx": true,
+    "hasBoundsPredicate": true,
+    "hasEightFmas": true,
+    "hasEntry": true,
+    "hasExpectedLoads": true,
+    "hasNoAtomics": true,
+    "hasNoBarrier": true,
+    "hasNoSharedMemory": true,
+    "hasSingleStore": true,
+    "hasThreadIdx": true
+  },
+  "ptxPath": "week-01-batch-invariant-inference/cuda/build/tiny_attn_one_row.ptx",
+  "ptxSha256": "38a1fc1877007ae77a9ead5b687692b18cbe5334bc3ce0483033451a47bdeada",
+  "sassChecks": {
+    "hasCodeForKernel": true,
+    "hasGlobalLoads": true,
+    "hasGlobalStore": true,
+    "hasNoAtomics": true,
+    "hasNoBarrier": true
+  },
+  "sassPath": "week-01-batch-invariant-inference/cuda/build/tiny_attn_one_row.sass",
+  "sassSha256": "6ef7772ff0bb7ccdf9f400d5e815304ba19e84e7e0d1108b0c2326d43111125a",
+  "sourceChecks": {
+    "hasBatchGuard": true,
+    "hasFixedKVLoop": true,
+    "hasKernel": true,
+    "hasOwnedWrite": true,
+    "hasThreadGuard": true
+  },
+  "sourcePath": "week-01-batch-invariant-inference/cuda/tiny_attn_one_row.cu",
+  "sourceSha256": "ff0c1ed942c378f2dd4c38d119b43fcf956174c1f0a4e3d16a164f54b299efea"
+}
