@@ -218,8 +218,8 @@ DEFAULT_MARGIN_PROMPTS = [
 def write_margin_svg(rows: list[dict[str, object]], path: Path) -> None:
     """Write a small dependency-free SVG for the margin theorem diagnostic."""
     width = 1100
-    height = 500
-    pad_l, pad_r, pad_t, pad_b = 92, 58, 52, 70
+    height = 620
+    pad_l, pad_r, pad_t, pad_b = 92, 58, 150, 80
     plot_w = width - pad_l - pad_r
     plot_h = height - pad_t - pad_b
     ymax = max(
@@ -242,10 +242,12 @@ def write_margin_svg(rows: list[dict[str, object]], path: Path) -> None:
         '<filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#5a3611" flood-opacity=".12"/></filter>',
         '</defs>',
         '<rect width="100%" height="100%" rx="28" fill="url(#paper)"/>',
-        '<rect x="28" y="28" width="1044" height="444" rx="24" fill="#fff8ee" stroke="#e1bd80" filter="url(#softShadow)"/>',
-        '<style>text{font-family:Source Sans 3,Source Sans Pro,Arial,sans-serif;fill:#241b14}.small{font-size:14px;fill:#746656}.axis{stroke:#b9873e;stroke-width:1.2}.margin{fill:#2f6bb8}.eps{fill:#d46f2a}.grid{stroke:#ead7b8;stroke-width:1}</style>',
-        f'<rect x="{width-355}" y="48" width="16" height="16" rx="4" class="margin"/><text x="{width-331}" y="61" class="small">top-two margin</text>',
-        f'<rect x="{width-188}" y="48" width="16" height="16" rx="4" class="eps"/><text x="{width-164}" y="61" class="small">2ε drift bound</text>',
+        '<rect x="28" y="28" width="1044" height="564" rx="24" fill="#fff8ee" stroke="#e1bd80" filter="url(#softShadow)"/>',
+        '<style>text{font-family:Source Sans 3,Source Sans Pro,Arial,sans-serif;fill:#241b14}.title{font-size:30px;font-weight:700;letter-spacing:-.02em}.small{font-size:14px;fill:#746656}.axis{stroke:#b9873e;stroke-width:1.2}.margin{fill:#2f6bb8}.eps{fill:#d46f2a}.grid{stroke:#ead7b8;stroke-width:1}</style>',
+        '<text x="76" y="72" class="title">Margin certificate diagnostic</text>',
+        '<text x="76" y="100" class="small">Blue above orange means the theorem certifies greedy-token stability for this drift bound.</text>',
+        f'<rect x="{width-355}" y="78" width="16" height="16" rx="4" class="margin"/><text x="{width-331}" y="91" class="small">top-two margin</text>',
+        f'<rect x="{width-188}" y="78" width="16" height="16" rx="4" class="eps"/><text x="{width-164}" y="91" class="small">2ε drift bound</text>',
     ]
     for frac in [0, 0.25, 0.5, 0.75, 1.0]:
         yy = pad_t + plot_h * (1 - frac)
