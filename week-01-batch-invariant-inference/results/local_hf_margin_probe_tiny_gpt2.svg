@@ -1,57 +1,65 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="980" height="520" viewBox="0 0 980 520">
-<rect width="100%" height="100%" fill="#fff8ee"/>
-<style>text{font-family:Source Sans 3,Arial,sans-serif;fill:#241b14}.small{font-size:13px;fill:#746656}.axis{stroke:#cfa96c;stroke-width:1}.margin{fill:#2f6bb8}.eps{fill:#d46f2a}.grid{stroke:#ecd8b5;stroke-width:1}</style>
-<text x="80" y="34" font-size="22" font-weight="700">Local margin diagnostic</text>
-<text x="80" y="54" class="small">Top-two logit margin compared with 2ε, where ε is max absolute single-vs-batched logit drift.</text>
-<line x1="80" y1="428.0" x2="950" y2="428.0" class="grid"/>
-<text x="70" y="432.0" text-anchor="end" class="small">0</text>
-<line x1="80" y1="336.0" x2="950" y2="336.0" class="grid"/>
-<text x="70" y="340.0" text-anchor="end" class="small">0.0006</text>
-<line x1="80" y1="244.0" x2="950" y2="244.0" class="grid"/>
-<text x="70" y="248.0" text-anchor="end" class="small">0.0012</text>
-<line x1="80" y1="152.0" x2="950" y2="152.0" class="grid"/>
-<text x="70" y="156.0" text-anchor="end" class="small">0.0018</text>
-<line x1="80" y1="60.0" x2="950" y2="60.0" class="grid"/>
-<text x="70" y="64.0" text-anchor="end" class="small">0.0024</text>
-<line x1="80" y1="428" x2="950" y2="428" class="axis"/>
-<line x1="80" y1="60" x2="80" y2="428" class="axis"/>
-<rect x="94.0" y="164.5" width="20.3" height="263.5" rx="4" class="margin"/>
-<rect x="118.2" y="418.6" width="20.3" height="9.4" rx="4" class="eps"/>
-<text x="116.2" y="450" text-anchor="middle" class="small">1</text>
-<rect x="166.4" y="108.0" width="20.3" height="320.0" rx="4" class="margin"/>
-<rect x="190.8" y="428.0" width="20.3" height="0.0" rx="4" class="eps"/>
-<text x="188.8" y="450" text-anchor="middle" class="small">2</text>
-<rect x="238.9" y="211.5" width="20.3" height="216.5" rx="4" class="margin"/>
-<rect x="263.2" y="428.0" width="20.3" height="0.0" rx="4" class="eps"/>
-<text x="261.2" y="450" text-anchor="middle" class="small">3</text>
-<rect x="311.4" y="277.4" width="20.3" height="150.6" rx="4" class="margin"/>
-<rect x="335.8" y="426.8" width="20.3" height="1.2" rx="4" class="eps"/>
-<text x="333.8" y="450" text-anchor="middle" class="small">4</text>
-<rect x="383.9" y="108.0" width="20.3" height="320.0" rx="4" class="margin"/>
-<rect x="408.2" y="428.0" width="20.3" height="0.0" rx="4" class="eps"/>
-<text x="406.2" y="450" text-anchor="middle" class="small">5</text>
-<rect x="456.4" y="183.3" width="20.3" height="244.7" rx="4" class="margin"/>
-<rect x="480.8" y="428.0" width="20.3" height="0.0" rx="4" class="eps"/>
-<text x="478.8" y="450" text-anchor="middle" class="small">6</text>
-<rect x="529.0" y="239.8" width="20.3" height="188.2" rx="4" class="margin"/>
-<rect x="553.2" y="428.0" width="20.3" height="0.0" rx="4" class="eps"/>
-<text x="551.2" y="450" text-anchor="middle" class="small">7</text>
-<rect x="601.5" y="183.3" width="20.3" height="244.7" rx="4" class="margin"/>
-<rect x="625.8" y="428.0" width="20.3" height="0.0" rx="4" class="eps"/>
-<text x="623.8" y="450" text-anchor="middle" class="small">8</text>
-<rect x="674.0" y="183.3" width="20.3" height="244.7" rx="4" class="margin"/>
-<rect x="698.2" y="428.0" width="20.3" height="0.0" rx="4" class="eps"/>
-<text x="696.2" y="450" text-anchor="middle" class="small">9</text>
-<rect x="746.5" y="183.3" width="20.3" height="244.7" rx="4" class="margin"/>
-<rect x="770.8" y="428.0" width="20.3" height="0.0" rx="4" class="eps"/>
-<text x="768.8" y="450" text-anchor="middle" class="small">10</text>
-<rect x="819.0" y="268.0" width="20.3" height="160.0" rx="4" class="margin"/>
-<rect x="843.2" y="428.0" width="20.3" height="0.0" rx="4" class="eps"/>
-<text x="841.2" y="450" text-anchor="middle" class="small">11</text>
-<rect x="891.5" y="183.3" width="20.3" height="244.7" rx="4" class="margin"/>
-<rect x="915.8" y="428.0" width="20.3" height="0.0" rx="4" class="eps"/>
-<text x="913.8" y="450" text-anchor="middle" class="small">12</text>
-<rect x="680" y="24" width="14" height="14" rx="3" class="margin"/><text x="702" y="36" class="small">margin(top1, top2)</text>
-<rect x="680" y="45" width="14" height="14" rx="3" class="eps"/><text x="702" y="57" class="small">2ε drift bound</text>
-<text x="80" y="484" class="small">Stable by theorem when blue is above orange. Prompt labels and exact values are in the JSON output.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620">
+<defs>
+<linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fffaf2"/><stop offset="100%" stop-color="#f6e6c8"/></linearGradient>
+<filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#5a3611" flood-opacity=".12"/></filter>
+</defs>
+<rect width="100%" height="100%" rx="28" fill="url(#paper)"/>
+<rect x="28" y="28" width="1044" height="564" rx="24" fill="#fff8ee" stroke="#e1bd80" filter="url(#softShadow)"/>
+<style>text{font-family:Source Sans 3,Source Sans Pro,Arial,sans-serif;fill:#241b14}.title{font-size:28px;font-weight:700;letter-spacing:-.02em}.subtitle{font-size:15px;fill:#746656}.small{font-size:13px;fill:#746656}.axis{stroke:#b9873e;stroke-width:1.2}.margin{fill:#2f6bb8}.eps{fill:#d46f2a}.grid{stroke:#ead7b8;stroke-width:1}.rule{stroke:#d9b16d;stroke-width:1}</style>
+<text x="76" y="68" class="title">Margin certificate diagnostic</text>
+<text x="76" y="94" class="subtitle">For each prompt: compare the top-two logit margin with the theorem threshold 2ε.</text>
+<line x1="92" y1="492.0" x2="1056" y2="492.0" class="grid"/>
+<text x="78" y="496.0" text-anchor="end" class="small">0</text>
+<line x1="92" y1="397.0" x2="1056" y2="397.0" class="grid"/>
+<text x="78" y="401.0" text-anchor="end" class="small">0.0006</text>
+<line x1="92" y1="302.0" x2="1056" y2="302.0" class="grid"/>
+<text x="78" y="306.0" text-anchor="end" class="small">0.0012</text>
+<line x1="92" y1="207.0" x2="1056" y2="207.0" class="grid"/>
+<text x="78" y="211.0" text-anchor="end" class="small">0.0018</text>
+<line x1="92" y1="112.0" x2="1056" y2="112.0" class="grid"/>
+<text x="78" y="116.0" text-anchor="end" class="small">0.0024</text>
+<line x1="92" y1="492" x2="1056" y2="492" class="axis"/>
+<line x1="92" y1="112" x2="92" y2="492" class="axis"/>
+<rect x="108.3" y="219.9" width="20.9" height="272.1" rx="6" class="margin"/>
+<rect x="135.2" y="482.3" width="20.9" height="9.7" rx="6" class="eps"/>
+<text x="132.2" y="520" text-anchor="middle" class="small">1</text>
+<rect x="188.6" y="161.6" width="20.9" height="330.4" rx="6" class="margin"/>
+<rect x="215.5" y="492.0" width="20.9" height="0.0" rx="6" class="eps"/>
+<text x="212.5" y="520" text-anchor="middle" class="small">2</text>
+<rect x="268.9" y="268.5" width="20.9" height="223.5" rx="6" class="margin"/>
+<rect x="295.8" y="492.0" width="20.9" height="0.0" rx="6" class="eps"/>
+<text x="292.8" y="520" text-anchor="middle" class="small">3</text>
+<rect x="349.3" y="336.5" width="20.9" height="155.5" rx="6" class="margin"/>
+<rect x="376.2" y="490.8" width="20.9" height="1.2" rx="6" class="eps"/>
+<text x="373.2" y="520" text-anchor="middle" class="small">4</text>
+<rect x="429.6" y="161.6" width="20.9" height="330.4" rx="6" class="margin"/>
+<rect x="456.5" y="492.0" width="20.9" height="0.0" rx="6" class="eps"/>
+<text x="453.5" y="520" text-anchor="middle" class="small">5</text>
+<rect x="509.9" y="239.3" width="20.9" height="252.7" rx="6" class="margin"/>
+<rect x="536.8" y="492.0" width="20.9" height="0.0" rx="6" class="eps"/>
+<text x="533.8" y="520" text-anchor="middle" class="small">6</text>
+<rect x="590.3" y="297.6" width="20.9" height="194.4" rx="6" class="margin"/>
+<rect x="617.2" y="492.0" width="20.9" height="0.0" rx="6" class="eps"/>
+<text x="614.2" y="520" text-anchor="middle" class="small">7</text>
+<rect x="670.6" y="239.3" width="20.9" height="252.7" rx="6" class="margin"/>
+<rect x="697.5" y="492.0" width="20.9" height="0.0" rx="6" class="eps"/>
+<text x="694.5" y="520" text-anchor="middle" class="small">8</text>
+<rect x="750.9" y="239.3" width="20.9" height="252.7" rx="6" class="margin"/>
+<rect x="777.8" y="492.0" width="20.9" height="0.0" rx="6" class="eps"/>
+<text x="774.8" y="520" text-anchor="middle" class="small">9</text>
+<rect x="831.3" y="239.3" width="20.9" height="252.7" rx="6" class="margin"/>
+<rect x="858.2" y="492.0" width="20.9" height="0.0" rx="6" class="eps"/>
+<text x="855.2" y="520" text-anchor="middle" class="small">10</text>
+<rect x="911.6" y="326.8" width="20.9" height="165.2" rx="6" class="margin"/>
+<rect x="938.5" y="492.0" width="20.9" height="0.0" rx="6" class="eps"/>
+<text x="935.5" y="520" text-anchor="middle" class="small">11</text>
+<rect x="991.9" y="239.3" width="20.9" height="252.7" rx="6" class="margin"/>
+<rect x="1018.8" y="492.0" width="20.9" height="0.0" rx="6" class="eps"/>
+<text x="1015.8" y="520" text-anchor="middle" class="small">12</text>
+<text x="92" y="96" class="small">logit units</text>
+<rect x="740" y="58" width="16" height="16" rx="4" class="margin"/><text x="764" y="71" class="small">top-two margin</text>
+<rect x="740" y="83" width="16" height="16" rx="4" class="eps"/><text x="764" y="96" class="small">2ε drift bound</text>
+<line x1="92" y1="546" x2="1056" y2="546" class="rule"/>
+<text x="92" y="574" class="small">If the blue bar is above the orange bar, the Lean margin theorem says the greedy token is stable for that perturbation bound.</text>
+<text x="92" y="595" class="small">Data: local HF single-vs-batched forwards for sshleifer/tiny-gpt2. Exact prompt labels and values are in the JSON output.</text>
 </svg>

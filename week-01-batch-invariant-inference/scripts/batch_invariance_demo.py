@@ -217,9 +217,9 @@ DEFAULT_MARGIN_PROMPTS = [
 
 def write_margin_svg(rows: list[dict[str, object]], path: Path) -> None:
     """Write a small dependency-free SVG for the margin theorem diagnostic."""
-    width = 980
-    height = 520
-    pad_l, pad_r, pad_t, pad_b = 80, 30, 60, 92
+    width = 1100
+    height = 620
+    pad_l, pad_r, pad_t, pad_b = 92, 44, 112, 128
     plot_w = width - pad_l - pad_r
     plot_h = height - pad_t - pad_b
     ymax = max(
@@ -230,23 +230,28 @@ def write_margin_svg(rows: list[dict[str, object]], path: Path) -> None:
     ymax *= 1.15
     n = len(rows)
     group = plot_w / max(n, 1)
-    bar_w = min(24, group * 0.28)
+    bar_w = min(28, group * 0.26)
 
     def y(v: float) -> float:
         return pad_t + plot_h - (v / ymax) * plot_h
 
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
-        '<rect width="100%" height="100%" fill="#fff8ee"/>',
-        '<style>text{font-family:Source Sans 3,Arial,sans-serif;fill:#241b14}.small{font-size:13px;fill:#746656}.axis{stroke:#cfa96c;stroke-width:1}.margin{fill:#2f6bb8}.eps{fill:#d46f2a}.grid{stroke:#ecd8b5;stroke-width:1}</style>',
-        '<text x="80" y="34" font-size="22" font-weight="700">Local margin diagnostic</text>',
-        '<text x="80" y="54" class="small">Top-two logit margin compared with 2ε, where ε is max absolute single-vs-batched logit drift.</text>',
+        '<defs>',
+        '<linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fffaf2"/><stop offset="100%" stop-color="#f6e6c8"/></linearGradient>',
+        '<filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#5a3611" flood-opacity=".12"/></filter>',
+        '</defs>',
+        '<rect width="100%" height="100%" rx="28" fill="url(#paper)"/>',
+        '<rect x="28" y="28" width="1044" height="564" rx="24" fill="#fff8ee" stroke="#e1bd80" filter="url(#softShadow)"/>',
+        '<style>text{font-family:Source Sans 3,Source Sans Pro,Arial,sans-serif;fill:#241b14}.title{font-size:28px;font-weight:700;letter-spacing:-.02em}.subtitle{font-size:15px;fill:#746656}.small{font-size:13px;fill:#746656}.axis{stroke:#b9873e;stroke-width:1.2}.margin{fill:#2f6bb8}.eps{fill:#d46f2a}.grid{stroke:#ead7b8;stroke-width:1}.rule{stroke:#d9b16d;stroke-width:1}</style>',
+        '<text x="76" y="68" class="title">Margin certificate diagnostic</text>',
+        '<text x="76" y="94" class="subtitle">For each prompt: compare the top-two logit margin with the theorem threshold 2ε.</text>',
     ]
     for frac in [0, 0.25, 0.5, 0.75, 1.0]:
         yy = pad_t + plot_h * (1 - frac)
         val = ymax * frac
         parts.append(f'<line x1="{pad_l}" y1="{yy:.1f}" x2="{width-pad_r}" y2="{yy:.1f}" class="grid"/>')
-        parts.append(f'<text x="{pad_l-10}" y="{yy+4:.1f}" text-anchor="end" class="small">{val:.2g}</text>')
+        parts.append(f'<text x="{pad_l-14}" y="{yy+4:.1f}" text-anchor="end" class="small">{val:.2g}</text>')
     parts.append(f'<line x1="{pad_l}" y1="{pad_t+plot_h}" x2="{width-pad_r}" y2="{pad_t+plot_h}" class="axis"/>')
     parts.append(f'<line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{pad_t+plot_h}" class="axis"/>')
     for idx, row in enumerate(rows):
@@ -254,13 +259,16 @@ def write_margin_svg(rows: list[dict[str, object]], path: Path) -> None:
         m = float(row["margin_single"])
         e2 = float(row["two_epsilon"])
         ym, ye = y(m), y(e2)
-        parts.append(f'<rect x="{x0-bar_w-2:.1f}" y="{ym:.1f}" width="{bar_w:.1f}" height="{pad_t+plot_h-ym:.1f}" rx="4" class="margin"/>')
-        parts.append(f'<rect x="{x0+2:.1f}" y="{ye:.1f}" width="{bar_w:.1f}" height="{pad_t+plot_h-ye:.1f}" rx="4" class="eps"/>')
-        parts.append(f'<text x="{x0:.1f}" y="{pad_t+plot_h+22}" text-anchor="middle" class="small">{idx+1}</text>')
+        parts.append(f'<rect x="{x0-bar_w-3:.1f}" y="{ym:.1f}" width="{bar_w:.1f}" height="{pad_t+plot_h-ym:.1f}" rx="6" class="margin"/>')
+        parts.append(f'<rect x="{x0+3:.1f}" y="{ye:.1f}" width="{bar_w:.1f}" height="{pad_t+plot_h-ye:.1f}" rx="6" class="eps"/>')
+        parts.append(f'<text x="{x0:.1f}" y="{pad_t+plot_h+28}" text-anchor="middle" class="small">{idx+1}</text>')
     parts.extend([
-        f'<rect x="{width-300}" y="24" width="14" height="14" rx="3" class="margin"/><text x="{width-278}" y="36" class="small">margin(top1, top2)</text>',
-        f'<rect x="{width-300}" y="45" width="14" height="14" rx="3" class="eps"/><text x="{width-278}" y="57" class="small">2ε drift bound</text>',
-        f'<text x="{pad_l}" y="{height-36}" class="small">Stable by theorem when blue is above orange. Prompt labels and exact values are in the JSON output.</text>',
+        f'<text x="{pad_l}" y="{pad_t-16}" class="small">logit units</text>',
+        f'<rect x="{width-360}" y="58" width="16" height="16" rx="4" class="margin"/><text x="{width-336}" y="71" class="small">top-two margin</text>',
+        f'<rect x="{width-360}" y="83" width="16" height="16" rx="4" class="eps"/><text x="{width-336}" y="96" class="small">2ε drift bound</text>',
+        f'<line x1="{pad_l}" y1="{height-74}" x2="{width-pad_r}" y2="{height-74}" class="rule"/>',
+        f'<text x="{pad_l}" y="{height-46}" class="small">If the blue bar is above the orange bar, the Lean margin theorem says the greedy token is stable for that perturbation bound.</text>',
+        f'<text x="{pad_l}" y="{height-25}" class="small">Data: local HF single-vs-batched forwards for sshleifer/tiny-gpt2. Exact prompt labels and values are in the JSON output.</text>',
         '</svg>',
     ])
     path.write_text("\n".join(parts))
