@@ -218,8 +218,8 @@ DEFAULT_MARGIN_PROMPTS = [
 def write_margin_svg(rows: list[dict[str, object]], path: Path) -> None:
     """Write a small dependency-free SVG for the margin theorem diagnostic."""
     width = 1100
-    height = 620
-    pad_l, pad_r, pad_t, pad_b = 92, 44, 112, 128
+    height = 680
+    pad_l, pad_r, pad_t, pad_b = 92, 58, 170, 150
     plot_w = width - pad_l - pad_r
     plot_h = height - pad_t - pad_b
     ymax = max(
@@ -242,10 +242,12 @@ def write_margin_svg(rows: list[dict[str, object]], path: Path) -> None:
         '<filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#5a3611" flood-opacity=".12"/></filter>',
         '</defs>',
         '<rect width="100%" height="100%" rx="28" fill="url(#paper)"/>',
-        '<rect x="28" y="28" width="1044" height="564" rx="24" fill="#fff8ee" stroke="#e1bd80" filter="url(#softShadow)"/>',
-        '<style>text{font-family:Source Sans 3,Source Sans Pro,Arial,sans-serif;fill:#241b14}.title{font-size:28px;font-weight:700;letter-spacing:-.02em}.subtitle{font-size:15px;fill:#746656}.small{font-size:13px;fill:#746656}.axis{stroke:#b9873e;stroke-width:1.2}.margin{fill:#2f6bb8}.eps{fill:#d46f2a}.grid{stroke:#ead7b8;stroke-width:1}.rule{stroke:#d9b16d;stroke-width:1}</style>',
-        '<text x="76" y="68" class="title">Margin certificate diagnostic</text>',
-        '<text x="76" y="94" class="subtitle">For each prompt: compare the top-two logit margin with the theorem threshold 2ε.</text>',
+        '<rect x="28" y="28" width="1044" height="624" rx="24" fill="#fff8ee" stroke="#e1bd80" filter="url(#softShadow)"/>',
+        '<style>text{font-family:Source Sans 3,Source Sans Pro,Arial,sans-serif;fill:#241b14}.title{font-size:34px;font-weight:700;letter-spacing:-.02em}.subtitle{font-size:17px;fill:#746656}.small{font-size:14px;fill:#746656}.axis{stroke:#b9873e;stroke-width:1.2}.margin{fill:#2f6bb8}.eps{fill:#d46f2a}.grid{stroke:#ead7b8;stroke-width:1}.rule{stroke:#d9b16d;stroke-width:1}</style>',
+        '<text x="76" y="78" class="title">Margin certificate diagnostic</text>',
+        '<text x="76" y="112" class="subtitle">For each prompt, compare the top-two logit margin with the theorem threshold 2ε.</text>',
+        '<rect x="76" y="130" width="16" height="16" rx="4" class="margin"/><text x="102" y="144" class="small">top-two margin</text>',
+        '<rect x="248" y="130" width="16" height="16" rx="4" class="eps"/><text x="274" y="144" class="small">2ε drift bound</text>',
     ]
     for frac in [0, 0.25, 0.5, 0.75, 1.0]:
         yy = pad_t + plot_h * (1 - frac)
@@ -263,12 +265,11 @@ def write_margin_svg(rows: list[dict[str, object]], path: Path) -> None:
         parts.append(f'<rect x="{x0+3:.1f}" y="{ye:.1f}" width="{bar_w:.1f}" height="{pad_t+plot_h-ye:.1f}" rx="6" class="eps"/>')
         parts.append(f'<text x="{x0:.1f}" y="{pad_t+plot_h+28}" text-anchor="middle" class="small">{idx+1}</text>')
     parts.extend([
-        f'<text x="{pad_l}" y="{pad_t-16}" class="small">logit units</text>',
-        f'<rect x="{width-360}" y="58" width="16" height="16" rx="4" class="margin"/><text x="{width-336}" y="71" class="small">top-two margin</text>',
-        f'<rect x="{width-360}" y="83" width="16" height="16" rx="4" class="eps"/><text x="{width-336}" y="96" class="small">2ε drift bound</text>',
-        f'<line x1="{pad_l}" y1="{height-74}" x2="{width-pad_r}" y2="{height-74}" class="rule"/>',
-        f'<text x="{pad_l}" y="{height-46}" class="small">If the blue bar is above the orange bar, the Lean margin theorem says the greedy token is stable for that perturbation bound.</text>',
-        f'<text x="{pad_l}" y="{height-25}" class="small">Data: local HF single-vs-batched forwards for sshleifer/tiny-gpt2. Exact prompt labels and values are in the JSON output.</text>',
+        f'<text x="{pad_l}" y="{pad_t-18}" class="small">logit units</text>',
+        f'<line x1="{pad_l}" y1="{height-102}" x2="{width-pad_r}" y2="{height-102}" class="rule"/>',
+        f'<text x="{pad_l}" y="{height-70}" class="small">Blue above orange means margin &gt; 2ε, so the Lean theorem certifies the greedy token is stable for that drift bound.</text>',
+        f'<text x="{pad_l}" y="{height-43}" class="small">Data: local HF single-vs-batched forwards for sshleifer/tiny-gpt2.</text>',
+        f'<text x="{pad_l}" y="{height-22}" class="small">Exact prompt labels and values are in the JSON output.</text>',
         '</svg>',
     ])
     path.write_text("\n".join(parts))
