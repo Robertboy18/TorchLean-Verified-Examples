@@ -156,6 +156,21 @@ The local probe compares one prompt alone against the same prompt in a padded
 batch. It may or may not find drift on your machine; either way, it is an
 observation, not a theorem.
 
+Local margin diagnostic used by the blog:
+
+```bash
+python3 week-01-batch-invariant-inference/scripts/batch_invariance_demo.py \
+  --local-hf-margin-plot \
+  --model sshleifer/tiny-gpt2 \
+  --json-out week-01-batch-invariant-inference/results/local_hf_margin_probe_tiny_gpt2.json \
+  --svg-out week-01-batch-invariant-inference/results/local_hf_margin_probe_tiny_gpt2.svg
+```
+
+This records the top-two logit margin for each prompt and compares it with
+`2 * max_abs_logit_delta` between the prompt alone and the same prompt inside a
+padded batch. It is a small local diagnostic for the margin theorem, not a
+Tinker logit trace.
+
 ## Scope
 
 Checked:

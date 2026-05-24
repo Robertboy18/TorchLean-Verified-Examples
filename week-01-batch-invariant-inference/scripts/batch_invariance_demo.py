@@ -18,6 +18,7 @@ or with --tinker-key-file for local experiments.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from collections import Counter
 from pathlib import Path
@@ -157,7 +158,7 @@ def local_hf_batch_probe(
         tok.padding_side = "right"
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=dtype,
+            dtype=dtype,
             local_files_only=local_files_only,
         ).to(device)
     except Exception as e:  # pragma: no cover - optional demo
@@ -198,6 +199,171 @@ def local_hf_batch_probe(
     print(f"argmax_batched={arg_batched} {tok.decode([arg_batched])!r}")
 
 
+DEFAULT_MARGIN_PROMPTS = [
+    "Tell me about Richard Feynman",
+    "Explain why floating point addition is not associative",
+    "Write one sentence about New York City",
+    "What is a theorem prover?",
+    "Give a short definition of batch inference",
+    "Name one reason GPU reductions can be nondeterministic",
+    "Summarize the idea of speculative decoding",
+    "What does a neural network logit represent?",
+    "Explain RMSNorm in simple terms",
+    "Why do servers batch LLM requests?",
+    "Give a concise description of CUDA",
+    "What is the role of a verifier?",
+]
+
+
+def write_margin_svg(rows: list[dict[str, object]], path: Path) -> None:
+    """Write a small dependency-free SVG for the margin theorem diagnostic."""
+    width = 980
+    height = 520
+    pad_l, pad_r, pad_t, pad_b = 80, 30, 60, 92
+    plot_w = width - pad_l - pad_r
+    plot_h = height - pad_t - pad_b
+    ymax = max(
+        [float(r["margin_single"]) for r in rows]
+        + [float(r["two_epsilon"]) for r in rows]
+        + [1e-6]
+    )
+    ymax *= 1.15
+    n = len(rows)
+    group = plot_w / max(n, 1)
+    bar_w = min(24, group * 0.28)
+
+    def y(v: float) -> float:
+        return pad_t + plot_h - (v / ymax) * plot_h
+
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+        '<rect width="100%" height="100%" fill="#fff8ee"/>',
+        '<style>text{font-family:Source Sans 3,Arial,sans-serif;fill:#241b14}.small{font-size:13px;fill:#746656}.axis{stroke:#cfa96c;stroke-width:1}.margin{fill:#2f6bb8}.eps{fill:#d46f2a}.grid{stroke:#ecd8b5;stroke-width:1}</style>',
+        '<text x="80" y="34" font-size="22" font-weight="700">Local margin diagnostic</text>',
+        '<text x="80" y="54" class="small">Top-two logit margin compared with 2ε, where ε is max absolute single-vs-batched logit drift.</text>',
+    ]
+    for frac in [0, 0.25, 0.5, 0.75, 1.0]:
+        yy = pad_t + plot_h * (1 - frac)
+        val = ymax * frac
+        parts.append(f'<line x1="{pad_l}" y1="{yy:.1f}" x2="{width-pad_r}" y2="{yy:.1f}" class="grid"/>')
+        parts.append(f'<text x="{pad_l-10}" y="{yy+4:.1f}" text-anchor="end" class="small">{val:.2g}</text>')
+    parts.append(f'<line x1="{pad_l}" y1="{pad_t+plot_h}" x2="{width-pad_r}" y2="{pad_t+plot_h}" class="axis"/>')
+    parts.append(f'<line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{pad_t+plot_h}" class="axis"/>')
+    for idx, row in enumerate(rows):
+        x0 = pad_l + idx * group + group / 2
+        m = float(row["margin_single"])
+        e2 = float(row["two_epsilon"])
+        ym, ye = y(m), y(e2)
+        parts.append(f'<rect x="{x0-bar_w-2:.1f}" y="{ym:.1f}" width="{bar_w:.1f}" height="{pad_t+plot_h-ym:.1f}" rx="4" class="margin"/>')
+        parts.append(f'<rect x="{x0+2:.1f}" y="{ye:.1f}" width="{bar_w:.1f}" height="{pad_t+plot_h-ye:.1f}" rx="4" class="eps"/>')
+        parts.append(f'<text x="{x0:.1f}" y="{pad_t+plot_h+22}" text-anchor="middle" class="small">{idx+1}</text>')
+    parts.extend([
+        f'<rect x="{width-300}" y="24" width="14" height="14" rx="3" class="margin"/><text x="{width-278}" y="36" class="small">margin(top1, top2)</text>',
+        f'<rect x="{width-300}" y="45" width="14" height="14" rx="3" class="eps"/><text x="{width-278}" y="57" class="small">2ε drift bound</text>',
+        f'<text x="{pad_l}" y="{height-36}" class="small">Stable by theorem when blue is above orange. Prompt labels and exact values are in the JSON output.</text>',
+        '</svg>',
+    ])
+    path.write_text("\n".join(parts))
+
+
+def local_hf_margin_plot(
+    model_name: str,
+    prompts_file: str | None,
+    other_prompt: str,
+    local_files_only: bool,
+    json_out: str,
+    svg_out: str,
+) -> None:
+    """Log real top-two margins for local single-vs-batched HF forwards."""
+    try:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+    except Exception as e:  # pragma: no cover - optional demo
+        print(f"Local HF margin probe skipped: missing torch/transformers ({e})")
+        return
+
+    if prompts_file:
+        prompts = [line.strip() for line in Path(prompts_file).read_text().splitlines() if line.strip()]
+    else:
+        prompts = DEFAULT_MARGIN_PROMPTS
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    dtype = torch.float16 if device == "cuda" else torch.float32
+    print("Local Hugging Face margin diagnostic")
+    print("------------------------------------")
+    print(f"model={model_name}")
+    print(f"device={device}, dtype={dtype}, prompts={len(prompts)}, local_files_only={local_files_only}")
+
+    tok = AutoTokenizer.from_pretrained(model_name, local_files_only=local_files_only)
+    if tok.pad_token is None:
+        tok.pad_token = tok.eos_token
+    tok.padding_side = "right"
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        dtype=dtype,
+        local_files_only=local_files_only,
+    ).to(device)
+    model.eval()
+
+    def final_prompt_logits(texts: list[str]) -> "torch.Tensor":
+        enc = tok(texts, return_tensors="pt", padding=True)
+        enc = {k: v.to(device) for k, v in enc.items()}
+        with torch.no_grad():
+            out = model(**enc)
+        lengths = enc["attention_mask"].sum(dim=1) - 1
+        batch_idx = torch.arange(len(texts), device=device)
+        return out.logits[batch_idx, lengths, :].float().cpu()
+
+    rows: list[dict[str, object]] = []
+    for idx, prompt in enumerate(prompts, start=1):
+        single = final_prompt_logits([prompt])[0]
+        batched = final_prompt_logits([prompt, other_prompt])[0]
+        top_single = torch.topk(single, k=2)
+        top_batched = torch.topk(batched, k=2)
+        max_abs = float((single - batched).abs().max().item())
+        top1 = int(top_single.indices[0].item())
+        top2 = int(top_single.indices[1].item())
+        btop1 = int(top_batched.indices[0].item())
+        row = {
+            "index": idx,
+            "prompt": prompt,
+            "top1_token_id": top1,
+            "top1_text": tok.decode([top1]),
+            "top2_token_id": top2,
+            "top2_text": tok.decode([top2]),
+            "batched_top1_token_id": btop1,
+            "batched_top1_text": tok.decode([btop1]),
+            "margin_single": float((top_single.values[0] - top_single.values[1]).item()),
+            "margin_batched": float((top_batched.values[0] - top_batched.values[1]).item()),
+            "epsilon_max_abs_delta": max_abs,
+            "two_epsilon": 2.0 * max_abs,
+            "argmax_stable": top1 == btop1,
+        }
+        rows.append(row)
+        print(
+            f"{idx:02d}: margin={row['margin_single']:.6g}, "
+            f"2eps={row['two_epsilon']:.6g}, stable={row['argmax_stable']}, "
+            f"top={row['top1_text']!r}"
+        )
+
+    payload = {
+        "model": model_name,
+        "device": device,
+        "dtype": str(dtype),
+        "other_prompt": other_prompt,
+        "rows": rows,
+        "note": "Diagnostic only: local HF single-vs-batched forwards, not a proof and not a hosted Tinker logit trace.",
+    }
+    json_path = Path(json_out)
+    svg_path = Path(svg_out)
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    svg_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(json.dumps(payload, indent=2))
+    write_margin_svg(rows, svg_path)
+    print(f"wrote_json={json_path}")
+    print(f"wrote_svg={svg_path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     # Hosted-model probe, closest in spirit to the Thinking Machines experiment.
@@ -205,6 +371,7 @@ def main() -> None:
     parser.add_argument("--tinker-list-models", action="store_true", help="list hosted Tinker models")
     # Local diagnostic probe for users without Tinker access.
     parser.add_argument("--local-hf-batch", action="store_true", help="compare local HF single vs padded batch")
+    parser.add_argument("--local-hf-margin-plot", action="store_true", help="write JSON/SVG top-two margin diagnostic")
     parser.add_argument("--tinker-base-model", default="meta-llama/Llama-3.2-1B")
     parser.add_argument("--tinker-key-file", default=None)
     parser.add_argument("--trials", type=int, default=10)
@@ -214,6 +381,9 @@ def main() -> None:
     parser.add_argument("--other-prompt", default="Batching an unrelated request should not change mine.")
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--model-limit", type=int, default=20)
+    parser.add_argument("--prompts-file", default=None)
+    parser.add_argument("--json-out", default="week-01-batch-invariant-inference/results/local_hf_margin_probe.json")
+    parser.add_argument("--svg-out", default="week-01-batch-invariant-inference/results/local_hf_margin_probe.svg")
     args = parser.parse_args()
 
     ran = False
@@ -236,6 +406,16 @@ def main() -> None:
             args.prompt,
             args.other_prompt,
             local_files_only=not args.download,
+        )
+    if args.local_hf_margin_plot:
+        ran = True
+        local_hf_margin_plot(
+            args.model,
+            args.prompts_file,
+            args.other_prompt,
+            local_files_only=not args.download,
+            json_out=args.json_out,
+            svg_out=args.svg_out,
         )
     if not ran:
         parser.print_help()
