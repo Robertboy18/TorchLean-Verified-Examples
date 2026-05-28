@@ -5,6 +5,7 @@ post with checked Lean code. Each week adds one focused example folder. The
 longer essays live on my personal website; this repo keeps the code,
 certificates, scripts, and reproduction commands.
 
+Main TorchLean codebase: https://github.com/lean-dojo/TorchLean
 ## Examples
 
 | Week | Example | What it checks |
