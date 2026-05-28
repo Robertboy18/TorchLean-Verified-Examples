@@ -5,10 +5,6 @@ Thinking Machines Lab post [*Defeating Nondeterminism in LLM Inference*][tml]:
 why can temperature-zero LLM inference still vary when the same request is
 served in different batch contexts?
 
-The longer blog post lives on my personal website. This README stays practical:
-what is in the example folder, how to build it, and exactly which claims Lean
-checks.
-
 ## What I Formalized
 
 The informal serving promise is:
@@ -41,11 +37,11 @@ The main proof file is [BatchInvariantInference/Core.lean](BatchInvariantInferen
 
 ```text
 BatchInvariantInference/Core.lean
-  Main hand-written Lean development: schedules, Float32 counterexample,
+  Main Lean development: schedules, Float32 counterexample,
   matmul/RMSNorm/attention lemmas, greedy margin theorem, and serving theorem.
 
 BatchInvariantInference/CUDA.lean
-  Hand-written Lean checker for the tiny CUDA certificate. This is where the
+  Lean checker for the tiny CUDA certificate. This is where the
   FMA-chain spec and checker soundness live.
 
 BatchInvariantInference/Generated/TinyValueReductionCert.lean
@@ -187,9 +183,6 @@ Not checked here:
 - Full PTX/SASS operational semantics.
 - NVIDIA hardware correctness.
 - Full production FlashAttention or paged-attention verification.
-
-Those are refinement boundaries. I keep them visible here instead of
-accidentally treating a fast runtime path as if it were already a theorem.
 
 ## AI Usage
 
