@@ -5,6 +5,9 @@ Thinking Machines Lab post [*Defeating Nondeterminism in LLM Inference*][tml]:
 why can temperature-zero LLM inference still vary when the same request is
 served in different batch contexts?
 
+If you want the longer writeup, it lives on my personal website. Here I keep
+the practical version: what is in the folder, how to build it, and which claims
+Lean actually checks.
 ## What I Formalized
 
 The informal serving promise is:

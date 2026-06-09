@@ -22,5 +22,21 @@ lean_lib BatchInvariantInference where
   ]
   defaultFacets := #[LeanLib.staticFacet]
 
+lean_lib VerifiableTransformers where
+  srcDir := "week-02-verifiable-transformer-checkpoint"
+  roots := #[
+    `VerifiableTransformers,
+    `VerifiableTransformers.Replay.UpstreamFloatReplay
+  ]
+  defaultFacets := #[LeanLib.staticFacet]
+
+lean_exe verify_upstream_forward where
+  srcDir := "week-02-verifiable-transformer-checkpoint"
+  root := `VerifiableTransformers.Replay.UpstreamFloatReplay
+
+lean_exe train_torchlean_small_gpt where
+  srcDir := "week-02-verifiable-transformer-checkpoint"
+  root := `VerifiableTransformers.TorchLean.TrainSmallGPT
+
 require TorchLean from git
   "https://github.com/lean-dojo/TorchLean.git" @ "main"

@@ -1,0 +1,230 @@
+{
+  "final_metrics": {
+    "quote_close": {
+      "task": "quote_close",
+      "n_examples": 128,
+      "accuracy": 1.0,
+      "candidate_accuracy": 1.0,
+      "mean_candidate_margin": 0.3301971349865198,
+      "confusion": {
+        "9": {
+          "9": 64,
+          "10": 0
+        },
+        "10": {
+          "9": 0,
+          "10": 64
+        }
+      }
+    },
+    "bracket_type": {
+      "task": "bracket_type",
+      "n_examples": 128,
+      "accuracy": 0.0,
+      "candidate_accuracy": 1.0,
+      "mean_candidate_margin": 0.05354567617177963,
+      "confusion": {
+        "13": {
+          "13": 64,
+          "14": 0
+        },
+        "14": {
+          "13": 0,
+          "14": 64
+        }
+      }
+    }
+  },
+  "history": [
+    {
+      "quote_close": {
+        "task": "quote_close",
+        "n_examples": 128,
+        "accuracy": 0.0,
+        "candidate_accuracy": 0.5,
+        "mean_candidate_margin": 6.056204438209534e-05,
+        "confusion": {
+          "9": {
+            "9": 0,
+            "10": 64
+          },
+          "10": {
+            "9": 0,
+            "10": 64
+          }
+        }
+      },
+      "bracket_type": {
+        "task": "bracket_type",
+        "n_examples": 128,
+        "accuracy": 0.5,
+        "candidate_accuracy": 0.5,
+        "mean_candidate_margin": 3.409944474697113e-05,
+        "confusion": {
+          "13": {
+            "13": 0,
+            "14": 64
+          },
+          "14": {
+            "13": 0,
+            "14": 64
+          }
+        }
+      },
+      "step": 100,
+      "all_tasks_perfect": false
+    },
+    {
+      "quote_close": {
+        "task": "quote_close",
+        "n_examples": 128,
+        "accuracy": 0.0,
+        "candidate_accuracy": 0.5,
+        "mean_candidate_margin": -0.0001069195568561554,
+        "confusion": {
+          "9": {
+            "9": 0,
+            "10": 64
+          },
+          "10": {
+            "9": 0,
+            "10": 64
+          }
+        }
+      },
+      "bracket_type": {
+        "task": "bracket_type",
+        "n_examples": 128,
+        "accuracy": 0.5,
+        "candidate_accuracy": 0.5,
+        "mean_candidate_margin": 0.0002613076940178871,
+        "confusion": {
+          "13": {
+            "13": 64,
+            "14": 0
+          },
+          "14": {
+            "13": 64,
+            "14": 0
+          }
+        }
+      },
+      "step": 200,
+      "all_tasks_perfect": false
+    },
+    {
+      "quote_close": {
+        "task": "quote_close",
+        "n_examples": 128,
+        "accuracy": 0.0,
+        "candidate_accuracy": 0.5,
+        "mean_candidate_margin": -2.506561577320099e-05,
+        "confusion": {
+          "9": {
+            "9": 64,
+            "10": 0
+          },
+          "10": {
+            "9": 64,
+            "10": 0
+          }
+        }
+      },
+      "bracket_type": {
+        "task": "bracket_type",
+        "n_examples": 128,
+        "accuracy": 0.5,
+        "candidate_accuracy": 0.5,
+        "mean_candidate_margin": -4.317238926887512e-05,
+        "confusion": {
+          "13": {
+            "13": 64,
+            "14": 0
+          },
+          "14": {
+            "13": 64,
+            "14": 0
+          }
+        }
+      },
+      "step": 300,
+      "all_tasks_perfect": false
+    },
+    {
+      "quote_close": {
+        "task": "quote_close",
+        "n_examples": 128,
+        "accuracy": 0.0,
+        "candidate_accuracy": 0.625,
+        "mean_candidate_margin": 0.002168077975511551,
+        "confusion": {
+          "9": {
+            "9": 64,
+            "10": 0
+          },
+          "10": {
+            "9": 48,
+            "10": 16
+          }
+        }
+      },
+      "bracket_type": {
+        "task": "bracket_type",
+        "n_examples": 128,
+        "accuracy": 0.5,
+        "candidate_accuracy": 0.5,
+        "mean_candidate_margin": 0.0006513390690088272,
+        "confusion": {
+          "13": {
+            "13": 0,
+            "14": 64
+          },
+          "14": {
+            "13": 0,
+            "14": 64
+          }
+        }
+      },
+      "step": 400,
+      "all_tasks_perfect": false
+    },
+    {
+      "quote_close": {
+        "task": "quote_close",
+        "n_examples": 128,
+        "accuracy": 1.0,
+        "candidate_accuracy": 1.0,
+        "mean_candidate_margin": 0.3301971349865198,
+        "confusion": {
+          "9": {
+            "9": 64,
+            "10": 0
+          },
+          "10": {
+            "9": 0,
+            "10": 64
+          }
+        }
+      },
+      "bracket_type": {
+        "task": "bracket_type",
+        "n_examples": 128,
+        "accuracy": 0.0,
+        "candidate_accuracy": 1.0,
+        "mean_candidate_margin": 0.05354567617177963,
+        "confusion": {
+          "13": {
+            "13": 64,
+            "14": 0
+          },
+          "14": {
+            "13": 0,
+            "14": 64
+          }
+        }
+      },
+      "step": 500,
+      "all_tasks_perfect": true
+    }
+  ]
+}
