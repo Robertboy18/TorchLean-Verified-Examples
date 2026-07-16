@@ -6,12 +6,13 @@ commands in one place. The longer writeups live on my personal website; this
 repo is where the checked artifacts live.
 
 Main TorchLean codebase: https://github.com/lean-dojo/TorchLean
+
 ## Examples
 
 | Week | Example | What it checks |
 | --- | --- | --- |
 | 01 | [Batch-invariant inference](week-01-batch-invariant-inference/) | Schedule-explicit reductions, Float32 schedule sensitivity, RMSNorm/matmul/attention batch-invariance lemmas, margin-stable greedy decoding, decode/verify/rollback serving, and a tiny CUDA value-reduction certificate. |
-| 02 | [Verifiable transformers in Lean](week-02-verifiable-transformer-checkpoint/) | Neel Somani's finite verifiable-transformer run, checked with Lean metadata checks, 256 prompt traces, circuit summaries, Lean Float replay, and a TorchLean reproduction trace. |
+| 02 | [Verifiable transformers in Lean](week-02-verifiable-transformer-checkpoint/) | Neel Somani's finite sparsemax-transformer run, checked with Lean metadata, circuit summaries, and full Float replay, alongside a separately trained TorchLean 4.32 causal GPT and its checked 256-row trace. |
 
 ## How To Use
 
@@ -24,7 +25,18 @@ lake build VerifiableTransformers
 lake exe verify_upstream_forward
 ```
 
-The root `lakefile.lean` depends on TorchLean once for the whole repository.
-Start with the folder README, then the main Lean file. If you want the runtime
-side, read the TorchLean training/export command and the certificate
-regeneration scripts.
+The project uses Lean 4.32 and pins the exact TorchLean revision in
+`lake-manifest.json`. On a fresh checkout, run `lake update` once before the
+build. The root `lakefile.lean` depends on TorchLean once for the whole
+repository.
+
+For a real CUDA build, pass the Lake option when building and running:
+
+```bash
+lake -R -K cuda=true build
+lake -R -K cuda=true exe train_torchlean_small_gpt \
+  --device cuda --show-backend --steps 1 --eval-batches 1
+```
+
+See the [TorchLean installation guide](https://lean-dojo.github.io/TorchLean/installation/)
+for Elan, platform, CUDA, and LibTorch setup.

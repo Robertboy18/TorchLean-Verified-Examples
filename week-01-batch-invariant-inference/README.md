@@ -71,8 +71,9 @@ the main proof file.
 
 ## Build
 
-The repository has one shared Lake project at the repo root, so run these
-commands from the repository root. The dependency points at TorchLean `main`.
+The repository has one shared Lean 4.32 Lake project at the repo root, so run
+these commands from the repository root. `lake-manifest.json` pins the exact
+TorchLean revision used by the checked build.
 
 Build everything:
 
@@ -198,4 +199,4 @@ assisted by GPT-5.5 Pro.
 - [TorchLean project overview][torchlean]
 
 [tml]: https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/
-[torchlean]: https://leandojo.org/torchlean.html
+[torchlean]: https://lean-dojo.github.io/TorchLean/

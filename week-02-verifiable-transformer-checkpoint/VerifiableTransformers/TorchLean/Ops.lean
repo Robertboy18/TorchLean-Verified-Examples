@@ -349,6 +349,55 @@ def sparsemaxRowsRef {α : Type} [Context α] [DecidableEq Shape]
         (rows := rows) (cols := keyLen) out sm ⟨i, h⟩
   pure out
 
+/--
+Sparsemax on the first `visible` coordinates of a vector, with exact zeros elsewhere.
+
+This is the hard-mask form needed by causal attention. The implementation never substitutes a
+finite negative sentinel for `-∞`: blocked coordinates are omitted from the sparsemax threshold
+calculation and are constructed as zero refs. The branch below depends only on the static
+coordinate, not on a runtime tensor value.
+-/
+def sparsemaxPrefixVecRef {α : Type} [Context α] [DecidableEq Shape]
+    {m : Type → Type} [Monad m] [TorchLean.Ops (m := m) (α := α)]
+    {n : Nat} (visible : Nat) (x : Ref m α (.dim n .scalar)) :
+    m (Ref m α (.dim n .scalar)) := do
+  let xs ← unpackScalars (m := m) (α := α) x
+  let visible := Nat.min visible n
+  let active := xs.take visible
+  let tau ← sparsemaxTau (m := m) (α := α) active
+  let zero ← scalarRef (m := m) (α := α) (0 : α)
+  let mut ys : List (Ref m α Shape.scalar) := []
+  for p in List.zip (List.range xs.length) xs do
+    if p.1 < visible then
+      let shifted ← TorchLean.sub (m := m) (α := α) (s := Shape.scalar) p.2 tau
+      let yi ← TorchLean.max (m := m) (α := α) (s := Shape.scalar) shifted zero
+      ys := ys ++ [yi]
+    else
+      ys := ys ++ [zero]
+  packScalars (m := m) (α := α) n ys
+
+/--
+Row-wise causal sparsemax for flattened `batch × queryLen × keyLen` attention scores.
+
+Row `i` represents query position `i % queryLen`, so exactly the first `i % queryLen + 1` keys
+participate in its sparsemax projection. Future positions receive exact zero weight.
+-/
+def sparsemaxCausalRowsRef {α : Type} [Context α] [DecidableEq Shape]
+    {m : Type → Type} [Monad m] [TorchLean.Ops (m := m) (α := α)]
+    {rows queryLen keyLen : Nat}
+    (x : Ref m α (.dim rows (.dim keyLen .scalar))) :
+    m (Ref m α (.dim rows (.dim keyLen .scalar))) := do
+  let mut out ← zerosRef (m := m) (α := α) (.dim rows (.dim keyLen .scalar))
+  for i in [0:rows] do
+    if h : i < rows then
+      let row ← TorchLean.gatherRow (m := m) (α := α)
+        (rows := rows) (cols := keyLen) x ⟨i, h⟩
+      let sm ← sparsemaxPrefixVecRef (m := m) (α := α) (n := keyLen)
+        (i % queryLen + 1) row
+      out ← TorchLean.scatterAddRow (m := m) (α := α)
+        (rows := rows) (cols := keyLen) out sm ⟨i, h⟩
+  pure out
+
 /-- Sparsemax over the last axis of a 4D attention-score tensor. -/
 def sparsemaxAttentionScoresRef {α : Type} [Context α] [DecidableEq Shape]
     {m : Type → Type} [Monad m] [TorchLean.Ops (m := m) (α := α)]
@@ -378,11 +427,12 @@ Trainable TorchLean layer wrapper for LeakyReLU.
 
 The upstream default slope is `0.01`, represented here as `1 / 100` in the
 current scalar backend.  Keeping it as a rational literal avoids needing a
-runtime `Float → α` cast in `LayerDef.forward`.
+runtime `Float → α` cast in `nn.LayerDef.forward`.
 -/
 def leakyReluLayer {s : Shape} (negativeSlopeDenom : Nat := 100) :
-    TorchLean.NN.LayerDef s s :=
-  { paramShapes := []
+    nn.LayerDef s s :=
+  { kind := "LeakyReLU"
+    paramShapes := []
     initParams := .nil
     paramRequiresGrad := []
     forward := fun _ {α} _ _ =>
@@ -407,8 +457,9 @@ with existing differentiable primitives (`gather`, `max`, `min`, `scale`,
 over the last axis of the attention-score tensor.
 -/
 def sparsemaxVectorLayer (n : Nat) :
-    TorchLean.NN.LayerDef (.dim n .scalar) (.dim n .scalar) :=
-  { paramShapes := []
+    nn.LayerDef (.dim n .scalar) (.dim n .scalar) :=
+  { kind := "SparsemaxVector"
+    paramShapes := []
     initParams := .nil
     paramRequiresGrad := []
     forward := fun _ {α} _ _ =>
@@ -423,8 +474,9 @@ def sparsemaxVector (n : Nat) :
 
 /-- Sparsemax applied independently to each row of a `rows × keyLen` matrix. -/
 def sparsemaxRowsLayer (rows keyLen : Nat) :
-    TorchLean.NN.LayerDef (.dim rows (.dim keyLen .scalar)) (.dim rows (.dim keyLen .scalar)) :=
-  { paramShapes := []
+    nn.LayerDef (.dim rows (.dim keyLen .scalar)) (.dim rows (.dim keyLen .scalar)) :=
+  { kind := "SparsemaxRows"
+    paramShapes := []
     initParams := .nil
     paramRequiresGrad := []
     forward := fun _ {α} _ _ =>
@@ -450,10 +502,11 @@ occupied by the upstream repo's sparsemax attention weights.
 -/
 def sparsemaxAttentionScoresLayer
     (batch heads queryLen keyLen : Nat) :
-    TorchLean.NN.LayerDef
+    nn.LayerDef
       (.dim batch (.dim heads (.dim queryLen (.dim keyLen .scalar))))
       (.dim batch (.dim heads (.dim queryLen (.dim keyLen .scalar)))) :=
-  { paramShapes := []
+  { kind := "SparsemaxAttentionScores"
+    paramShapes := []
     initParams := .nil
     paramRequiresGrad := []
     forward := fun _ {α} _ _ =>
@@ -472,13 +525,14 @@ def sparsemaxAttentionScores
 
 /-- TorchLean runtime approximation to Signed-L1-BandNorm on one hidden vector. -/
 def signedL1BandNormVectorLayer (n : Nat) :
-    TorchLean.NN.LayerDef (.dim n .scalar) (.dim n .scalar) :=
+    nn.LayerDef (.dim n .scalar) (.dim n .scalar) :=
   let gammaShape : Shape := .dim n .scalar
   let betaShape : Shape := .dim n .scalar
   let gamma0 : Tensor Float gammaShape := Spec.fill (α := Float) 1.0 gammaShape
   let beta0 : Tensor Float betaShape := Spec.fill (α := Float) 0.0 betaShape
-  { paramShapes := [gammaShape, betaShape]
-    initParams := TorchLean.tlist2 gamma0 beta0
+  { kind := "SignedL1BandNormVectorApprox"
+    paramShapes := [gammaShape, betaShape]
+    initParams := .cons gamma0 (.cons beta0 .nil)
     paramRequiresGrad := [true, true]
     forward := fun _ {α} _ _ =>
       fun {m} _ _ =>
@@ -493,13 +547,14 @@ def signedL1BandNormVector (n : Nat) :
 
 /-- TorchLean runtime approximation to Signed-L1-BandNorm independently on each row of a matrix. -/
 def signedL1BandNormRowsLayer (rows n : Nat) :
-    TorchLean.NN.LayerDef (.dim rows (.dim n .scalar)) (.dim rows (.dim n .scalar)) :=
+    nn.LayerDef (.dim rows (.dim n .scalar)) (.dim rows (.dim n .scalar)) :=
   let gammaShape : Shape := .dim n .scalar
   let betaShape : Shape := .dim n .scalar
   let gamma0 : Tensor Float gammaShape := Spec.fill (α := Float) 1.0 gammaShape
   let beta0 : Tensor Float betaShape := Spec.fill (α := Float) 0.0 betaShape
-  { paramShapes := [gammaShape, betaShape]
-    initParams := TorchLean.tlist2 gamma0 beta0
+  { kind := "SignedL1BandNormRowsApprox"
+    paramShapes := [gammaShape, betaShape]
+    initParams := .cons gamma0 (.cons beta0 .nil)
     paramRequiresGrad := [true, true]
     forward := fun _ {α} _ _ =>
       fun {m} _ _ =>

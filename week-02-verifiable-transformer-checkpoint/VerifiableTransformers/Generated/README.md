@@ -11,7 +11,7 @@ theorems saying the imported data passed the checks.
 | `UpstreamExportSummary.lean` | Neel's `smt_weights.json` export | Checks architecture metadata, tensor names/shapes, parameter count, operator tags, and the export fingerprint. |
 | `UpstreamCheckpointPayload.lean` | Neel's `smt_weights.json` export | Embeds the full Float parameter values, checks their exported tensor shapes, and lets Lean replay the trained model forward pass over all 256 prompts. |
 | `UpstreamEvalTrace.lean` | Neel's trained checkpoint and Python/Z3 circuit verifier | Embeds the finite-domain logits trace and checks the saved quote/bracket circuit summaries. |
-| `TorchLeanEvalTrace.lean` | TorchLean CUDA training run | Checks the TorchLean checkpoint summary and embeds the TorchLean-produced finite-domain logits trace. |
+| `TorchLeanEvalTrace.lean` | Native TorchLean 4.32 causal-GPT run | Checks the exact 30-tensor parameter layout, checkpoint identity, and complete TorchLean-produced finite-domain logits trace. |
 
 These files are separated by evidence type, not convenience.  The export summary
 checks metadata and hashes, the checkpoint values support Lean forward replay,

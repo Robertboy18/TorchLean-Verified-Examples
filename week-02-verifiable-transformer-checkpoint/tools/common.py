@@ -16,6 +16,16 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def artifact_display_path(path: Path) -> str:
+    """Return a checkout-independent path for generated certificate metadata."""
+    parts = path.parts
+    try:
+        artifact_index = parts.index("artifacts")
+    except ValueError:
+        return path.name
+    return Path(*parts[artifact_index:]).as_posix()
+
+
 def lean_nat_list(xs: Iterable[int]) -> str:
     """Render natural-number data as a Lean list literal."""
     return "[" + ", ".join(str(int(x)) for x in xs) + "]"

@@ -44,9 +44,9 @@ Lean checks:
 - Neel's exported checkpoint payload is shape-checked in Lean, then replayed
   directly in Lean `Float`, and that replay gives positive target-vs-alternate
   margin on all 256 prompts;
-- we also train a reproduction model with the same architecture in TorchLean,
-  export a CUDA checkpoint and finite eval trace, and check that trace against
-  the same projected quote/bracket property.
+- a separate native TorchLean 4.32 causal GPT is trained on the same finite
+  task; Lean checks its exact parameter layout, checkpoint hash, complete
+  256-row trace, and the same projected quote/bracket property.
 
 The finite task has two halves:
 
@@ -118,12 +118,12 @@ What we do not claim:
 - PyTorch, Python, Z3, CUDA, or hardware correctness;
 - full-vocabulary model behavior;
 - out-of-domain behavior;
-- bitwise identity between the TorchLean reproduction checkpoint and Neel's
-  checkpoint.
+- architectural or bitwise identity between the native TorchLean checkpoint
+  and Neel's sparsemax checkpoint.
 
-## TorchLean Reproduction Run
+## Native TorchLean Run
 
-We also train the same architecture natively in TorchLean:
+We also train a native TorchLean causal GPT on the same finite task:
 
 ```text
 vocab = 32
@@ -134,17 +134,24 @@ heads = 1
 dMlp = 64
 ```
 
-That path lives in `TorchLean/TrainSmallGPT.lean`. It builds a TorchLean model
-with sparsemax causal attention, LeakyReLU, a no-bias `lm_head`, and the current
-TorchLean Signed-L1-BandNorm runtime layer. It can train on CPU or CUDA, save
-the parameter bits, and write the same 256-row finite eval trace format that
-the Lean certificate checker understands.
+That path lives in `TorchLean/TrainSmallGPT.lean`. It uses
+`nn.models.causalTransformerOneHot`, the public TorchLean 4.32 GPT-2-style
+constructor. The model has learned token and positional embeddings, hard-masked
+softmax attention, LayerNorm, GELU feed-forward blocks, and an affine language
+model head. It can train on CPU or CUDA, save exact parameter bits, and write
+the same 256-row finite eval-trace format that the Lean checker understands.
 
-The important boundary is simple: this native TorchLean run is not a claim of
-bitwise identity with Neel's exact checkpoint. Neel's checkpoint is checked by
-the generated Lean constants and `Replay/UpstreamFloatReplay.lean`; the
-TorchLean run contributes a second checked trace from TorchLean's own
-training/export path.
+The causal mask is a boolean tensor: allowed entries participate in softmax and
+blocked entries contribute exactly zero numerator. On CUDA, the attention node
+selects the `native_cuda.flash_attention` capsule, including its fused backward
+kernel. Passing `--show-backend` prints that selection and its declared shape,
+layout, value, and VJP contracts.
+
+This is not a reimplementation of Neel's sparsemax model. Neel's checkpoint is
+checked by the generated Lean constants and `Replay/UpstreamFloatReplay.lean`.
+The native run demonstrates the current TorchLean model, trainer, CUDA backend,
+and certificate-export path on the same task without identifying the two
+models or their parameter layouts.
 
 ## How the Pieces Fit
 
@@ -166,8 +173,8 @@ VerifiableTransformers/
     Lean Float replay of Neel's exported checkpoint over all 256 prompts.
 
   TorchLean/
-    TorchLean runtime layers plus a CPU/CUDA training/export command for the
-    same architecture.
+    Formalizations of the upstream custom operators, plus a separate public-API
+    TorchLean causal-GPT training and export command.
 ```
 
 The generated files are separated on purpose. The export summary, checkpoint
@@ -221,6 +228,33 @@ lake exe verify_upstream_forward
 
 The root `lakefile.lean` depends on TorchLean once for all weekly examples.
 
+Instantiate the native TorchLean model on CPU without running a training step:
+
+```bash
+lake exe train_torchlean_small_gpt --device cpu \
+  --steps 1 --eval-batches 1 --instantiate-only --inspect-weights
+```
+
+For CUDA, configure both the dependency and final executable through Lake:
+
+```bash
+lake -R -K cuda=true exe train_torchlean_small_gpt --device cuda \
+  --show-backend --steps 1 --eval-batches 1
+```
+
+The checked native artifact was produced with 100 optimizer steps over all 16
+finite-domain minibatches:
+
+```bash
+lake -R -K cuda=true exe train_torchlean_small_gpt --device cuda \
+  --steps 100 --eval-batches 16 \
+  --save-params week-02-verifiable-transformer-checkpoint/artifacts/torchlean-cuda-small-gpt.parambits.json \
+  --save-eval-json week-02-verifiable-transformer-checkpoint/artifacts/torchlean-cuda-small-gpt.eval.json
+```
+
+That run completes with loss `0.116249` and projected accuracy `256/256` on the
+saved finite trace.
+
 ## Regenerate the Certificates
 
 Export summary:
@@ -259,7 +293,8 @@ python week-02-verifiable-transformer-checkpoint/tools/generate_full_forward_wei
 ## What This Does Not Prove
 
 Lean checks the exported metadata, finite-domain certificates, circuit
-summaries, Neel checkpoint replay, and TorchLean CUDA trace certificate.
+summaries, Neel checkpoint replay, and the native TorchLean CUDA trace
+certificate.
 The Python training run, the Z3 search, and the TorchLean CUDA run are still
 external runs.
 

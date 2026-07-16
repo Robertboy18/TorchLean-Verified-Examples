@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from common import sha256_file
+from common import artifact_display_path, sha256_file
 
 
 META_KEYS = {
@@ -118,6 +118,7 @@ def generate(input_path: Path, module_namespace: str) -> str:
             raise ValueError(f"expected {key}={expected!r}, got {actual!r}")
 
     sha = sha256_file(input_path)
+    source_path = artifact_display_path(input_path)
     tensor_lines = []
     for key, value in data.items():
         if key in META_KEYS:
@@ -134,7 +135,7 @@ def generate(input_path: Path, module_namespace: str) -> str:
     return f'''/-
 Generated summary certificate for:
 
-  {input_path.as_posix()}
+  {source_path}
 
 Lean records the metadata and tensor-shape summaries here, while the full
 floating-point arrays live in the checkpoint values file. The SHA-256 field ties
@@ -151,7 +152,7 @@ def tensorFields : List TensorSummary :=
 {tensor_block}
 
 def exportSummary : ExportSummary where
-  sourcePath := "{input_path.as_posix()}"
+  sourcePath := "{source_path}"
   sha256 := "{sha}"
   fieldCount := {len(data)}
   vocabSize := {data["vocab_size"]}

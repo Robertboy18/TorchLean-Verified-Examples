@@ -1,31 +1,29 @@
 /-
-TorchLean training/export command for the small GPT architecture.
+TorchLean training/export command for a small native causal GPT.
 
-Here TorchLean trains a reproduction run with the same architecture: vocabulary
-32, sequence length 6, width 16, two blocks, one sparsemax attention head, and a
-64-wide MLP.
-The command can export a CUDA checkpoint plus the same 256-row finite eval trace
-that the Lean certificate checker understands.
+The upstream checkpoint verified elsewhere in this example uses sparsemax,
+Signed-L1-BandNorm, and LeakyReLU. This command has a different purpose: it runs
+the same finite quote/bracket task through TorchLean's public GPT-2-style API.
+That path uses standard causal softmax attention and therefore reaches the
+fused CUDA attention forward and VJP introduced in TorchLean 4.32.
 
-The dimensions and finite task mirror `scripts/small/config.py` and
-`scripts/small/dataset.py`.  The sparsemax, BandNorm, and LeakyReLU wiring
-follows `scripts/small/train.py`.
+The dimensions and finite task still mirror `scripts/small/config.py` and
+`scripts/small/dataset.py`. The command can export its own checkpoint and the
+same 256-row projected eval-trace schema consumed by the Lean checker.
 
 What we prove about this path is the exported trace contract: the checkpoint
 summary has the expected shape/hash metadata, and the finite eval rows satisfy
-the same projected quote/bracket property. Neel's exact checkpoint is checked by
-the generated Lean constants plus `Replay/UpstreamFloatReplay`; this native
-TorchLean run is a reproduction path, not a claim of bitwise identity with
-Neel's checkpoint.
+the same projected quote/bracket property. Neel's exact sparsemax checkpoint is
+checked independently by the generated Lean constants and
+`Replay/UpstreamFloatReplay`; the two parameter layouts are intentionally not
+identified.
 -/
 
+import NN.API
 import NN.API.Models.Gpt2
-import NN.Runtime.Autograd.TorchLean.ParamIO
-import VerifiableTransformers.TorchLean.Ops
 
 open Spec Tensor
 open NN.API
-open VerifiableTransformers.TorchLean.Ops
 
 namespace VerifiableTransformers.TorchLean.TrainSmallGPT
 
@@ -49,54 +47,10 @@ def ffnHidden : Nat := 64
 /-- Number of transformer blocks in the small GPT. -/
 def layers : Nat := 2
 
-abbrev ModelShape : Shape := .dim batch (.dim seqLen (.dim dModel .scalar))
 abbrev OneHotShape : Shape := .dim batch (.dim seqLen (.dim vocab .scalar))
 
 local instance : NeZero seqLen := ⟨by decide⟩
 local instance : NeZero dModel := ⟨by decide⟩
-
-namespace TL
-
-/-- Apply one row-major affine layer to each row of a matrix. -/
-def linearRowsRef {α : Type} [Context α] [DecidableEq Shape]
-    {m : Type → Type} [Monad m] [TorchLean.Ops (m := m) (α := α)]
-    {rows inDim outDim : Nat}
-    (w : TorchLean.RefTy (m := m) (α := α) (.dim outDim (.dim inDim .scalar)))
-    (b : TorchLean.RefTy (m := m) (α := α) (.dim outDim .scalar))
-    (x : TorchLean.RefTy (m := m) (α := α) (.dim rows (.dim inDim .scalar))) :
-    m (TorchLean.RefTy (m := m) (α := α) (.dim rows (.dim outDim .scalar))) := do
-  let wt ← TorchLean.transpose2d (m := m) (α := α)
-    (mDim := outDim) (nDim := inDim) w
-  let y ← TorchLean.matmul (m := m) (α := α)
-    (mDim := rows) (nDim := inDim) (pDim := outDim) x wt
-  let bRows ← TorchLean.broadcastTo (m := m) (α := α)
-    (s₁ := .dim outDim .scalar) (s₂ := .dim rows (.dim outDim .scalar))
-    ((inferInstance : Shape.BroadcastTo (.dim outDim .scalar)
-      (.dim rows (.dim outDim .scalar))).proof) b
-  TorchLean.add (m := m) (α := α) (s := .dim rows (.dim outDim .scalar)) y bRows
-
-/-- Row-wise linear map without a bias term, used for the final unembedding. -/
-def linearRowsNoBiasRef {α : Type} [Context α] [DecidableEq Shape]
-    {m : Type → Type} [Monad m] [TorchLean.Ops (m := m) (α := α)]
-    {rows inDim outDim : Nat}
-    (w : TorchLean.RefTy (m := m) (α := α) (.dim outDim (.dim inDim .scalar)))
-    (x : TorchLean.RefTy (m := m) (α := α) (.dim rows (.dim inDim .scalar))) :
-    m (TorchLean.RefTy (m := m) (α := α) (.dim rows (.dim outDim .scalar))) := do
-  let wt ← TorchLean.transpose2d (m := m) (α := α)
-    (mDim := outDim) (nDim := inDim) w
-  TorchLean.matmul (m := m) (α := α)
-    (mDim := rows) (nDim := inDim) (pDim := outDim) x wt
-
-/-- Additive causal mask: zero on visible positions and a large negative value otherwise. -/
-def causalMaskTensor (α : Type) [Context α] (batch seqLen : Nat) :
-    Tensor α (.dim batch (.dim seqLen (.dim seqLen .scalar))) :=
-  Tensor.dim (fun _ =>
-    Tensor.dim (fun q =>
-      Tensor.dim (fun k =>
-        Tensor.scalar <|
-          if k.val <= q.val then (0 : α) else -(((10000 : Nat) : α)))))
-
-end TL
 
 /-- Content token at a canonical content index. -/
 def contentToken (i : Nat) : Nat :=
@@ -133,8 +87,9 @@ def taskTarget (idx : Nat) : Nat :=
   (taskWindow idx).getD seqLen 0
 
 /-- Build one one-hot minibatch starting at `offset` in the 256-row finite domain. -/
-def mkSample {α : Type} [Semantics.Scalar α] [Runtime.Scalar α] (offset : Nat) :
-    sample.Supervised α OneHotShape OneHotShape :=
+def mkSample {α : Type} [_root_.TorchLean.Runtime.SemanticScalar α]
+    [_root_.TorchLean.Runtime.Scalar α] (offset : Nat) :
+    _root_.TorchLean.SupervisedSample α OneHotShape OneHotShape :=
   let xF : Tensor Float OneHotShape :=
     Tensor.dim (fun bi =>
       Tensor.dim (fun t =>
@@ -146,11 +101,13 @@ def mkSample {α : Type} [Semantics.Scalar α] [Runtime.Scalar α] (offset : Nat
           text.oneHotTokenFloat vocab (taskTarget ((offset + bi.val) % 256))
         else
           Spec.fill (α := Float) 0.0 (.dim vocab .scalar)))
-  sample.mk (Common.castTensor Runtime.ofFloat xF) (Common.castTensor Runtime.ofFloat yF)
+  _root_.TorchLean.Sample.mk
+    (Common.castTensor Runtime.ofFloat xF) (Common.castTensor Runtime.ofFloat yF)
 
 /-- First sample, used for before/after loss reporting. -/
-def firstSample {α : Type} [Semantics.Scalar α] [Runtime.Scalar α] :
-    sample.Supervised α OneHotShape OneHotShape :=
+def firstSample {α : Type} [_root_.TorchLean.Runtime.SemanticScalar α]
+    [_root_.TorchLean.Runtime.Scalar α] :
+    _root_.TorchLean.SupervisedSample α OneHotShape OneHotShape :=
   mkSample (α := α) 0
 
 /-- Extract the vocabulary logits for one `(batch,row)` and sequence position. -/
@@ -203,7 +160,8 @@ def evalCandidateAccuracy
   for k in [0:batches] do
     let offset := (k * batch) % 256
     let sample := mkSample (α := Float) offset
-    let logits ← nn.eval1NoGrad (α := Float) opts model params (NN.API.sample.x sample)
+    let logits ← _root_.TorchLean.nn.predict (α := Float) model opts params
+      (_root_.TorchLean.Sample.x sample)
     for bi in [0:batch] do
       if hbi : bi < batch then
         let global := (offset + bi) % 256
@@ -257,7 +215,8 @@ def collectEvalRowsJson
   for k in [0:16] do
     let offset := (k * batch) % 256
     let sample := mkSample (α := Float) offset
-    let logits ← nn.eval1NoGrad (α := Float) opts model params (NN.API.sample.x sample)
+    let logits ← _root_.TorchLean.nn.predict (α := Float) model opts params
+      (_root_.TorchLean.Sample.x sample)
     for bi in [0:batch] do
       if hbi : bi < batch then
         let global := (offset + bi) % 256
@@ -282,211 +241,44 @@ def writeEvalJson
   let body :=
     "{\n" ++
     " \"producer\":\"train_torchlean_small_gpt\",\n" ++
+    " \"model\":\"torchlean-causal-softmax-gpt-v1\",\n" ++
+    " \"dimensions\":{\"batch\":" ++ toString batch ++
+      ",\"seqLen\":" ++ toString seqLen ++
+      ",\"vocab\":" ++ toString vocab ++
+      ",\"dModel\":" ++ toString dModel ++
+      ",\"layers\":" ++ toString layers ++
+      ",\"heads\":" ++ toString numHeads ++
+      ",\"ffnHidden\":" ++ toString ffnHidden ++ "},\n" ++
     " \"checkpointPath\":\"" ++ checkpointPath.toString ++ "\",\n" ++
     " \"scoreScale\":1000000,\n" ++
     " \"rows\":[\n" ++ String.intercalate ",\n" rows ++ "\n ]\n}\n"
   IO.FS.writeFile path body
 
-/-- No-bias linear layer over a prefix shape, matching GPT-2's untied `lm_head`. -/
-def linearNoBiasLayer (inDim outDim : Nat) (seedW : Nat := 0)
-    (pfx : Shape := .scalar) :
-    TorchLean.NN.LayerDef (pfx.appendDim inDim) (pfx.appendDim outDim) :=
-  let WShape : Shape := .dim outDim (.dim inDim .scalar)
-  let w0 : Tensor Float WShape := _root_.Runtime.Autograd.Torch.Init.xavierW
-    (outDim := outDim) (inDim := inDim) (seed := seedW)
-  let rows := Shape.size pfx
-  { paramShapes := [WShape]
-    initParams := TorchLean.tlist1 w0
-    paramRequiresGrad := [true]
-    forward := fun _mode {α} _ _ =>
-      fun {m} _ _ =>
-        fun w x =>
-        ((do
-          let sIn : Shape := pfx.appendDim inDim
-          let sOut : Shape := pfx.appendDim outDim
-          let xRows ← TorchLean.reshape (m := m) (α := α)
-            (s₁ := sIn)
-            (s₂ := .dim rows (.dim inDim .scalar))
-            x (by simp [sIn, rows, Shape.size_appendDim, Shape.size])
-          let yRows ← TL.linearRowsNoBiasRef (m := m) (α := α)
-            (rows := rows) (inDim := inDim) (outDim := outDim) w xRows
-          TorchLean.reshape (m := m) (α := α)
-            (s₁ := .dim rows (.dim outDim .scalar))
-            (s₂ := sOut)
-            yRows (by simp [sOut, rows, Shape.size_appendDim, Shape.size])
-        ) : m (TorchLean.RefTy (m := m) (α := α) (pfx.appendDim outDim)))
-  }
+/-- Public TorchLean configuration used by the native training path. -/
+def modelConfig : nn.models.CausalOneHotConfig where
+  batch := batch
+  seqLen := seqLen
+  vocab := vocab
+  numHeads := numHeads
+  headDim := headDim
+  ffnHidden := ffnHidden
+  layers := layers
+  seedStride := 1000
 
-/-- Sequential wrapper for the no-bias unembedding layer. -/
-def linearNoBias (inDim outDim : Nat) (seedW : Nat := 0)
-    (pfx : Shape := .scalar) :
-    nn.Sequential (pfx.appendDim inDim) (pfx.appendDim outDim) :=
-  nn.of (linearNoBiasLayer inDim outDim seedW (pfx := pfx))
+/--
+Native TorchLean causal GPT.
 
-/-- Sparsemax causal self-attention for one head (`dModel = headDim = 16`). -/
-def sparsemaxCausalSelfAttentionLayer (batch seqLen dModel : Nat) (seedBase : Nat := 0) :
-    TorchLean.NN.LayerDef
-      (.dim batch (.dim seqLen (.dim dModel .scalar)))
-      (.dim batch (.dim seqLen (.dim dModel .scalar))) :=
-  let WShape : Shape := .dim dModel (.dim dModel .scalar)
-  let bShape : Shape := .dim dModel .scalar
-  let wq0 : Tensor Float WShape := _root_.Runtime.Autograd.Torch.Init.xavierW
-    (outDim := dModel) (inDim := dModel) (seed := seedBase + 0)
-  let bq0 : Tensor Float bShape := _root_.Runtime.Autograd.Torch.Init.tensor
-    (s := bShape) (sch := .zeros) (seed := seedBase + 1)
-  let wk0 : Tensor Float WShape := _root_.Runtime.Autograd.Torch.Init.xavierW
-    (outDim := dModel) (inDim := dModel) (seed := seedBase + 2)
-  let bk0 : Tensor Float bShape := _root_.Runtime.Autograd.Torch.Init.tensor
-    (s := bShape) (sch := .zeros) (seed := seedBase + 3)
-  let wv0 : Tensor Float WShape := _root_.Runtime.Autograd.Torch.Init.xavierW
-    (outDim := dModel) (inDim := dModel) (seed := seedBase + 4)
-  let bv0 : Tensor Float bShape := _root_.Runtime.Autograd.Torch.Init.tensor
-    (s := bShape) (sch := .zeros) (seed := seedBase + 5)
-  let wo0 : Tensor Float WShape := _root_.Runtime.Autograd.Torch.Init.xavierW
-    (outDim := dModel) (inDim := dModel) (seed := seedBase + 6)
-  let bo0 : Tensor Float bShape := _root_.Runtime.Autograd.Torch.Init.tensor
-    (s := bShape) (sch := .zeros) (seed := seedBase + 7)
-  let rows := batch * seqLen
-  let s3 : Shape := .dim batch (.dim seqLen (.dim dModel .scalar))
-  let sRows : Shape := .dim rows (.dim dModel .scalar)
-  let sScores : Shape := .dim batch (.dim seqLen (.dim seqLen .scalar))
-  { paramShapes := [WShape, bShape, WShape, bShape, WShape, bShape, WShape, bShape]
-    initParams :=
-      .cons wq0 (.cons bq0 (.cons wk0 (.cons bk0 (.cons wv0 (.cons bv0 (.cons wo0 (.cons bo0 .nil)))))))
-    paramRequiresGrad := [true, true, true, true, true, true, true, true]
-    forward := fun _mode {α} _ _ =>
-      fun {m} _ _ =>
-        fun wq bq wk bk wv bv wo bo x =>
-        ((do
-          let xRows ← TorchLean.reshape (m := m) (α := α)
-            (s₁ := s3) (s₂ := sRows) x (by
-              simp [s3, sRows, rows, Shape.size, Nat.mul_left_comm, Nat.mul_comm])
-          let qRows ← TL.linearRowsRef (m := m) (α := α)
-            (rows := rows) (inDim := dModel) (outDim := dModel) wq bq xRows
-          let kRows ← TL.linearRowsRef (m := m) (α := α)
-            (rows := rows) (inDim := dModel) (outDim := dModel) wk bk xRows
-          let vRows ← TL.linearRowsRef (m := m) (α := α)
-            (rows := rows) (inDim := dModel) (outDim := dModel) wv bv xRows
-          let q ← TorchLean.reshape (m := m) (α := α)
-            (s₁ := sRows) (s₂ := s3) qRows (by
-              simp [s3, sRows, rows, Shape.size, Nat.mul_left_comm, Nat.mul_comm])
-          let k ← TorchLean.reshape (m := m) (α := α)
-            (s₁ := sRows) (s₂ := s3) kRows (by
-              simp [s3, sRows, rows, Shape.size, Nat.mul_left_comm, Nat.mul_comm])
-          let v ← TorchLean.reshape (m := m) (α := α)
-            (s₁ := sRows) (s₂ := s3) vRows (by
-              simp [s3, sRows, rows, Shape.size, Nat.mul_left_comm, Nat.mul_comm])
-          let kt ← _root_.Runtime.Autograd.Torch.transpose3dLastTwo (m := m) (α := α)
-            (a := batch) (b := seqLen) (c := dModel) k
-          let rawScores ← _root_.Runtime.Autograd.Torch.bmm (m := m) (α := α)
-            (batch := batch) (mDim := seqLen) (nDim := dModel) (pDim := seqLen) q kt
-          let scaledScores ← TorchLean.scale (m := m) (α := α) (s := sScores)
-            rawScores ((1 : α) / ((4 : Nat) : α))
-          let causal ← TorchLean.const (m := m) (α := α) (s := sScores)
-            (TL.causalMaskTensor α batch seqLen)
-          let masked ← TorchLean.add (m := m) (α := α) (s := sScores) scaledScores causal
-          let scoreRows ← TorchLean.reshape (m := m) (α := α)
-            (s₁ := sScores) (s₂ := .dim rows (.dim seqLen .scalar))
-            masked (by simp [sScores, rows, Shape.size, Nat.mul_left_comm, Nat.mul_comm])
-          let attnRows ← TL.sparsemaxRowsRef (m := m) (α := α)
-            (rows := rows) (keyLen := seqLen) scoreRows
-          let attn ← TorchLean.reshape (m := m) (α := α)
-            (s₁ := .dim rows (.dim seqLen .scalar)) (s₂ := sScores)
-            attnRows (by simp [sScores, rows, Shape.size, Nat.mul_left_comm, Nat.mul_comm])
-          let ctx ← _root_.Runtime.Autograd.Torch.bmm (m := m) (α := α)
-            (batch := batch) (mDim := seqLen) (nDim := seqLen) (pDim := dModel) attn v
-          let ctxRows ← TorchLean.reshape (m := m) (α := α)
-            (s₁ := s3) (s₂ := sRows) ctx (by
-              simp [s3, sRows, rows, Shape.size, Nat.mul_left_comm, Nat.mul_comm])
-          let outRows ← TL.linearRowsRef (m := m) (α := α)
-            (rows := rows) (inDim := dModel) (outDim := dModel) wo bo ctxRows
-          TorchLean.reshape (m := m) (α := α)
-            (s₁ := sRows) (s₂ := s3) outRows (by
-              simp [s3, sRows, rows, Shape.size, Nat.mul_left_comm, Nat.mul_comm])
-        ) : m (TorchLean.RefTy (m := m) (α := α) s3))
-  }
-
-/-- Sequential wrapper for sparsemax causal self-attention. -/
-def sparsemaxCausalSelfAttention (batch seqLen dModel : Nat) (seedBase : Nat := 0) :
-    nn.Sequential
-      (.dim batch (.dim seqLen (.dim dModel .scalar)))
-      (.dim batch (.dim seqLen (.dim dModel .scalar))) :=
-  nn.of (sparsemaxCausalSelfAttentionLayer batch seqLen dModel seedBase)
-
-/-- Sequence-shaped Signed-L1-BandNorm layer over all batch/position rows. -/
-def signedL1BandNormSequenceLayer (batch seqLen dModel : Nat) :
-    TorchLean.NN.LayerDef
-      (.dim batch (.dim seqLen (.dim dModel .scalar)))
-      (.dim batch (.dim seqLen (.dim dModel .scalar))) :=
-  let rows := batch * seqLen
-  let gammaShape : Shape := .dim dModel .scalar
-  let betaShape : Shape := .dim dModel .scalar
-  let gamma0 : Tensor Float gammaShape := Spec.fill (α := Float) 1.0 gammaShape
-  let beta0 : Tensor Float betaShape := Spec.fill (α := Float) 0.0 betaShape
-  let s3 : Shape := .dim batch (.dim seqLen (.dim dModel .scalar))
-  let sRows : Shape := .dim rows (.dim dModel .scalar)
-  { paramShapes := [gammaShape, betaShape]
-    initParams := TorchLean.tlist2 gamma0 beta0
-    paramRequiresGrad := [true, true]
-    forward := fun _mode {α} _ _ =>
-      fun {m} _ _ =>
-        fun gamma beta x =>
-        ((do
-          let xRows ← TorchLean.reshape (m := m) (α := α)
-            (s₁ := s3) (s₂ := sRows) x (by
-              simp [s3, sRows, rows, Shape.size, Nat.mul_left_comm, Nat.mul_comm])
-          let yRows ← TL.signedL1BandNormRowsRef (m := m) (α := α)
-            (rows := rows) (n := dModel) gamma beta xRows
-          TorchLean.reshape (m := m) (α := α)
-            (s₁ := sRows) (s₂ := s3) yRows (by
-              simp [s3, sRows, rows, Shape.size, Nat.mul_left_comm, Nat.mul_comm])
-        ) : m (TorchLean.RefTy (m := m) (α := α) s3))
-  }
-
-/-- Sequential wrapper for sequence-shaped Signed-L1-BandNorm. -/
-def signedL1BandNormSequence (batch seqLen dModel : Nat) :
-    nn.Sequential
-      (.dim batch (.dim seqLen (.dim dModel .scalar)))
-      (.dim batch (.dim seqLen (.dim dModel .scalar))) :=
-  nn.of (signedL1BandNormSequenceLayer batch seqLen dModel)
-
-/-- One pre-norm residual attention block followed by a residual MLP block. -/
-def transformerBlock (seedBase : Nat) :
-    nn.M (nn.Sequential ModelShape ModelShape) := do
-  let norm1 := signedL1BandNormSequence batch seqLen dModel
-  let attn := sparsemaxCausalSelfAttention batch seqLen dModel (seedBase + 10)
-  let norm2 := signedL1BandNormSequence batch seqLen dModel
-  let ffn ←
-    (nn.sequential![
-      pure (nn.pure.linear dModel ffnHidden (seedBase + 20) (seedBase + 21)
-        (pfx := .dim batch (.dim seqLen .scalar))),
-      pure (leakyRelu (s := .dim batch (.dim seqLen (.dim ffnHidden .scalar))) 100),
-      pure (nn.pure.linear ffnHidden dModel (seedBase + 22) (seedBase + 23)
-        (pfx := .dim batch (.dim seqLen .scalar)))
-    ] : nn.M (nn.Sequential ModelShape ModelShape))
-  let normAttn ← (nn.sequential![pure norm1, pure attn] : nn.M (nn.Sequential ModelShape ModelShape))
-  let normFfn ← (nn.sequential![pure norm2, pure ffn] : nn.M (nn.Sequential ModelShape ModelShape))
-  nn.sequential![
-    pure (nn.pure.blocks.residual normAttn),
-    pure (nn.pure.blocks.residual normFfn)
-  ]
-
-/-- Trainable same-size TorchLean model used to produce the CUDA eval trace. -/
+The public constructor supplies learned token and positional embeddings, a structurally causal
+boolean mask, Transformer blocks, final normalization, and the language-model head. On CUDA its
+attention nodes select TorchLean's fused attention capsule and fused VJP.
+-/
 def mkTrainableModel : nn.M (nn.Sequential OneHotShape OneHotShape) :=
-  nn.sequential![
-    nn.embedding vocab dModel (pfx := .dim batch (.dim seqLen .scalar)),
-    nn.learnedPositionalEmbedding (batch := batch) (seqLen := seqLen) (embedDim := dModel),
-    transformerBlock 1000,
-    transformerBlock 2000,
-    pure (signedL1BandNormSequence batch seqLen dModel),
-    pure (linearNoBias dModel vocab 3000 (pfx := .dim batch (.dim seqLen .scalar)))
-  ]
+  nn.models.causalTransformerOneHot modelConfig
 
 /-- Print the run configuration before training or trace generation. -/
 def printRunHeader (mode : String) (steps evalBatches : Nat) : IO Unit := do
   IO.println s!"TorchLean GPT dimensions: vocab={vocab}, seqLen={seqLen}, dModel={dModel}, layers={layers}, heads={numHeads}, dMlp={ffnHidden}"
-  IO.println s!"parameter count: 7712"
-  IO.println s!"operators: Signed-L1-BandNorm + sparsemax causal attention + LeakyReLU + no-bias lm_head"
+  IO.println "operators: hard-masked softmax attention + LayerNorm + GELU + affine lm_head"
   IO.println s!"mode={mode}"
   IO.println s!"steps={steps}"
   IO.println s!"eval_batches={Nat.min 16 evalBatches} (out of 16 exhaustive minibatches)"
@@ -499,7 +291,7 @@ def trainModel
     IO Unit := do
   nn.withModel mkTrainableModel fun model => do
     let modDef := nn.crossEntropyOneHotScalarModuleDef model (reduction := .mean)
-    let m ← TorchLean.Module.instantiateWithOptions (α := Float) modDef id opts
+    let m ← _root_.TorchLean.Module.instantiate (α := Float) opts modDef id
     if instantiateOnly then
       printRunHeader "instantiate-only" steps evalBatches
       IO.println "instantiated trainable TorchLean GPT module; skipped forward/backward by request"
@@ -508,14 +300,14 @@ def trainModel
       if inspectWeights then
         printParamInspection ps
       if let some path := saveParams? then
-        Runtime.Autograd.TorchLean.ParamIO.writeTListBits path ps
+        _root_.NN.API.TorchLean.ParamIO.saveParamBits path ps
         IO.println s!"saved initial parameters to {path}"
       if let some path := saveEvalJson? then
         writeEvalJson opts model m.trainer.params path (saveParams?.getD "initial-params-not-saved")
         IO.println s!"saved initial eval trace to {path}"
       return ()
     let sample0 := firstSample (α := Float)
-    let loss0 ← TorchLean.Module.forward (α := Float) m sample0
+    let loss0 ← m.forward sample0
     let acc0 ← evalCandidateAccuracy opts model m.trainer.params evalBatches
     let opt := TorchLean.Optim.adam (α := Float)
       (paramShapes := nn.paramShapes model)
@@ -528,10 +320,10 @@ def trainModel
       optH.step (mkSample (α := Float) ((step * batch) % 256))
     let trainedParams ← _root_.Runtime.Autograd.Torch.ParamList.valuesSynced (α := Float)
       (ss := nn.paramShapes model) m.trainer.params
-    let loss1 ← TorchLean.Module.forward (α := Float) m sample0
+    let loss1 ← m.forward sample0
     let acc1 ← evalCandidateAccuracy opts model m.trainer.params evalBatches
     if let some path := saveParams? then
-      Runtime.Autograd.TorchLean.ParamIO.writeTListBits path trainedParams
+      _root_.NN.API.TorchLean.ParamIO.saveParamBits path trainedParams
     if let some path := saveEvalJson? then
       writeEvalJson opts model m.trainer.params path (saveParams?.getD "trained-params-not-saved")
     printRunHeader "train" steps evalBatches
@@ -547,24 +339,40 @@ def trainModel
 /-- Parse flags for training, instantiation, parameter export, and eval trace export. -/
 def parseRunFlags (args : List String) :
     Except String (Nat × Nat × Bool × Option System.FilePath × Option System.FilePath × Bool × List String) := do
-  let (steps?, rest) ← CLI.takeNatFlagOnce args "steps"
-  let (evalBatches?, rest) ← CLI.takeNatFlagOnce rest "eval-batches"
-  let (instantiateOnly, rest) ← CLI.takeBoolFlagOnce rest "instantiate-only"
-  let (saveParams?, rest) ← CLI.takePathFlagOnce rest "save-params"
-  let (saveEvalJson?, rest) ← CLI.takePathFlagOnce rest "save-eval-json"
-  let (inspectWeights, rest) ← CLI.takeBoolFlagOnce rest "inspect-weights"
+  let (steps?, rest) ← _root_.TorchLean.CLI.takeNatFlagOnce args "steps"
+  let (evalBatches?, rest) ← _root_.TorchLean.CLI.takeNatFlagOnce rest "eval-batches"
+  let (instantiateOnly, rest) ← _root_.TorchLean.CLI.takeBoolFlagOnce rest "instantiate-only"
+  let (saveParams?, rest) ← _root_.TorchLean.CLI.takePathFlagOnce rest "save-params"
+  let (saveEvalJson?, rest) ← _root_.TorchLean.CLI.takePathFlagOnce rest "save-eval-json"
+  let (inspectWeights, rest) ← _root_.TorchLean.CLI.takeBoolFlagOnce rest "inspect-weights"
   pure (steps?.getD 10, evalBatches?.getD 1, instantiateOnly, saveParams?, saveEvalJson?, inspectWeights, rest)
+
+/-- Help text for the command-specific flags layered on top of TorchLean's runtime flags. -/
+def usage : String :=
+  _root_.NN.API.TorchLean.Module.runUsage exeName ++ "\n\n" ++
+  String.intercalate "\n"
+    [ "Small GPT flags:"
+    , "  --steps N                 optimizer steps (default: 10)"
+    , "  --eval-batches N          finite-domain minibatches to evaluate (default: 1, max: 16)"
+    , "  --instantiate-only        initialize the model without forward/backward"
+    , "  --inspect-weights         print parameter counts and the first 16 weights"
+    , "  --save-params PATH        write exact Float parameter bits as JSON"
+    , "  --save-eval-json PATH     write the finite projected-score trace"
+    ]
 
 /-- CLI entrypoint for TorchLean training, parameter export, and eval-trace export. -/
 def main (args : List String) : IO UInt32 := do
-  TorchLean.Module.run exeName args
+  if _root_.TorchLean.CLI.hasHelp args then
+    IO.println usage
+    return 0
+  _root_.NN.API.TorchLean.Module.run exeName args
     (.float (fun opts rest => do
       let (steps, evalBatches, instantiateOnly, saveParams?, saveEvalJson?, inspectWeights, rest) ←
         Common.orThrow exeName <| parseRunFlags rest
-      Common.orThrow exeName <| CLI.requireNoArgs rest
+      _root_.TorchLean.CLI.requireNoArgs exeName rest
       trainModel opts steps evalBatches instantiateOnly saveParams? saveEvalJson? inspectWeights))
     { banner? := some (fun opts =>
-        s!"{exeName}: TorchLean GPT task training (device={if opts.useGpu then "cuda" else "cpu"})")
+        s!"{exeName}: TorchLean GPT task training (device={opts.device.cliName})")
       printOk := true }
 
 end VerifiableTransformers.TorchLean.TrainSmallGPT
