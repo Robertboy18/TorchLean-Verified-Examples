@@ -9,10 +9,9 @@ The replay follows `scripts/small/train.py` and `scripts/small/extract_weights.p
 row-major linear maps, Signed-L1-BandNorm, one-head causal sparsemax attention,
 LeakyReLU, and the untied `lm_head`.
 
-The replay stays compact on purpose.  The rational SMT contract is in
-`Spec/UpstreamSmallGPT.lean`; the native TorchLean training/export path is in
-`TorchLean/TrainSmallGPT.lean`.  Keeping the checkpoint replay separate makes
-the exact claim easy to audit.
+The replay stays compact on purpose. The rational SMT contract is in
+`Spec/UpstreamSmallGPT.lean`, while the archived TorchLean comparison has its own generated trace.
+Keeping those claims separate makes the checkpoint replay easy to audit.
 -/
 
 import VerifiableTransformers.Certificate.FiniteEval

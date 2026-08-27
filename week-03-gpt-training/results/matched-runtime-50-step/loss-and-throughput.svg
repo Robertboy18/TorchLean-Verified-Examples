@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 600" role="img" aria-labelledby="title desc">
+<title id="title">Matched TorchLean and PyTorch GPT-2 training</title>
+<desc id="desc">Loss over fifty matched updates from the same checkpoint and batches.</desc>
+<rect width="1040" height="600" fill="white"/>
+<style>text { font-family: Inter, ui-sans-serif, system-ui, sans-serif; fill: #172033; } .muted { fill: #667085; } .grid { stroke: #d9dee7; stroke-width: 1; }} .small { font-size: 13px; }</style>
+<text x="48" y="42" font-size="25" font-weight="700">Matched GPT-2 Small training</text>
+<text class="muted" x="48" y="68" font-size="14">Same checkpoint, dialogue records, target weights, optimizer, and schedule</text>
+<line class="grid" x1="92" y1="462.00" x2="994" y2="462.00"/>
+<text class="small muted" x="35" y="467.00">1.98</text>
+<line class="grid" x1="92" y1="369.50" x2="994" y2="369.50"/>
+<text class="small muted" x="35" y="374.50">2.31</text>
+<line class="grid" x1="92" y1="277.00" x2="994" y2="277.00"/>
+<text class="small muted" x="35" y="282.00">2.65</text>
+<line class="grid" x1="92" y1="184.50" x2="994" y2="184.50"/>
+<text class="small muted" x="35" y="189.50">2.99</text>
+<line class="grid" x1="92" y1="92.00" x2="994" y2="92.00"/>
+<text class="small muted" x="35" y="97.00">3.32</text>
+<line class="grid" x1="92.00" y1="92" x2="92.00" y2="462"/>
+<text class="small muted" text-anchor="middle" x="92.00" y="487">0k</text>
+<line class="grid" x1="272.40" y1="92" x2="272.40" y2="462"/>
+<text class="small muted" text-anchor="middle" x="272.40" y="487">61k</text>
+<line class="grid" x1="452.80" y1="92" x2="452.80" y2="462"/>
+<text class="small muted" text-anchor="middle" x="452.80" y="487">122k</text>
+<line class="grid" x1="633.20" y1="92" x2="633.20" y2="462"/>
+<text class="small muted" text-anchor="middle" x="633.20" y="487">184k</text>
+<line class="grid" x1="813.60" y1="92" x2="813.60" y2="462"/>
+<text class="small muted" text-anchor="middle" x="813.60" y="487">245k</text>
+<line class="grid" x1="994.00" y1="92" x2="994.00" y2="462"/>
+<text class="small muted" text-anchor="middle" x="994.00" y="487">307k</text>
+<polyline fill="none" stroke="#0f8b8d" stroke-width="3" points="110.04,295.69 128.08,117.52 146.12,312.43 164.16,339.60 182.20,297.62 200.24,406.40 218.28,290.05 236.32,289.61 254.36,290.27 272.40,436.48 290.44,253.67 308.48,435.06 326.52,268.76 344.56,354.59 362.60,360.40 380.64,318.07 398.68,409.67 416.72,353.91 434.76,335.98 452.80,345.52 470.84,311.68 488.88,361.88 506.92,391.52 524.96,324.53 543.00,368.49 561.04,160.86 579.08,304.24 597.12,341.23 615.16,267.41 633.20,246.64 651.24,209.74 669.28,381.66 687.32,393.20 705.36,338.12 723.40,407.33 741.44,280.54 759.48,359.64 777.52,313.60 795.56,371.11 813.60,325.03 831.64,361.73 849.68,403.69 867.72,389.39 885.76,351.80 903.80,342.16 921.84,336.42 939.88,392.80 957.92,396.74 975.96,380.16 994.00,351.69"/>
+<circle cx="92.00" cy="264.65" r="5" fill="white" stroke="#0f8b8d" stroke-width="3"/>
+<circle cx="272.40" cy="310.94" r="5" fill="white" stroke="#0f8b8d" stroke-width="3"/>
+<circle cx="452.80" cy="320.05" r="5" fill="white" stroke="#0f8b8d" stroke-width="3"/>
+<circle cx="633.20" cy="323.67" r="5" fill="white" stroke="#0f8b8d" stroke-width="3"/>
+<circle cx="813.60" cy="328.40" r="5" fill="white" stroke="#0f8b8d" stroke-width="3"/>
+<circle cx="994.00" cy="337.08" r="5" fill="white" stroke="#0f8b8d" stroke-width="3"/>
+<polyline fill="none" stroke="#d65f2e" stroke-width="3" points="110.04,295.69 128.08,117.52 146.12,312.43 164.16,339.60 182.20,297.62 200.24,406.40 218.28,290.05 236.32,289.61 254.36,290.27 272.40,436.48 290.44,253.68 308.48,435.06 326.52,268.76 344.56,354.59 362.60,360.40 380.64,318.07 398.68,409.67 416.72,353.91 434.76,335.98 452.80,345.52 470.84,311.68 488.88,361.88 506.92,391.52 524.96,324.53 543.00,368.49 561.04,160.86 579.08,304.24 597.12,341.23 615.16,267.41 633.20,246.64 651.24,209.74 669.28,381.66 687.32,393.20 705.36,338.12 723.40,407.33 741.44,280.54 759.48,359.64 777.52,313.60 795.56,371.11 813.60,325.03 831.64,361.73 849.68,403.69 867.72,389.39 885.76,351.81 903.80,342.16 921.84,336.42 939.88,392.80 957.92,396.74 975.96,380.16 994.00,351.69" stroke-dasharray="9 6"/>
+<circle cx="92.00" cy="264.65" r="5" fill="white" stroke="#d65f2e" stroke-width="3"/>
+<circle cx="272.40" cy="310.94" r="5" fill="white" stroke="#d65f2e" stroke-width="3"/>
+<circle cx="452.80" cy="320.04" r="5" fill="white" stroke="#d65f2e" stroke-width="3"/>
+<circle cx="633.20" cy="323.67" r="5" fill="white" stroke="#d65f2e" stroke-width="3"/>
+<circle cx="813.60" cy="328.40" r="5" fill="white" stroke="#d65f2e" stroke-width="3"/>
+<circle cx="994.00" cy="337.08" r="5" fill="white" stroke="#d65f2e" stroke-width="3"/>
+<line x1="700" y1="39" x2="734" y2="39" stroke="#0f8b8d" stroke-width="3"/>
+<text x="742" y="44" font-size="14">TorchLean</text>
+<line x1="850" y1="39" x2="884" y2="39" stroke="#d65f2e" stroke-width="3" stroke-dasharray="9 6"/>
+<text x="892" y="44" font-size="14">PyTorch</text>
+<text class="small muted" text-anchor="middle" x="543" y="515">scheduled tokens</text>
+<text class="small muted" transform="translate(18 292) rotate(-90)">loss</text>
+<text x="48" y="557" font-size="14">Final validation: TorchLean 2.431321, PyTorch 2.431323</text>
+<text class="muted" x="48" y="582" font-size="14">Median update throughput: 5596 vs 19207 tokens/s (3.43x)</text>
+</svg>

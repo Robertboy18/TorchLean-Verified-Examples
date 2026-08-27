@@ -28,7 +28,7 @@ def formatTag : String :=
 def modelTag : String :=
   "torchlean-causal-softmax-gpt-v1"
 
-/-- TorchLean runtime parameter order for `TorchLean.TrainSmallGPT.mkTrainableModel`. -/
+/-- Parameter order recorded by the archived native TorchLean run. -/
 def paramTensorShapes : List (List Nat) :=
   [[32, 16], [6, 16], [16, 16], [16, 16], [16, 16], [16, 16], [16], [16], [64, 16], [64], [16, 64], [16], [16], [16], [16, 16], [16, 16], [16, 16], [16, 16], [16], [16], [64, 16], [64], [16, 64], [16], [16], [16], [16], [16], [32, 16], [32]]
 

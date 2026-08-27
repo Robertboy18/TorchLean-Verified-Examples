@@ -121,7 +121,7 @@ def formatTag : String :=
 def modelTag : String :=
   "{MODEL_TAG}"
 
-/-- TorchLean runtime parameter order for `TorchLean.TrainSmallGPT.mkTrainableModel`. -/
+/-- Parameter order recorded by the archived native TorchLean run. -/
 def paramTensorShapes : List (List Nat) :=
   {lean_nested_nat_list(param_shapes)}
 

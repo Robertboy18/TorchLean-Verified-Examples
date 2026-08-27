@@ -6,7 +6,7 @@ The imports are ordered around the claim I want Lean to check:
 1. record the small-GPT operator semantics from Neel Somani's verifier in Lean;
 2. define the finite prompt/circuit checks we care about;
 3. import generated certificates from real checkpoint and trace outputs; and
-4. expose a native TorchLean 4.32 causal-GPT training/export path on the same finite task.
+4. check the archived TorchLean comparison trace on the same finite task.
 
 The design mirrors `neelsomani/verifiable-transformers`: `scripts/small/config.py`
 for dimensions, `scripts/small/train.py` for the custom layers,
@@ -23,5 +23,3 @@ import VerifiableTransformers.Certificate.Circuit
 import VerifiableTransformers.Generated.UpstreamExportSummary
 import VerifiableTransformers.Generated.UpstreamEvalTrace
 import VerifiableTransformers.Generated.TorchLeanEvalTrace
-import VerifiableTransformers.TorchLean.Ops
-import VerifiableTransformers.TorchLean.TrainSmallGPT

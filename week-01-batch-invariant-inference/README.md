@@ -1,14 +1,21 @@
 # Certifying Batch-Invariant LLM Inference with TorchLean
 
-I built this project to work through a concrete serving question raised by the
-Thinking Machines Lab post [*Defeating Nondeterminism in LLM Inference*][tml]:
-why can temperature-zero LLM inference still vary when the same request is
-served in different batch contexts?
+A temperature-zero decoder is deterministic only after its logits have been computed. The
+computation that produces those logits may still depend on how requests are batched: a different
+kernel or reduction tree can change binary32 rounding, and a small logit change can change the
+winning token. Thinking Machines Lab described this systems problem in
+[*Defeating Nondeterminism in LLM Inference*][tml].
 
-If you want the longer writeup, it lives on my personal website. Here I keep
-the practical version: what is in the folder, how to build it, and which claims
-Lean actually checks.
-## What I Formalized
+This example follows that numerical change all the way to the serving contract. It makes reduction
+schedules explicit, proves when a selected row is independent of unrelated batch rows, and then
+uses a winner-margin theorem to lift a logit bound to equality of greedy tokens. A final serving
+theorem covers decode, verification, and rollback. The accompanying CUDA example checks one small
+value-reduction certificate rather than treating a successful kernel launch as a proof.
+
+The longer [Week 1 essay](https://www.robertj1.com/ai4science/batch-invariant-inference/)
+develops the motivation and examples in more detail.
+
+## The checked argument
 
 The informal serving promise is:
 
@@ -17,8 +24,7 @@ same selected request + different surrounding batch
   ==> same tokens shown to the user
 ```
 
-The Lean development breaks that promise into pieces that can actually be
-checked:
+The Lean development proves the promise in stages:
 
 - A batched forward pass contract: selected output depends on selected request
   state, not unrelated rows.
@@ -71,7 +77,7 @@ the main proof file.
 
 ## Build
 
-The repository has one shared Lean 4.32 Lake project at the repo root, so run
+The repository has one shared Lean 4.33 Lake project at the repo root, so run
 these commands from the repository root. `lake-manifest.json` pins the exact
 TorchLean revision used by the checked build.
 
@@ -98,7 +104,7 @@ The generated certificate proof reduces by `rfl`. The important part is not the
 generated theorem itself; it is the checker and the soundness lemmas in
 `week-01-batch-invariant-inference/BatchInvariantInference/CUDA.lean`.
 
-## Observable Probes
+## Runtime probes
 
 The proof is in Lean. The probes are runtime observations that mirror the
 systems symptom and make the issue easier to see before reading the formal
@@ -123,7 +129,7 @@ python3 week-01-batch-invariant-inference/scripts/batch_invariance_demo.py \
   --max-tokens 32
 ```
 
-The core probe logic is intentionally plain:
+The core probe repeats one fixed request and counts distinct token sequences:
 
 ```python
 params = tinker.SamplingParams(max_tokens=max_tokens, temperature=0, seed=0)
@@ -171,7 +177,7 @@ This records the top-two logit margin for each prompt and compares it with
 padded batch. It is a small local diagnostic for the margin theorem, not a
 Tinker logit trace.
 
-## Scope
+## Proof boundary
 
 Checked:
 
@@ -188,7 +194,7 @@ Not checked here:
 - NVIDIA hardware correctness.
 - Full production FlashAttention or paged-attention verification.
 
-## AI Usage
+## AI assistance
 
 Some of the proof development, refactoring, debugging, and prose editing were
 assisted by GPT-5.5 Pro.

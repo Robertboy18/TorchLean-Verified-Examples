@@ -1,9 +1,9 @@
-# CUDA Certificate Folder
+# A Small CUDA Reduction Certificate
 
-Here is the CUDA part of the example. I kept the kernel deliberately small: one
-value-reduction fragment from attention, the PTX/CUBIN/SASS produced by NVCC,
-the extractor that reads those files, and the Lean checker that accepts the
-resulting certificate.
+This directory isolates one value-reduction fragment from attention. NVCC compiles the kernel to
+PTX, CUBIN, and SASS; the extractor recovers the eight fused multiply-add steps; and Lean checks
+that the recovered chain denotes the intended reduction. Keeping the kernel small makes the
+certificate and its assumptions possible to inspect directly.
 
 ## Files
 
@@ -40,7 +40,7 @@ python3 week-01-batch-invariant-inference/cuda/extract_cert.py
 lake build BatchInvariantInference
 ```
 
-The split to keep in mind is:
+The checker and the generated evidence have different jobs:
 
 ```text
 week-01-batch-invariant-inference/BatchInvariantInference/CUDA.lean
@@ -50,6 +50,6 @@ week-01-batch-invariant-inference/BatchInvariantInference/Generated/TinyValueRed
   contains the concrete generated certificate value
 ```
 
-This still does not claim full CUDA/PTX/SASS/hardware verification. It checks a
-small proof-carrying microkernel certificate and keeps the lower runtime and
-hardware refinement boundary visible.
+The result covers this extracted FMA chain. It does not give operational semantics to all PTX or
+SASS instructions, verify NVCC, or certify the NVIDIA hardware. Those components remain below the
+checked boundary.

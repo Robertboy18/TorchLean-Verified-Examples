@@ -17,7 +17,6 @@ these definitions are the finite mathematical contract the exported
 certificates point at.
 -/
 
-import NN
 import Mathlib.Tactic
 
 namespace VerifiableTransformers.Spec.UpstreamSmallGPT

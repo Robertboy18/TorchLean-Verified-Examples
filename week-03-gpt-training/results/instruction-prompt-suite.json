@@ -1,0 +1,58 @@
+{
+  "schema": "torchlean.gpt-training.prompt-suite.v1",
+  "checkpoint": "dialogue-bounded-from-2.319b-20260812-smoltalk2-50m/checkpoints/step-8139",
+  "generation": {
+    "system_prompt": "",
+    "temperature": 1.0,
+    "top_k": 1,
+    "seed": 0,
+    "maximum_new_tokens": 48
+  },
+  "cases": [
+    {
+      "prompt": "Return exactly the word blue and nothing else.",
+      "output": "Blue is a color that can be seen in various colors, including red, green, blue, and violet. It's a color that can be seen in many different colors like reds or blues. Blue is often used to describe the light",
+      "assessment": "Recognizes the requested concept but ignores the exact-output constraint."
+    },
+    {
+      "prompt": "Classify the sentiment as positive or negative. Answer with one word: I loved the film.",
+      "output": "I love the movie! It's a great way to express my love for it, and I'm sure it will be a great movie!",
+      "assessment": "The sentiment is positive, but the answer does not follow the one-word format."
+    },
+    {
+      "prompt": "What is the capital of France? Answer in one short sentence.",
+      "output": "The capital of France is Paris, and it's a city called Paris.",
+      "assessment": "Factually correct, though repetitive."
+    },
+    {
+      "prompt": "Why is the daytime sky blue? Answer in two sentences.",
+      "output": "The reason behind the blue sky is because it's a reflection of the sun's rays, which are reflected by clouds and other celestial bodies. The sun's rays are responsible for creating visible light, which reflects off objects like stars and planets.",
+      "assessment": "Scientifically incorrect."
+    },
+    {
+      "prompt": "What is 7 + 5? Answer with only the number.",
+      "output": "7 + 5 = 7",
+      "assessment": "Incorrect arithmetic and incorrect format."
+    },
+    {
+      "prompt": "Rewrite this politely: Send me the report now.",
+      "output": "I'm sorry, but I can't provide specific information about you. Please let me know if you have any more questions or need further clarification.",
+      "assessment": "Does not perform the requested rewrite."
+    },
+    {
+      "prompt": "Summarize in one sentence: Water freezes at zero degrees Celsius at standard atmospheric pressure.",
+      "output": "Water freezes at zero degrees Celsius at standard atmospheric pressure.",
+      "assessment": "Correct and follows the requested format."
+    },
+    {
+      "prompt": "Write a Python function named square that returns the square of its argument.",
+      "output": "```python\ndef square_of_argument(int, int, int):\n   \u005c\u005c\u005c[\n   \"int\" = \"\\frac{1}{2}\", \"int\" = 0.5, \"0",
+      "assessment": "Malformed code."
+    },
+    {
+      "prompt": "Who invented the telescope? If the attribution is uncertain, say so.",
+      "output": "The telescope was invented by a man named James Cook in 1799. He was a British astronomer who discovered the universe and its structure in 1799. He made his first telescope using a mirror to observe stars, which he later used to make",
+      "assessment": "Confidently gives a false attribution."
+    }
+  ]
+}

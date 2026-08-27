@@ -13,8 +13,10 @@ Concrete CUDA/Triton kernels sit one layer below this file: they must refine the
 semantics checked here.
 -/
 
-import NN
 import NN.Floats.IEEEExec.Reductions
+import NN.IR.Check
+import NN.IR.Semantics
+import NN.Spec.Layers.FlashAttention
 import Mathlib.Data.Rat.Lemmas
 import Mathlib.Tactic.Linarith
 
@@ -371,12 +373,12 @@ theorem matmul_batchInvariant {K : Type u} {Out : Type v} {β : Type w}
 earlier function-level lemmas to TorchLean's shape-indexed tensor API. -/
 def tensorRow {α : Type} {B K : Nat}
     (x : Spec.Tensor α (.dim B (.dim K .scalar))) (b : Fin B) : Fin K -> α :=
-  fun k => Spec.Tensor.toScalar (Spec.get (Spec.get x b) k)
+  fun k => (Spec.get (Spec.get x b) k).item
 
 /-- Read one output row of a TorchLean weight matrix as a function. -/
 def tensorWeightRow {α : Type} {Out K : Nat}
     (w : Spec.Tensor α (.dim Out (.dim K .scalar))) (o : Fin Out) : Fin K -> α :=
-  fun k => Spec.Tensor.toScalar (Spec.get (Spec.get w o) k)
+  fun k => (Spec.get (Spec.get w o) k).item
 
 /-- A selected scalar output of schedule-explicit tensor matmul. -/
 def tensorBatchedMatmul {β : Type} {B K Out : Nat}
@@ -1329,7 +1331,7 @@ theorem user_observable_determinism_of_same_commit_length
     _ = observe sNb := hcommittedB.symm
 
 /-- A concrete TorchLean-IR reference decoder. One reference step turns the
-current request state into an `NN.IR.DVal`, evaluates a shared `NN.IR.Graph`
+current request state into a shape-erased tensor, evaluates a shared `NN.IR.Graph`
 with an explicit payload, chooses a token from the denotational result, and
 updates the request-local state. This is the bridge from the abstract DVR
 serving theorem to TorchLean's actual op-tagged graph semantics. -/
@@ -1339,14 +1341,14 @@ structure IRDecoderConfig
   graph : NN.IR.Graph
   payload : NN.IR.Payload α
   outputId : Nat
-  inputOf : State -> NN.IR.DVal α
-  choose : Except String (NN.IR.DVal α) -> Token
+  inputOf : State -> Spec.SomeTensor α
+  choose : Except String (Spec.SomeTensor α) -> Token
   update : State -> Token -> State
   referenceStep : State -> Token × State
   referenceStep_eq_denote :
     forall st : State,
       referenceStep st =
-        let out : Except String (NN.IR.DVal α) := NN.IR.Graph.denote
+        let out : Except String (Spec.SomeTensor α) := NN.IR.Graph.denote
           (α := α) (g := graph) (payload := payload)
           (input := inputOf st) (outputId := outputId)
         let tok := choose out

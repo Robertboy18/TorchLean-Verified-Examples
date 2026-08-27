@@ -121,7 +121,6 @@ def main() -> None:
         "Do not edit by hand; regenerate with tools/generate_full_forward_weights.py.",
         "-/",
         "",
-        "set_option maxHeartbeats 0",
         "set_option maxRecDepth 8192",
         "",
         "namespace VerifiableTransformers.Generated.UpstreamCheckpointPayload",
