@@ -32,6 +32,8 @@ Sections 5.2--5.4, September 2023.
 @[expose] public section
 
 namespace KimiK3
+
+open TorchLean
 namespace Microscaling
 
 open TorchLean.Floats

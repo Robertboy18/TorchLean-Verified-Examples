@@ -309,7 +309,12 @@ def quotePasses : Nat :=
 def bracketPasses : Nat :=
   ((List.range 128).map (fun i => i + 128)).filter rowPasses |>.length
 
-/-- Print the replay summary reported by `lake exe verify_upstream_forward`. -/
+/--
+Report the replay result for all 256 prompts.
+
+A non-positive decision margin makes the command fail, so the same executable can check a local
+build or run in CI without requiring a separate parser for its printed summary.
+-/
 def main : IO Unit := do
   IO.println "Lean Float replay for neel-small-gpt"
   IO.println s!"quote rows passing:   {quotePasses}/128"
@@ -318,7 +323,7 @@ def main : IO Unit := do
   if allRowsPass then
     IO.println "PASS: all 256 finite-domain prompts satisfy the projected decision property."
   else
-    IO.println s!"FAIL: rows with non-positive margin: {failures}"
+    throw <| IO.userError s!"FAIL: rows with non-positive margin: {failures}"
 
 end VerifiableTransformers.Replay.UpstreamFloatReplay
 

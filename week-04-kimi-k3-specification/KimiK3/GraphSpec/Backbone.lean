@@ -29,10 +29,12 @@ TorchLean graph and therefore retains the usual forward and backward interpretat
 @[expose] public section
 
 namespace KimiK3
+
+open TorchLean
 namespace GraphSpec
 
 open Spec
-open Spec.Tensor
+open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
 
@@ -44,7 +46,7 @@ def sourceCount (completedCount : Nat) (partialPresent : Bool) : Nat :=
   completedCount + if partialPresent then 1 else 0
 
 /-- Pack the depth representations visible before the sequence mixer. -/
-def sequenceSources {α : Type} [Context α] {completedCount modelDim : Nat}
+def sequenceSources {α : Type} [Storage α] [Context α] {completedCount modelDim : Nat}
     (partialPresent : Bool)
     (completed : Tensor α (.dim completedCount (.dim modelDim .scalar)))
     (partialState : Tensor α (.dim modelDim .scalar)) :
@@ -58,7 +60,7 @@ def sequenceSources {α : Type} [Context α] {completedCount modelDim : Nat}
 
 /-- After the sequence mixer, its output is added to the current partial block and exposed as the
 last AttnRes source for the channel mixer. -/
-def channelSources {α : Type} [Context α] {completedCount modelDim : Nat}
+def channelSources {α : Type} [Storage α] [Context α] {completedCount modelDim : Nat}
     (completed : Tensor α (.dim completedCount (.dim modelDim .scalar)))
     (partialState sequenceOutput : Tensor α (.dim modelDim .scalar)) :
     Tensor α (.dim (completedCount + 1) (.dim modelDim .scalar)) :=
@@ -91,7 +93,7 @@ noncomputable def channelInput {completedCount modelDim : Nat} (hModel : 0 < mod
 
 /-- Accumulate both submodule outputs into the current AttnRes block.  Whether this vector is kept
 as a partial block or committed as a completed block is determined statically by the layer index. -/
-def finishPartial {α : Type} [Context α] {modelDim : Nat}
+def finishPartial {α : Type} [Storage α] [Context α] {modelDim : Nat}
     (partialState sequenceOutput channelOutput : Tensor α (.dim modelDim .scalar)) :
     Tensor α (.dim modelDim .scalar) :=
   partialState + sequenceOutput + channelOutput
@@ -171,7 +173,7 @@ def finishPartialTerm {Γ : List Shape} (modelDim : Nat)
   cases partialPresent
   · rfl
   · change Tensor.concatAxisSpec .scalar (Term.eval env completed)
-      ((Term.eval env partialState).reshapeSpec _) = _
+      (Tensor.reshapeSpec (Term.eval env partialState) (by simp [Shape.size])) = _
     rfl
 
 @[simp] theorem eval_channelSourcesTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
@@ -184,7 +186,8 @@ def finishPartialTerm {Γ : List Shape} (modelDim : Nat)
         (Term.eval env sequenceOutput) := by
   change
     Tensor.concatAxisSpec .scalar (Term.eval env completed)
-        (((Term.eval env partialState + Term.eval env sequenceOutput).reshapeSpec _)) = _
+      (Tensor.reshapeSpec (Term.eval env partialState + Term.eval env sequenceOutput)
+        (by simp [Shape.size])) = _
   rfl
 
 theorem eval_sequenceInputTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
@@ -245,19 +248,19 @@ abbrev DepthInputs (completedCount modelDim : Nat) : List Shape :=
 
 /-- Zero queries and unit normalization scales for a freshly initialized depth controller. -/
 def initialDepthParams (modelDim : Nat) : TorchLean.TensorPack Float (DepthParams modelDim) :=
-  .cons (Spec.fill 0 (.dim modelDim .scalar)) <|
-    .cons (Spec.fill 1 (.dim modelDim .scalar)) <|
-      .cons (Spec.fill 0 (.dim modelDim .scalar)) <|
-        .cons (Spec.fill 1 (.dim modelDim .scalar)) .nil
+  .cons (Tensor.full (.dim modelDim .scalar) 0) <|
+    .cons (Tensor.full (.dim modelDim .scalar) 1) <|
+      .cons (Tensor.full (.dim modelDim .scalar) 0) <|
+        .cons (Tensor.full (.dim modelDim .scalar) 1) .nil
 
 /-- Extract a layer's learned depth queries and normalization scales in graph order. -/
-def depthParameters {α : Type} {cfg : TextConfig} {decayRank : Nat}
+def depthParameters {α : Type} [Storage α] {cfg : TextConfig} {decayRank : Nat}
     (layer : BackboneLayer α cfg decayRank) : TorchLean.TensorPack α (DepthParams cfg.hiddenDim) :=
   .cons layer.sequenceQuery <| .cons layer.sequenceNormScale <|
     .cons layer.channelQuery <| .cons layer.channelNormScale .nil
 
 /-- Package completed depth blocks and the current partial block in graph order. -/
-def depthInputs {α : Type} {completedCount modelDim : Nat}
+def depthInputs {α : Type} [Storage α] {completedCount modelDim : Nat}
     (completed : Tensor α (.dim completedCount (.dim modelDim .scalar)))
     (partialState : Tensor α (.dim modelDim .scalar)) :
     TorchLean.TensorPack α (DepthInputs completedCount modelDim) :=
@@ -429,7 +432,7 @@ theorem model_specFwd_eq_specStep
     (partialState : Tensor ℝ (.dim cfg.hiddenDim .scalar))
     (previousWindow : Tensor ℝ (.dim cfg.shortConvWidth (.dim cfg.hiddenDim .scalar)))
     (previousState : KDALayer.State ℝ cfg.numHeads cfg.kdaHeadDim cfg.kdaValueDim)
-    (logFloor epsilon gateCap upCap : ℝ) (hEpsilon : epsilon = Numbers.epsilon) :
+    (logFloor epsilon gateCap upCap : ℝ) (hEpsilon : epsilon = Normalize.l2Epsilon) :
     (model completedCount cfg.hiddenDim cfg.numHeads cfg.kdaHeadDim cfg.kdaValueDim
       cfg.shortConvWidth decayRank cfg.denseHiddenDim partialPresent hCompleted hModel hHeads hKey
       hValue hWidth).specFwd
@@ -457,7 +460,7 @@ theorem model_specFwd_eq_specStep
         cfg.shortConvWidth decayRank hModel hHeads hKey hValue hWidth).specFwd
           (KDA.layerParameters kda)
           (.cons nextWindow <| .cons previousState <| .cons (.scalar logFloor) <|
-            .cons (.scalar Numbers.epsilon) .nil) =
+            .cons (.scalar Normalize.l2Epsilon) .nil) =
         let result := kda.stepWindow hWidth logFloor nextWindow previousState
         .cons result.1 (.cons result.2 .nil) := by
     simpa only [KDA.layerInputs] using
@@ -672,7 +675,7 @@ theorem model_specFwd_eq_specStep
     (partialState : Tensor ℝ (.dim cfg.hiddenDim .scalar))
     (previousWindow : Tensor ℝ (.dim cfg.shortConvWidth (.dim cfg.hiddenDim .scalar)))
     (previousState : KDALayer.State ℝ cfg.numHeads cfg.kdaHeadDim cfg.kdaValueDim)
-    (logFloor epsilon gateCap upCap : ℝ) (hEpsilon : epsilon = Numbers.epsilon) :
+    (logFloor epsilon gateCap upCap : ℝ) (hEpsilon : epsilon = Normalize.l2Epsilon) :
     (model completedCount cfg.hiddenDim cfg.numHeads cfg.kdaHeadDim cfg.kdaValueDim
       cfg.shortConvWidth decayRank cfg.routedLatentDim cfg.routedExpertHiddenDim
       cfg.numSharedExperts cfg.numRoutedExperts cfg.activeExperts route partialPresent hCompleted
@@ -701,7 +704,7 @@ theorem model_specFwd_eq_specStep
         cfg.shortConvWidth decayRank hModel hHeads hKey hValue hWidth).specFwd
           (KDA.layerParameters kda)
           (.cons nextWindow <| .cons previousState <| .cons (.scalar logFloor) <|
-            .cons (.scalar Numbers.epsilon) .nil) =
+            .cons (.scalar Normalize.l2Epsilon) .nil) =
         let result := kda.stepWindow hWidth logFloor nextWindow previousState
         .cons result.1 (.cons result.2 .nil) := by
     simpa only [KDA.layerInputs] using

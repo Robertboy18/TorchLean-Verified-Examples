@@ -133,15 +133,15 @@ def paddedPrefix (context : Nat) (tokens : List Nat) : Except String (List Nat) 
 
 /-- Evaluate one prefix through the ordinary full-context model. -/
 def fullPrefixScores
-    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocab] [NeZero cfg.seqLen]
+    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocabularySize] [NeZero cfg.sequenceLength]
     (predict : Run.Predictor cfg 1)
     (tokens : List Nat) : IO (Array Float) := do
-  let padded ← Chat.orThrow exeName <| paddedPrefix cfg.seqLen tokens
+  let padded ← Chat.orThrow exeName <| paddedPrefix cfg.sequenceLength tokens
   let input := Run.tokenBatchTensor cfg 1 padded
   let logits ← predict input
   let first : Fin 1 := ⟨0, by decide⟩
-  pure <| (text.batchLogitScoresAt logits first
-    (Fin.ofNat cfg.seqLen (tokens.length - 1))).toArray
+  pure <| Tensor.to (text.batchLogitScoresAt logits first
+    (Fin.ofNat cfg.sequenceLength (tokens.length - 1))) (Array Float)
 
 /-- Prefix lengths that exercise the cache at the beginning and at the complete prompt. -/
 def checkLengths (promptLength : Nat) : List Nat :=
@@ -149,7 +149,7 @@ def checkLengths (promptLength : Nat) : List Nat :=
 
 /-- Run the differential check on one live module and decoder. -/
 def checkPrefixes
-    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocab] [NeZero cfg.seqLen]
+    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocabularySize] [NeZero cfg.sequenceLength]
     (predict : Run.Predictor cfg 1)
     (decoder : Runtime.Decoder)
     (prompt : List Nat) : IO Unit := do
@@ -178,58 +178,48 @@ def checkPrefixes
         s!"{exeName}: cached logits changed the greedy token at prefix {length}"
 
 /-- Load one checkpoint and compare both execution paths without copying its parameters. -/
-def run (opts : Options) (args : List String) : IO Unit := do
-  let config ← Chat.Config.parse exeName args
+def run (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
+  let config ← Chat.Config.parse exeName opts.seed args
   let cfg := config.model.toTorchLean
   if !opts.usesCuda then
     throw <| IO.userError s!"{exeName}: the incremental cache currently requires --device cuda"
-  else if hSeq : cfg.seqLen = 0 then
+  else if hSeq : cfg.sequenceLength = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero context after validation"
-  else if hModel : cfg.dModel = 0 then
+  else if cfg.modelWidth = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero model width after validation"
-  else if hVocab : cfg.vocab = 0 then
+  else if hVocab : cfg.vocabularySize = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero vocabulary after validation"
   else
-    letI : NeZero cfg.vocab := ⟨hVocab⟩
-    letI : NeZero cfg.seqLen := ⟨hSeq⟩
+    letI : NeZero cfg.vocabularySize := ⟨hVocab⟩
+    letI : NeZero cfg.sequenceLength := ⟨hSeq⟩
     do
       _root_.TorchLean.rand.manualSeed config.seed
-      nn.withModel (buildModel cfg 1 hSeq hModel) fun model =>
-        letI : NeZero cfg.vocab := ⟨hVocab⟩
-        letI : NeZero cfg.seqLen := ⟨hSeq⟩
-        do
-          let tokenizer ←
-            text.GPT2BPE.loadWithProgress exeName config.tokenizerVocab config.tokenizerMerges
-          let evalDef := nn.models.CausalTransformer.Tied.objectiveWithMode .eval cfg model
-          let runtimeModule ← TorchLean.Module.instantiateAs (α := Float) evalDef id opts
-          Checkpoint.loadModule runtimeModule config.checkpoint
-          let forwardProgram : _root_.Runtime.Autograd.TorchLean.ProgramWithDataInputs
-              Float (Fin cfg.vocab)
-              (nn.models.CausalTransformer.Tied.stateShapes cfg model ++ [])
-              [tokenShape cfg 1] (logitShape cfg 1) := by
-            exact fun {m} _ _ => by
-              simpa [tokenShape, logitShape] using
-                nn.models.CausalTransformer.Tied.program cfg model (α := Float) (m := m)
-          let evaluator ← TorchLean.Module.withState
-            forwardProgram opts runtimeModule.trainer.state
-          let predict : Run.Predictor cfg 1 := fun tokens =>
-            TorchLean.Module.Evaluator.run evaluator .nil (.cons tokens .nil)
-          let decoder ← Runtime.Decoder.initialize cfg runtimeModule.trainer.state
-          let message := config.message?.getD "What is two plus two?"
-          let prompt ← Chat.orThrow exeName <|
-            Chat.encodeDialoguePrompt tokenizer config.systemPrompt [] message
-          try
-            checkPrefixes cfg predict decoder prompt
-            IO.println "cached/full-prefix comparison passed"
-          finally
-            decoder.close
+      let model := nn.build (← rand.nextSeedGlobal) (buildModel cfg 1 opts)
+      let tokenizer ←
+        text.GPT2BPE.load config.tokenizerVocab config.tokenizerMerges
+          (progress := true) (label := exeName)
+      let evalDef := nn.models.CausalTransformer.objective cfg model (mode := .eval)
+      let runtimeModule ← TorchLean.Module.instantiate evalDef opts (α := Float)
+      Checkpoint.load runtimeModule config.checkpoint
+      let predict ← predictorWithParameters cfg 1 model opts
+        (Module.Objective.Internal.runtime runtimeModule).trainer.state
+      let decoder ← Runtime.Decoder.initialize cfg
+        (Module.Objective.Internal.runtime runtimeModule).trainer.state
+      let message := config.message?.getD "What is two plus two?"
+      let prompt ← Chat.orThrow exeName <|
+        Chat.encodeDialoguePrompt tokenizer config.systemPrompt [] message
+      try
+        checkPrefixes cfg predict decoder prompt
+        IO.println "cached/full-prefix comparison passed"
+      finally
+        decoder.close
 
 /-- Program entrypoint. -/
 def main (args : List String) : IO UInt32 := do
   if CLI.hasHelp args then
     IO.println usage
     return 0
-  Run.runFloatCommand exeName args "TorchLean GPT cached-decoder check" run
+  Run.runFloatCommand exeName args "TorchLean GPT cached-decoder check" run (defaultSeed := 1337)
 
 end Check
 end CachedDecode

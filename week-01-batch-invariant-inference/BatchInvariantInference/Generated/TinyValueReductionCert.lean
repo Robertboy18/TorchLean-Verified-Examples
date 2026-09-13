@@ -20,14 +20,14 @@ open CUDA
 
 def compiledKernelCert : TinyAttentionCert.TinyAttentionKernelCert where
   sourcePath := "week-01-batch-invariant-inference/cuda/tiny_attn_one_row.cu"
-  sourceSha256 := "ff0c1ed942c378f2dd4c38d119b43fcf956174c1f0a4e3d16a164f54b299efea"
+  sourceSha256 := "6adede204f0326bb66359692782329a8789a08b09f67dd217858ed0821c0e02f"
   ptxPath := "week-01-batch-invariant-inference/cuda/build/tiny_attn_one_row.ptx"
-  ptxSha256 := "38a1fc1877007ae77a9ead5b687692b18cbe5334bc3ce0483033451a47bdeada"
+  ptxSha256 := "82b35918c8fe625c01291723d9d70ffd9d58b34b4b868440f0affc0a4abe1be5"
   cubinPath := "week-01-batch-invariant-inference/cuda/build/tiny_attn_one_row.cubin"
-  cubinSha256 := "bbfd61854967fad4a33079091676bfb95fa31779f98c9e6fb47881ed8eb21840"
+  cubinSha256 := "133bdfbabea2900ca504e838d48248729ad606ccbfa90f17328b6f0497b4584c"
   sassPath := "week-01-batch-invariant-inference/cuda/build/tiny_attn_one_row.sass"
-  sassSha256 := "6ef7772ff0bb7ccdf9f400d5e815304ba19e84e7e0d1108b0c2326d43111125a"
-  arch := "sm_70"
+  sassSha256 := "226dac4785b9f0184b6cb83c8488bbdc8a8697eb8bdd40bed939de46098dcf0a"
+  arch := "sm_80"
   ptxFmaRnF32 := 8
   ptxGlobalLoadF32 := 16
   ptxGlobalStoreF32 := 1
@@ -136,13 +136,17 @@ def compiledKernelCert : TinyAttentionCert.TinyAttentionKernelCert where
     noAtomics := true
   }
 
-example : TinyAttentionCert.checkTinyAttentionKernelCert compiledKernelCert = true := by
+example :
+    TinyAttentionCert.checkTinyAttentionKernelCertFor "sm_80"
+      compiledKernelCert = true := by
   rfl
 
 /-- The generated certificate passes the hand-written CUDA checker. -/
 theorem compiledKernelCert_contract :
-    TinyAttentionCert.TinyAttentionKernelContract compiledKernelCert :=
-  TinyAttentionCert.checkTinyAttentionKernelCert_sound compiledKernelCert (by rfl)
+    TinyAttentionCert.TinyAttentionKernelContractFor "sm_80"
+      compiledKernelCert :=
+  TinyAttentionCert.checkTinyAttentionKernelCertFor_sound "sm_80"
+    compiledKernelCert (by rfl)
 
 /-- The extracted FMA chain denotes the Lean left-to-right FMA reduction. -/
 theorem compiledKernelCert_denotes_valueReduceFMA
@@ -151,25 +155,28 @@ theorem compiledKernelCert_denotes_valueReduceFMA
     (inputs : TinyPTXSemantics.ValueInputs β) :
     TinyPTXSemantics.evalFMAChain8 compiledKernelCert.dataflow fma zero inputs =
       TinyAttentionSpec.valueReduceFMA fma zero inputs.weights inputs.values :=
-  TinyPTXSemantics.kernelCert_denotes_valueReduceFMA
-    compiledKernelCert (by rfl) fma zero inputs
+  TinyPTXSemantics.evalFMAChain8_eq_valueReduceFMA_of_contract
+    compiledKernelCert.dataflow
+    (TinyAttentionCert.checkTinyAttentionKernelCertFor_dataflow_sound
+      "sm_80" compiledKernelCert (by rfl))
+    fma zero inputs
 
 /-- The compiled-kernel certificate refines the tiny value-reduction spec. -/
 theorem compiledKernelCert_refines_valueReduction
     (fma : β -> β -> β -> β)
     (zero : β) :
-    TinyPTXSemantics.RefinesTinyValueReduction compiledKernelCert fma zero :=
-  TinyPTXSemantics.kernelCert_refines_tinyValueReduction
-    compiledKernelCert (by rfl) fma zero
+    TinyPTXSemantics.RefinesTinyValueReduction compiledKernelCert fma zero := by
+  intro inputs
+  exact compiledKernelCert_denotes_valueReduceFMA fma zero inputs
 
 /-- The checked value-reduction path is batch-invariant at the selected row. -/
 theorem compiledKernelCert_batchInvariant
     (fma : β -> β -> β -> β)
     (zero : β) :
     BatchInvariantInference.BatchInvariantForward
-      (TinyPTXSemantics.tinyValueReductionForward compiledKernelCert fma zero) :=
-  TinyPTXSemantics.tinyValueReductionForward_batchInvariant_of_check
-    compiledKernelCert (by rfl) fma zero
+      (TinyPTXSemantics.tinyValueReductionForward compiledKernelCert fma zero) := by
+  intro B C xs ys i j hsame
+  simp [TinyPTXSemantics.tinyValueReductionForward, hsame]
 
 end TinyValueReductionCert
 end Generated

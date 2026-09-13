@@ -28,23 +28,25 @@ https://arxiv.org/abs/2607.24653.  Exact released dimensions are recorded in `Ki
 
 namespace KimiK3
 
+open TorchLean
+
 open Spec
 open Tensor
 
 namespace MoonViT
 
 /-- A video/image patch grid with axes `(frame, row, column, feature)`. -/
-abbrev Grid (α : Type) (frames rows columns features : Nat) :=
+abbrev Grid (α : Type) [Storage α] (frames rows columns features : Nat) :=
   Tensor α (.dim frames (.dim rows (.dim columns (.dim features .scalar))))
 
 /-- Bias-free MLP used in MoonViT-V2 blocks. -/
-structure MLP (α : Type) (inputDim hiddenDim outputDim : Nat) where
+structure MLP (α : Type) [Storage α] (inputDim hiddenDim outputDim : Nat) where
   inputWeight : Tensor α (.dim inputDim (.dim hiddenDim .scalar))
   outputWeight : Tensor α (.dim hiddenDim (.dim outputDim .scalar))
 
 namespace MLP
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {inputDim hiddenDim outputDim : Nat}
 
 /-- MoonViT uses the tanh approximation of GELU in its hidden branch. -/
@@ -56,7 +58,7 @@ def forward (mlp : MLP α inputDim hiddenDim outputDim)
 end MLP
 
 /-- One divided-attention MoonViT-V2 block. -/
-structure Block (α : Type) (heads hiddenDim qkvHeadDim intermediateDim : Nat) where
+structure Block (α : Type) [Storage α] (heads hiddenDim qkvHeadDim intermediateDim : Nat) where
   spatialAttention : Spec.MultiHeadAttention α heads hiddenDim qkvHeadDim
   temporalAttention : Spec.MultiHeadAttention α heads hiddenDim qkvHeadDim
   feedForward : MLP α hiddenDim intermediateDim hiddenDim
@@ -66,7 +68,7 @@ structure Block (α : Type) (heads hiddenDim qkvHeadDim intermediateDim : Nat) w
 
 namespace Block
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {heads hiddenDim qkvHeadDim intermediateDim frames rows columns : Nat}
 
 /-- Apply one shared attention module independently along a leading batch axis. -/
@@ -93,12 +95,12 @@ def spatialPass
     simp [gridShape, spatialShape, spatialTokens, Shape.size, Nat.mul_assoc]
   have hSpatialRows : Shape.size spatialShape = Shape.size rowShape := by
     simp [spatialShape, rowShape, allTokens, Shape.size, Nat.mul_assoc]
-  let spatialInput := Spec.Tensor.reshapeSpec grid hGridSpatial
-  let spatialRows := Spec.Tensor.reshapeSpec spatialInput hSpatialRows
+  let spatialInput := TorchLean.Tensor.reshapeSpec grid hGridSpatial
+  let spatialRows := TorchLean.Tensor.reshapeSpec spatialInput hSpatialRows
   let normalizedRows := Spec.rmsNorm spatialRows normScale
     (Nat.mul_pos hFrames hSpatial) hHidden
-  let normalized := Spec.Tensor.reshapeSpec normalizedRows hSpatialRows.symm
-  Spec.Tensor.addSpec spatialInput (attendBatch attention normalized hSpatial)
+  let normalized := TorchLean.Tensor.reshapeSpec normalizedRows hSpatialRows.symm
+  TorchLean.Tensor.addSpec spatialInput (attendBatch attention normalized hSpatial)
 
 /-- Normalize and attend along the frame axis at every spatial location. -/
 def temporalPass
@@ -110,16 +112,16 @@ def temporalPass
   let spatialTokens := rows * columns
   let temporalShape : Shape := .dim spatialTokens (.dim frames (.dim hiddenDim .scalar))
   let temporalRowShape : Shape := .dim (spatialTokens * frames) (.dim hiddenDim .scalar)
-  let temporalInput : Tensor α temporalShape := Spec.Tensor.swapAdjacentAxes spatial 0
+  let temporalInput : Tensor α temporalShape := TorchLean.Tensor.swapAdjacentAxes spatial 0
   have hTemporalRows : Shape.size temporalShape = Shape.size temporalRowShape := by
     simp [temporalShape, temporalRowShape, Shape.size, Nat.mul_assoc]
-  let temporalRows := Spec.Tensor.reshapeSpec temporalInput hTemporalRows
+  let temporalRows := TorchLean.Tensor.reshapeSpec temporalInput hTemporalRows
   let normalizedRows := Spec.rmsNorm temporalRows normScale
     (Nat.mul_pos hSpatial hFrames) hHidden
-  let normalized := Spec.Tensor.reshapeSpec normalizedRows hTemporalRows.symm
+  let normalized := TorchLean.Tensor.reshapeSpec normalizedRows hTemporalRows.symm
   let attended := attendBatch attention normalized hFrames
-  let residual := Spec.Tensor.addSpec temporalInput attended
-  Spec.Tensor.swapAdjacentAxes residual 0
+  let residual := TorchLean.Tensor.addSpec temporalInput attended
+  TorchLean.Tensor.swapAdjacentAxes residual 0
 
 /-- Apply the normalized residual MLP after divided attention. -/
 def feedForwardPass
@@ -134,12 +136,12 @@ def feedForwardPass
   let rowShape : Shape := .dim allTokens (.dim hiddenDim .scalar)
   have hSpatialRows : Shape.size spatialShape = Shape.size rowShape := by
     simp [spatialShape, rowShape, allTokens, Shape.size, Nat.mul_assoc]
-  let rows := Spec.Tensor.reshapeSpec spatial hSpatialRows
+  let rows := TorchLean.Tensor.reshapeSpec spatial hSpatialRows
   let normalized := Spec.rmsNorm rows normScale (Nat.mul_pos hFrames hSpatial) hHidden
   let hidden := Spec.matMulSpec normalized feedForward.inputWeight
   let activated := Activation.geluSpec hidden
   let delta := Spec.matMulSpec activated feedForward.outputWeight
-  Spec.Tensor.reshapeSpec (Spec.Tensor.addSpec rows delta) hSpatialRows.symm
+  TorchLean.Tensor.reshapeSpec (TorchLean.Tensor.addSpec rows delta) hSpatialRows.symm
 
 /--
 Spatial attention, temporal attention, and a bias-free residual MLP.
@@ -164,19 +166,19 @@ def forward
     hFrames hSpatial hHidden
   let output := feedForwardPass block.feedForward block.feedForwardNormScale temporal
     hFrames hSpatial hHidden
-  Spec.Tensor.reshapeSpec output hGridSpatial.symm
+  TorchLean.Tensor.reshapeSpec output hGridSpatial.symm
 
 end Block
 
 /-- Lightweight MLP that maps merged MoonViT features into the text hidden width. -/
-structure Projector (α : Type) (mergedDim textDim : Nat) where
+structure Projector (α : Type) [Storage α] (mergedDim textDim : Nat) where
   firstWeight : Tensor α (.dim mergedDim (.dim mergedDim .scalar))
   secondWeight : Tensor α (.dim mergedDim (.dim textDim .scalar))
   outputNormScale : Tensor α (.dim textDim .scalar)
 
 namespace Projector
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {mergedDim textDim : Nat}
 
 def forward (projector : Projector α mergedDim textDim)
@@ -188,7 +190,7 @@ def forward (projector : Projector α mergedDim textDim)
 end Projector
 
 /-- Parameters for MoonViT-V2 at arbitrary patch-grid dimensions. -/
-structure Model (α : Type) (cfg : VisionConfig)
+structure Model (α : Type) [Storage α] (cfg : VisionConfig)
     (frames rows columns patchFeatures : Nat) where
   patchWeight : Tensor α (.dim patchFeatures (.dim cfg.hiddenDim .scalar))
   spatialPosition : Tensor α (.dim rows (.dim columns (.dim cfg.hiddenDim .scalar)))
@@ -200,7 +202,7 @@ structure Model (α : Type) (cfg : VisionConfig)
 
 namespace Model
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {cfg : VisionConfig}
 variable {frames rows columns patchFeatures : Nat}
 
@@ -217,20 +219,20 @@ def embed (model : Model α cfg frames rows columns patchFeatures)
     simp [patchShape, patchRows, patchCount, Shape.size, Nat.mul_assoc]
   have hHiddenRows : Shape.size hiddenRows = Shape.size gridShape := by
     simp [hiddenRows, gridShape, patchCount, Shape.size, Nat.mul_assoc]
-  let patchMatrix := Spec.Tensor.reshapeSpec patches hPatchRows
+  let patchMatrix := TorchLean.Tensor.reshapeSpec patches hPatchRows
   let projectedRows := Spec.matMulSpec patchMatrix model.patchWeight
-  let projected := Spec.Tensor.reshapeSpec projectedRows hHiddenRows
-  let spatial := Spec.Tensor.broadcastTo
+  let projected := TorchLean.Tensor.reshapeSpec projectedRows hHiddenRows
+  let spatial := TorchLean.Tensor.broadcastTo
     (Shape.CanBroadcastTo.expand_dims (Shape.CanBroadcastTo.refl _)) model.spatialPosition
   let temporalSource : Tensor α
       (.dim frames (.dim 1 (.dim 1 (.dim cfg.hiddenDim .scalar)))) :=
-    Spec.Tensor.reshapeSpec model.temporalPosition (by simp [Shape.size])
-  let temporal := Spec.Tensor.broadcastTo
+    TorchLean.Tensor.reshapeSpec model.temporalPosition (by simp [Shape.size])
+  let temporal := TorchLean.Tensor.broadcastTo
     (Shape.CanBroadcastTo.dim_eq <|
       Shape.CanBroadcastTo.dim_1_to_n <|
         Shape.CanBroadcastTo.dim_1_to_n (Shape.CanBroadcastTo.refl _))
     temporalSource
-  Spec.Tensor.addSpec (Spec.Tensor.addSpec projected spatial) temporal
+  TorchLean.Tensor.addSpec (TorchLean.Tensor.addSpec projected spatial) temporal
 
 /-- Apply all 27 paper-sized blocks, or the configured number in a smaller instance. -/
 def encode (model : Model α cfg frames rows columns patchFeatures)
@@ -257,7 +259,7 @@ def mergeAndProject
   have hColumns : 0 < columns := Nat.pos_of_mul_pos_right hWideColumns
   let pooled : Tensor α (.dim (rows * cfg.mergeHeight)
       (.dim (columns * cfg.mergeWidth) (.dim cfg.hiddenDim .scalar))) :=
-    Spec.Tensor.reduceMean 0 grid (Shape.hasNonemptyAxisZeroOfPos hFrames).proof
+    TorchLean.Tensor.reduceMean 0 grid (Shape.hasNonemptyAxisZeroOfPos hFrames).proof
   let interleavedShape : Shape :=
     .dim rows (.dim cfg.mergeHeight
       (.dim columns (.dim cfg.mergeWidth (.dim cfg.hiddenDim .scalar))))
@@ -273,12 +275,12 @@ def mergeAndProject
     simp [interleavedShape, Shape.size, Nat.mul_assoc]
   have hMerged : Shape.size groupedShape = Shape.size mergedShape := by
     simp [groupedShape, mergedShape, mergedDim, Shape.size, Nat.mul_assoc]
-  let interleaved := Spec.Tensor.reshapeSpec pooled hInterleaved
+  let interleaved := TorchLean.Tensor.reshapeSpec pooled hInterleaved
   have hGrouped : interleavedShape.swapAdjacentAtDepth 1 = groupedShape := by
     simp [interleavedShape, groupedShape, Shape.swapAdjacentAtDepth]
   let grouped : Tensor α groupedShape :=
-    hGrouped ▸ Spec.Tensor.swapAdjacentAxes interleaved 1
-  let merged := Spec.Tensor.reshapeSpec grouped hMerged
+    hGrouped ▸ TorchLean.Tensor.swapAdjacentAxes interleaved 1
+  let merged := TorchLean.Tensor.reshapeSpec grouped hMerged
   let hidden := Activation.geluSpec (Spec.matMulSpec merged model.projector.firstWeight)
   let projected := Spec.matMulSpec hidden model.projector.secondWeight
   Spec.rmsNorm projected model.projector.outputNormScale

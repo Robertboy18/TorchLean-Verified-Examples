@@ -163,9 +163,16 @@ def main() -> None:
         suffix = " &&" if idx + 1 < len(checks) else ""
         lines.append(f"  {check}{suffix}")
     lines.append("")
+    lines.append("/-- The imported arrays have the dimensions used by the forward replay.")
+    lines.append("")
+    lines.append("Only array lengths enter this check. Rewriting the row traversal as a list traversal")
+    lines.append("lets Lean's kernel reduce those lengths directly; the floating-point parameter values")
+    lines.append("stay untouched. The executable replay checks the resulting model's finite-domain")
+    lines.append("predictions separately. -/")
     lines.append("theorem checkpointPayload_ok :")
     lines.append("    checkpointPayloadOk = true := by")
-    lines.append("  native_decide")
+    lines.append("  simp only [checkpointPayloadOk, vecShape, matrixShape, ← Array.all_toList]")
+    lines.append("  rfl")
     lines.append("")
 
     lines.append("end VerifiableTransformers.Generated.UpstreamCheckpointPayload")

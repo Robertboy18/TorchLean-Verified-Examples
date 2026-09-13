@@ -44,27 +44,31 @@ def orThrow {α : Type} (command : String) (result : Except String α) : IO α :
   | .ok value => pure value
   | .error message => throw <| IO.userError s!"{command}: {message}"
 
-/-- Parse the options shared by both generation executables. -/
-def Config.parse (command : String) (args : List String) : IO Config := do
+/--
+Parse the options shared by both generation executables.
+
+The runtime parser has already consumed `--seed`; use its selected value for model initialization
+and sampling as well.
+-/
+def Config.parse (command : String) (seed : Nat) (args : List String) : IO Config := do
   let (presetName, args) ← orThrow command <|
-    CLI.takeFlagValueDefault args "preset" "quick"
+    CLI.takeFlagValue args "preset" "quick"
   let preset ← orThrow command <| ModelConfig.ofName presetName
   let (model, args) ← Run.parseModelConfigFor command args preset
-  let (seed, args) ← orThrow command <| CLI.takeNatFlagDefault args "seed" 1337
   let (checkpoint, args) ← orThrow command <|
-    CLI.takeRequiredPathFlag args "load-params" command
+    CLI.requirePathFlag args "load-params" command
   let (tokenizerVocab, args) ← orThrow command <|
-    CLI.takeRequiredPathFlag args "tokenizer-vocab" command
+    CLI.requirePathFlag args "tokenizer-vocab" command
   let (tokenizerMerges, args) ← orThrow command <|
-    CLI.takeRequiredPathFlag args "tokenizer-merges" command
-  let (generate, args) ← orThrow command <| CLI.takeNatFlagDefault args "generate" 96
+    CLI.requirePathFlag args "tokenizer-merges" command
+  let (generate, args) ← orThrow command <| CLI.takeNatFlag args "generate" 96
   let (temperature, args) ← orThrow command <|
     CLI.takePositiveFloatFlag args command "temperature" 0.8
-  let (topK, args) ← orThrow command <| CLI.takeNatFlagDefault args "top-k" 40
+  let (topK, args) ← orThrow command <| CLI.takeNatFlag args "top-k" 40
   let (systemPrompt, args) ← orThrow command <|
-    CLI.takeFlagValueDefault args "system"
+    CLI.takeFlagValue args "system"
       "A conversation between a user and a helpful assistant."
-  let (message?, args) ← orThrow command <| CLI.takeFlagValueOnce args "message"
+  let (message?, args) ← orThrow command <| CLI.takeFlagValue? args "message"
   orThrow command <| CLI.checkNoArgs args
   orThrow command <| Run.requireFinite "temperature" temperature
   pure
@@ -128,17 +132,28 @@ def encodeDialoguePrompt
       messageSegments "User" userMessage ++
       ["Assistant: "]
 
-/-- Look up the GPT-2 end-of-text token in the tokenizer actually loaded by the executable. -/
+/--
+Find the end-of-text marker in the vocabulary loaded by the executable.
+
+The marker names a special vocabulary entry. Encoding its spelling as ordinary text runs the BPE
+pre-tokenizer, which can split the punctuation and letters into several tokens. Instead, inspect
+the text represented by each individual token and select the exact marker. This also supports
+tokenizers whose end-of-text id differs from the usual GPT-2 id of 50256.
+
+Some byte-level tokens contain only part of a UTF-8 character and cannot be decoded on their own.
+Those entries cannot be this ASCII marker, so they can be skipped during the search.
+-/
 def endOfTextToken (tokenizer : text.GPT2BPE.Tokenizer) : Except String Nat := do
-  let ids ← text.GPT2BPE.encode tokenizer "<|endoftext|>"
-  match ids.toList with
-  | [token] => pure token
-  | _ => throw "GPT-2 tokenizer does not encode <|endoftext|> as one token"
+  for token in [:tokenizer.vocabularySize] do
+    match text.GPT2BPE.decode tokenizer #[token] with
+    | .ok "<|endoftext|>" => return token
+    | _ => pure ()
+  throw "GPT-2 tokenizer vocabulary does not contain <|endoftext|>"
 
 /-- Keep the tokens strictly before the first occurrence of `stopToken`. -/
 def beforeToken (stopToken : Nat) : List Nat → List Nat
-  | [] => []
-  | token :: rest =>
+  | List.nil => []
+  | List.cons token rest =>
       if token = stopToken then
         []
       else

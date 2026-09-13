@@ -12,8 +12,8 @@ public import TorchLeanGPT.CachedDecode.Native
 # Checkpoint-compatible cached decoder
 
 This module reads the live CUDA parameter buffers owned by a TorchLean GPT module. It checks every
-parameter position and shape before constructing a decoder, transposes the three matrices whose
-stored layout is inconvenient for one-row multiplication, and then evaluates one token at a time.
+parameter position and shape before constructing a decoder, multiplies directly against the
+stored projection matrices, and then evaluates one token at a time.
 
 The decoder is deliberately tied to the tied-token model assembled around
 `TorchLeanGPT.buildModel`: pre-normalized blocks, bias-free Q/K/V projections, a biased attention
@@ -82,8 +82,8 @@ def collectParameterBuffers :
     {shapes : List Shape} →
       _root_.Runtime.Autograd.Torch.ParamList Float shapes →
       IO (Array ParameterBuffer)
-  | [], .nil => pure #[]
-  | _ :: _, .cons parameter parameters => do
+  | List.nil, .nil => pure #[]
+  | List.cons _ _, .cons parameter parameters => do
       let head ← parameterBuffer parameter
       let tail ← collectParameterBuffers parameters
       pure <| #[head] ++ tail
@@ -99,12 +99,12 @@ def natToUInt32 (label : String) (value : Nat) : IO UInt32 := do
 /-- Diagnostic labels and shapes for the tied-token model's fixed parameter order. -/
 def expectedLayout
     (cfg : nn.models.CausalTransformer.Config) : Array (String × Shape) := Id.run do
-  let width := cfg.dModel
+  let width := cfg.modelWidth
   let mut result := #[
-    ("token_embedding", ([cfg.vocab, width] : Shape)),
-    ("position_embedding", ([cfg.seqLen, width] : Shape))
+    ("token_embedding", ([cfg.vocabularySize, width] : Shape)),
+    ("position_embedding", ([cfg.sequenceLength, width] : Shape))
   ]
-  for layer in [0:cfg.layers] do
+  for layer in [0:cfg.layerCount] do
     let stem := s!"blocks.{layer}"
     result := result ++ #[
       (stem ++ ".norm1.gamma", ([width] : Shape)),
@@ -116,9 +116,9 @@ def expectedLayout
       (stem ++ ".attention.bo", ([width] : Shape)),
       (stem ++ ".norm2.gamma", ([width] : Shape)),
       (stem ++ ".norm2.beta", ([width] : Shape)),
-      (stem ++ ".ffn.w1", ([cfg.ffnHidden, width] : Shape)),
-      (stem ++ ".ffn.b1", ([cfg.ffnHidden] : Shape)),
-      (stem ++ ".ffn.w2", ([width, cfg.ffnHidden] : Shape)),
+      (stem ++ ".ffn.w1", ([cfg.feedForwardWidth, width] : Shape)),
+      (stem ++ ".ffn.b1", ([cfg.feedForwardWidth] : Shape)),
+      (stem ++ ".ffn.w2", ([width, cfg.feedForwardWidth] : Shape)),
       (stem ++ ".ffn.b2", ([width] : Shape))
     ]
   result := result ++ #[
@@ -198,13 +198,15 @@ def bufferAt (parameters : Array ParameterBuffer) (index : Nat) : IO Buffer := d
 
 /-- Reject model variants whose parameterization differs from the decoder equations. -/
 def validateModelConfig (cfg : nn.models.CausalTransformer.Config) : IO Unit := do
-  if cfg.seqLen = 0 || cfg.vocab = 0 || cfg.numHeads = 0 ||
-      cfg.headDim = 0 || cfg.layers = 0 || cfg.ffnHidden = 0 then
+  if cfg.sequenceLength = 0 || cfg.vocabularySize = 0 || cfg.headCount = 0 ||
+      cfg.headWidth = 0 || cfg.layerCount = 0 || cfg.feedForwardWidth = 0 then
     throw <| IO.userError "cached decoder: all model dimensions must be positive"
-  if cfg.dModel != cfg.numHeads * cfg.headDim then
+  if cfg.modelWidth != cfg.headCount * cfg.headWidth then
     throw <| IO.userError "cached decoder: inconsistent attention width"
-  if !cfg.normFirst then
+  if !cfg.normalizeFirst then
     throw <| IO.userError "cached decoder: this executable expects pre-normalized blocks"
+  if cfg.attentionInputBias then
+    throw <| IO.userError "cached decoder: this executable expects bias-free Q/K/V projections"
   if !cfg.attentionOutputBias then
     throw <| IO.userError "cached decoder: this executable expects attention output biases"
   match cfg.activation with
@@ -226,20 +228,20 @@ def Decoder.initialize
   let parameters ← collectParameterBuffers parameterList
   validateLayout cfg parameters
 
-  let widthU32 ← natToUInt32 "model width" cfg.dModel
-  let hiddenU32 ← natToUInt32 "feed-forward width" cfg.ffnHidden
-  let vocabU32 ← natToUInt32 "vocabulary size" cfg.vocab
-  let contextU32 ← natToUInt32 "context length" cfg.seqLen
-  let headsU32 ← natToUInt32 "attention head count" cfg.numHeads
-  let headDimU32 ← natToUInt32 "attention head width" cfg.headDim
-  let layersU32 ← natToUInt32 "layer count" cfg.layers
+  let widthU32 ← natToUInt32 "model width" cfg.modelWidth
+  let hiddenU32 ← natToUInt32 "feed-forward width" cfg.feedForwardWidth
+  let vocabU32 ← natToUInt32 "vocabulary size" cfg.vocabularySize
+  let contextU32 ← natToUInt32 "context length" cfg.sequenceLength
+  let headsU32 ← natToUInt32 "attention head count" cfg.headCount
+  let headDimU32 ← natToUInt32 "attention head width" cfg.headWidth
+  let layersU32 ← natToUInt32 "layer count" cfg.layerCount
 
   let tokenEmbedding ← bufferAt parameters 0
   let positionEmbedding ← bufferAt parameters 1
   let tokenOutputWeight := tokenEmbedding
 
   let mut layers := #[]
-  for layerIndex in [0:cfg.layers] do
+  for layerIndex in [0:cfg.layerCount] do
     let base := 2 + 13 * layerIndex
     let storedInputWeight ← bufferAt parameters (base + 9)
     let storedOutputWeight ← bufferAt parameters (base + 11)
@@ -259,7 +261,7 @@ def Decoder.initialize
         ffnOutputBias := ← bufferAt parameters (base + 12) }
     layers := layers.push layer
 
-  let finalBase := 2 + 13 * cfg.layers
+  let finalBase := 2 + 13 * cfg.layerCount
   let finalNormGamma ← bufferAt parameters finalBase
   let finalNormBeta ← bufferAt parameters (finalBase + 1)
   let nativeCache ← Native.create layersU32 headsU32 contextU32 headDimU32
@@ -297,6 +299,18 @@ def Decoder.matmul
     (inputWidth outputWidth : UInt32) : Buffer :=
   Buffer.bmmRightTranspose input weight 1 1 inputWidth outputWidth
 
+/--
+Apply an attention projection stored in `(inputWidth, outputWidth)` order.
+
+The query, key, value, and attention output weights follow this layout in
+`CausalTransformer`, so each projection computes `input @ weight`. The feed-forward layers
+and tied vocabulary projection use the opposite layout and go through `Decoder.matmul`.
+Here both attention dimensions equal the model width; transposing these square weights
+would preserve their shapes while changing the decoder's predictions.
+-/
+def Decoder.attentionProjection (decoder : Decoder) (input weight : Buffer) : Buffer :=
+  Buffer.bmm input weight 1 1 decoder.widthU32 decoder.widthU32
+
 /-- Look up a single row from a row-major table. -/
 def gatherRow
     (table : Buffer) (rows columns : UInt32) (row : Nat) : Buffer :=
@@ -319,12 +333,12 @@ def Decoder.push
     IO (Option (Array Float)) := do
   decoder.requireOpen
   let position ← decoder.nextPosition.get
-  if position >= decoder.config.seqLen then
+  if position >= decoder.config.sequenceLength then
     throw <| IO.userError <|
       s!"cached decoder: context exhausted at {position} tokens"
-  if token >= decoder.config.vocab then
+  if token >= decoder.config.vocabularySize then
     throw <| IO.userError <|
-      s!"cached decoder: token id {token} is outside vocabulary {decoder.config.vocab}"
+      s!"cached decoder: token id {token} is outside vocabulary {decoder.config.vocabularySize}"
 
   let tokenRow :=
     gatherRow decoder.tokenEmbedding decoder.vocabU32 decoder.widthU32 token
@@ -341,17 +355,16 @@ def Decoder.push
           throw <| IO.userError
             s!"cached decoder: missing layer {layerIndex} during execution"
     let norm1 ← Native.layerNorm hidden layer.norm1Gamma layer.norm1Beta
-      decoder.widthU32 1e-6
-    let query := decoder.matmul norm1 layer.queryWeight decoder.widthU32 decoder.widthU32
-    let key := decoder.matmul norm1 layer.keyWeight decoder.widthU32 decoder.widthU32
-    let value := decoder.matmul norm1 layer.valueWeight decoder.widthU32 decoder.widthU32
+      decoder.widthU32 (Context.ofRat (TorchLeanGPT.normalizationEpsilon true) : Float)
+    let query := decoder.attentionProjection norm1 layer.queryWeight
+    let key := decoder.attentionProjection norm1 layer.keyWeight
+    let value := decoder.attentionProjection norm1 layer.valueWeight
     let attended ← Native.attention decoder.nativeCache query key value
       (← natToUInt32 "layer index" layerIndex)
       (← natToUInt32 "cache position" position)
     releaseBuffers [norm1, query, key, value]
 
-    let projected0 :=
-      decoder.matmul attended layer.outputWeight decoder.widthU32 decoder.widthU32
+    let projected0 := decoder.attentionProjection attended layer.outputWeight
     let projected := Buffer.releaseThen attended projected0
     let biased0 := Buffer.add projected layer.outputBias
     let biased := Buffer.releaseThen projected biased0
@@ -359,7 +372,7 @@ def Decoder.push
     let afterAttention := Buffer.releaseManyThen #[hidden, biased] afterAttention0
 
     let norm2 ← Native.layerNorm afterAttention layer.norm2Gamma layer.norm2Beta
-      decoder.widthU32 1e-6
+      decoder.widthU32 (Context.ofRat (TorchLeanGPT.normalizationEpsilon true) : Float)
     let expanded0 :=
       decoder.matmul norm2 layer.ffnInputWeight decoder.widthU32 decoder.hiddenU32
     let expanded1 := Buffer.add expanded0 layer.ffnInputBias
@@ -377,7 +390,7 @@ def Decoder.push
   decoder.nextPosition.set (position + 1)
   if produceLogits then
     let normalized ← Native.layerNorm hidden decoder.finalNormGamma decoder.finalNormBeta
-      decoder.widthU32 1e-6
+      decoder.widthU32 (Context.ofRat (TorchLeanGPT.normalizationEpsilon true) : Float)
     let _ ← Buffer.releaseIO hidden
     let logits :=
       decoder.matmul normalized decoder.tokenOutputWeight decoder.widthU32 decoder.vocabU32

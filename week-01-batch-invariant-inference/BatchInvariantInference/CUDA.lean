@@ -426,13 +426,16 @@ structure TinyAttentionKernelCert where
   memoryFacts : CUDA.Memory.KernelMemoryFacts
 deriving Repr
 
-/-- Full contract for the tiny CUDA value-reduction certificate.
+/-- Full contract for a tiny CUDA value-reduction certificate at a specified target.
 
 This is intentionally a finite certificate contract, not a full CUDA semantics.
-It requires the expected architecture, instruction counts, source/PTX/SASS
-shape facts, the FMA dataflow contract, and memory/indexing facts. -/
-def TinyAttentionKernelContract (cert : TinyAttentionKernelCert) : Prop :=
-  cert.arch = "sm_70" ∧
+The architecture must equal `expectedArch`; the instruction counts, source/PTX/SASS
+facts, FMA dataflow contract, and memory/indexing facts are required independently.
+Keeping the target explicit lets a new build retain all these obligations while
+recording the architecture that NVCC actually compiled. -/
+def TinyAttentionKernelContractFor
+    (expectedArch : String) (cert : TinyAttentionKernelCert) : Prop :=
+  cert.arch = expectedArch ∧
   cert.ptxFmaRnF32 = 8 ∧
   cert.ptxGlobalLoadF32 = 16 ∧
   cert.ptxGlobalStoreF32 = 1 ∧
@@ -459,9 +462,14 @@ def TinyAttentionKernelContract (cert : TinyAttentionKernelCert) : Prop :=
   FMAChain8Contract cert.dataflow ∧
   CUDA.Memory.KernelMemoryContract cert.memoryFacts
 
-/-- Boolean checker for the whole CUDA/PTX/SASS certificate. -/
-def checkTinyAttentionKernelCert (cert : TinyAttentionKernelCert) : Bool :=
-  (cert.arch == "sm_70") &&
+/-- The original certificate contract remains specialized to `sm_70`. -/
+abbrev TinyAttentionKernelContract (cert : TinyAttentionKernelCert) : Prop :=
+  TinyAttentionKernelContractFor "sm_70" cert
+
+/-- Check the complete certificate against the target requested for this build. -/
+def checkTinyAttentionKernelCertFor
+    (expectedArch : String) (cert : TinyAttentionKernelCert) : Bool :=
+  (cert.arch == expectedArch) &&
   (cert.ptxFmaRnF32 == 8) &&
   (cert.ptxGlobalLoadF32 == 16) &&
   (cert.ptxGlobalStoreF32 == 1) &&
@@ -488,23 +496,41 @@ def checkTinyAttentionKernelCert (cert : TinyAttentionKernelCert) : Bool :=
   checkFMAChain8Cert cert.dataflow &&
   CUDA.Memory.checkKernelMemoryFacts cert.memoryFacts
 
-theorem checkTinyAttentionKernelCert_sound
+/-- Preserve the original `sm_70` checker for existing certificates and theorems. -/
+abbrev checkTinyAttentionKernelCert (cert : TinyAttentionKernelCert) : Bool :=
+  checkTinyAttentionKernelCertFor "sm_70" cert
+
+theorem checkTinyAttentionKernelCertFor_sound
+    (expectedArch : String)
     (cert : TinyAttentionKernelCert)
-    (hcheck : checkTinyAttentionKernelCert cert = true) :
-    TinyAttentionKernelContract cert := by
-  unfold checkTinyAttentionKernelCert at hcheck
-  unfold TinyAttentionKernelContract
+    (hcheck : checkTinyAttentionKernelCertFor expectedArch cert = true) :
+    TinyAttentionKernelContractFor expectedArch cert := by
+  unfold checkTinyAttentionKernelCertFor at hcheck
+  unfold TinyAttentionKernelContractFor
   simp [CUDA.Memory.KernelMemoryContract, CUDA.Memory.checkKernelMemoryFacts,
     FMAChain8Contract, checkFMAChain8Cert] at hcheck ⊢
   simpa [and_assoc] using hcheck
 
+theorem checkTinyAttentionKernelCert_sound
+    (cert : TinyAttentionKernelCert)
+    (hcheck : checkTinyAttentionKernelCert cert = true) :
+    TinyAttentionKernelContract cert :=
+  checkTinyAttentionKernelCertFor_sound "sm_70" cert hcheck
+
+theorem checkTinyAttentionKernelCertFor_dataflow_sound
+    (expectedArch : String)
+    (cert : TinyAttentionKernelCert)
+    (hcheck : checkTinyAttentionKernelCertFor expectedArch cert = true) :
+    FMAChain8Contract cert.dataflow := by
+  have h := checkTinyAttentionKernelCertFor_sound expectedArch cert hcheck
+  unfold TinyAttentionKernelContractFor at h
+  tauto
+
 theorem checkTinyAttentionKernelCert_dataflow_sound
     (cert : TinyAttentionKernelCert)
     (hcheck : checkTinyAttentionKernelCert cert = true) :
-    FMAChain8Contract cert.dataflow := by
-  have h := checkTinyAttentionKernelCert_sound cert hcheck
-  unfold TinyAttentionKernelContract at h
-  tauto
+    FMAChain8Contract cert.dataflow :=
+  checkTinyAttentionKernelCertFor_dataflow_sound "sm_70" cert hcheck
 
 end TinyAttentionCert
 end CUDA
@@ -682,11 +708,11 @@ end CUDA
 /-!
 # 5. Soundness Bridge To TorchLean Attention
 
-This section connects the source certificate to the semantic refinement theorem.
-The source certificate makes the real CUDA file auditable; the native forward
-certificate supplies the functional refinement to TorchLean's FlashAttention
-denotation. Together they form the proof-carrying boundary for the actual
-TorchLean fused CUDA attention path.
+This section collects two distinct pieces of evidence. The extracted certificate
+describes the tiny value-reduction kernel, and its checker establishes the
+eight-step FMA-chain contract. The native forward certificate separately requires
+a proof of equality with TorchLean's FlashAttention denotation. Checking the FMA
+chain alone does not establish that full attention refinement.
 -/
 
 namespace CUDA
@@ -694,6 +720,7 @@ namespace TinyAttentionSound
 
 open BatchInvariantInference
 open Spec
+open TorchLean (Storage)
 
 /-- A checked native forward certificate combines:
 
@@ -701,11 +728,11 @@ open Spec
 2. Lean's check that the certificate is accepted;
 3. the semantic runtime refinement certificate to TorchLean FlashAttention.
 
-The third field is the functional-refinement obligation. The source certificate
-makes that obligation auditable against the real kernel body instead of leaving
-it as an unnamed assumption. -/
+The `nativeCert` field carries the functional-refinement obligation independently
+of the extracted certificate. The structure preserves both pieces of evidence;
+it does not infer full attention correctness from the small reduction checker. -/
 structure CheckedNativeForwardCert
-    (α : Type) [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    (α : Type) [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0} where
   kernelCert : CUDA.TinyAttentionCert.TinyAttentionKernelCert
   kernelChecked :
@@ -715,7 +742,7 @@ structure CheckedNativeForwardCert
       (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2)
 
 theorem CheckedNativeForwardCert.kernel_contract
-    {α : Type} [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
     (cert : CheckedNativeForwardCert α
       (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2)) :
@@ -724,7 +751,7 @@ theorem CheckedNativeForwardCert.kernel_contract
     cert.kernelCert cert.kernelChecked
 
 theorem CheckedNativeForwardCert.fma_chain_contract
-    {α : Type} [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
     (cert : CheckedNativeForwardCert α
       (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2)) :
@@ -733,7 +760,7 @@ theorem CheckedNativeForwardCert.fma_chain_contract
     cert.kernelCert cert.kernelChecked
 
 theorem CheckedNativeForwardCert.fma_chain_denotes_valueReduceFMA
-    {α : Type} [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
     (cert : CheckedNativeForwardCert α
       (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2))
@@ -748,7 +775,7 @@ theorem CheckedNativeForwardCert.fma_chain_denotes_valueReduceFMA
     cert.kernelCert cert.kernelChecked fma zero inputs
 
 theorem CheckedNativeForwardCert.refines_flashAttention
-    {α : Type} [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
     (cert : CheckedNativeForwardCert α
       (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2)) :

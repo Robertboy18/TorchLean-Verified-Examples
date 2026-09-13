@@ -26,15 +26,17 @@ backend and exposes all of its arithmetic to autograd and numerical analysis.
 @[expose] public section
 
 namespace KimiK3
+
+open TorchLean
 namespace GraphSpec
 namespace KDA
 
 open Spec
-open Spec.Tensor
+open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
 
-attribute [local simp] Spec.Tensor.mapSpec_dim
+attribute [local simp] TorchLean.Tensor.mapSpec_dim
 
 /-- Inputs to one projected KDA step, beginning with the recurrent state. -/
 abbrev Inputs (keyDim valueDim : Nat) : List Shape :=
@@ -66,7 +68,8 @@ def model (keyDim valueDim : Nat) :
   let decayed : Term Γ stateShape :=
     Term.op (PrimOp.rowScale keyDim valueDim) (.cons retention (.cons state .nil))
   let correction : Term Γ valueShape :=
-    Term.op (PrimOp.vecMat keyDim valueDim) (.cons key (.cons decayed .nil))
+    Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar
+      keyDim valueDim .scalar .scalar) (.cons key (.cons decayed .nil))
   let correctionOuter : Term Γ stateShape :=
     Term.op (PrimOp.outer keyDim valueDim) (.cons key (.cons correction .nil))
   let writeOuter : Term Γ stateShape :=
@@ -84,13 +87,14 @@ def model (keyDim valueDim : Nat) :
   let nextState' : Term (Γ ++ [stateShape]) stateShape := Term.var (Var.last Γ)
   let query' : Term (Γ ++ [stateShape]) keyShape := Term.var (Var.weakenRight queryVar)
   let output : Term (Γ ++ [stateShape]) valueShape :=
-    Term.op (PrimOp.vecMat keyDim valueDim) (.cons query' (.cons nextState' .nil))
+    Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar
+      keyDim valueDim .scalar .scalar) (.cons query' (.cons nextState' .nil))
   { initParams := .nil
     body := Block.let1 nextState <| Block.ret <|
       .cons nextState' (.cons output .nil) }
 
 /-- Package the mathematical KDA state and projected input in the graph ABI. -/
-def inputs {α : Type} {keyDim valueDim : Nat}
+def inputs {α : Type} [Storage α] {keyDim valueDim : Nat}
     (state : KimiK3.KDA.State α keyDim valueDim)
     (input : KDAStepInput α keyDim valueDim) : TorchLean.TensorPack α (Inputs keyDim valueDim) :=
   .cons state <| .cons input.query <| .cons input.key <| .cons input.value <|
@@ -106,7 +110,7 @@ theorem specFwd_eq_step {keyDim valueDim : Nat}
   simp only [model, inputs, NN.GraphSpec.DAG.MultiModel.specFwd, Block.eval,
     Term.eval, Term.evalArgs]
   simp only [Env.tget_append_last, Env.tget_append_weakenRight]
-  simp [TorchLean.TensorPack.append, Env.tget, PrimOp.rowScale, PrimOp.vecMat,
+  simp [TorchLean.TensorPack.append, Env.tget, PrimOp.rowScale,
     PrimOp.outer, PrimOp.scalarMul, PrimOp.sub, NN.GraphSpec.DAG.PrimOp.add,
     KimiK3.KDA.update, KimiK3.KDA.read]
 
@@ -163,26 +167,26 @@ arbitrary `KDALayer`, so no property depends on this initialization.
 -/
 def initialLayerParams (modelDim heads keyDim valueDim convWidth decayRank : Nat) :
     TorchLean.TensorPack Float (LayerParams modelDim heads keyDim valueDim convWidth decayRank) :=
-  .cons (Spec.fill 0 (.dim heads (.dim modelDim (.dim keyDim .scalar)))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim modelDim (.dim keyDim .scalar)))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim modelDim (.dim valueDim .scalar)))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim convWidth (.dim keyDim .scalar)))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim keyDim .scalar))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim convWidth (.dim keyDim .scalar)))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim keyDim .scalar))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim convWidth (.dim valueDim .scalar)))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim valueDim .scalar))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim modelDim .scalar))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim modelDim (.dim decayRank .scalar)))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim decayRank (.dim keyDim .scalar)))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim keyDim .scalar))) <|
-  .cons (Spec.fill 0 (.dim heads .scalar)) <|
-  .cons (Spec.fill 0 (.dim modelDim (.dim heads (.dim valueDim .scalar)))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim valueDim (.dim modelDim .scalar)))) <|
-  .cons (Spec.fill 0 (.dim heads (.dim valueDim .scalar))) .nil
+  .cons (Tensor.full (.dim heads (.dim modelDim (.dim keyDim .scalar))) 0) <|
+  .cons (Tensor.full (.dim heads (.dim modelDim (.dim keyDim .scalar))) 0) <|
+  .cons (Tensor.full (.dim heads (.dim modelDim (.dim valueDim .scalar))) 0) <|
+  .cons (Tensor.full (.dim heads (.dim convWidth (.dim keyDim .scalar))) 0) <|
+  .cons (Tensor.full (.dim heads (.dim keyDim .scalar)) 0) <|
+  .cons (Tensor.full (.dim heads (.dim convWidth (.dim keyDim .scalar))) 0) <|
+  .cons (Tensor.full (.dim heads (.dim keyDim .scalar)) 0) <|
+  .cons (Tensor.full (.dim heads (.dim convWidth (.dim valueDim .scalar))) 0) <|
+  .cons (Tensor.full (.dim heads (.dim valueDim .scalar)) 0) <|
+  .cons (Tensor.full (.dim heads (.dim modelDim .scalar)) 0) <|
+  .cons (Tensor.full (.dim heads (.dim modelDim (.dim decayRank .scalar))) 0) <|
+  .cons (Tensor.full (.dim heads (.dim decayRank (.dim keyDim .scalar))) 0) <|
+  .cons (Tensor.full (.dim heads (.dim keyDim .scalar)) 0) <|
+  .cons (Tensor.full (.dim heads .scalar) 0) <|
+  .cons (Tensor.full (.dim modelDim (.dim heads (.dim valueDim .scalar))) 0) <|
+  .cons (Tensor.full (.dim heads (.dim valueDim (.dim modelDim .scalar))) 0) <|
+  .cons (Tensor.full (.dim heads (.dim valueDim .scalar)) 0) .nil
 
 /-- Pack the existing head-indexed KDA records into GraphSpec's parameter ABI. -/
-def layerParameters {α : Type} {modelDim heads keyDim valueDim convWidth decayRank : Nat}
+def layerParameters {α : Type} [Storage α] {modelDim heads keyDim valueDim convWidth decayRank : Nat}
     (layer : KDALayer α modelDim heads keyDim valueDim convWidth decayRank) :
     TorchLean.TensorPack α (LayerParams modelDim heads keyDim valueDim convWidth decayRank) :=
   .cons (Tensor.dim fun head => (layer.head head).queryWeight) <|
@@ -202,7 +206,7 @@ def layerParameters {α : Type} {modelDim heads keyDim valueDim convWidth decayR
   .cons layer.gateWeight <| .cons layer.outputWeight <| .cons layer.outputNormScale .nil
 
 /-- Package a fixed causal window and recurrent state for the complete KDA graph. -/
-def layerInputs {α : Type} {modelDim heads keyDim valueDim convWidth : Nat}
+def layerInputs {α : Type} [Storage α] {modelDim heads keyDim valueDim convWidth : Nat}
     (window : Tensor α (.dim convWidth (.dim modelDim .scalar)))
     (state : KDALayer.State α heads keyDim valueDim) (logFloor epsilon : α) :
     TorchLean.TensorPack α (LayerInputs modelDim heads keyDim valueDim convWidth) :=
@@ -246,7 +250,7 @@ def rollWindowTerm {Γ : List Shape} (modelDim convWidth : Nat) (hWidth : 0 < co
     (previous : Term Γ (.dim convWidth (.dim modelDim .scalar))) :
     Term.eval env (rollWindowTerm modelDim convWidth hWidth current previous) =
       KDALayer.rollWindow hWidth (Term.eval env current) (Term.eval env previous) := by
-  simp [rollWindowTerm, rollWindowRawTerm, Term.eval, Term.eval_cast, Term.eval_op, Term.evalArgs,
+  simp [rollWindowTerm, rollWindowRawTerm, Term.eval, Term.eval_cast, Term.evalArgs,
     NN.GraphSpec.DAG.PrimOp.reshape_specFwd,
     NN.GraphSpec.DAG.PrimOp.sliceAxisRange,
     NN.GraphSpec.DAG.PrimOp.concatAxis, NN.GraphSpec.DAG.PrimOp.concatAxisSpec,
@@ -290,29 +294,24 @@ def shortConvTerm {Γ : List Shape} (heads convWidth modelDim channels : Nat)
     (bias : Term Γ (.dim heads (.dim channels .scalar))) :
     Term.eval env (shortConvTerm heads convWidth modelDim channels hHeads hWidth hChannels
       window projection kernel bias) =
-      Spec.Tensor.addSpec
+      TorchLean.Tensor.addSpec
         (Tensor.dim fun head =>
-          Spec.Tensor.reduceSum 0
-            (Spec.Tensor.mulSpec
+          TorchLean.Tensor.reduceSum 0
+            (TorchLean.Tensor.mulSpec
               (Spec.matMulSpec (Term.eval env window)
                 (Spec.get (Term.eval env projection) head))
               (Spec.get (Term.eval env kernel) head))
             (Shape.hasNonemptyAxisZeroOfPos hWidth).proof)
         (Term.eval env bias) := by
-  letI : Shape.HasNonemptyAxis 0 (.dim convWidth (.dim channels .scalar)) :=
+  let : Shape.HasNonemptyAxis 0 (.dim convWidth (.dim channels .scalar)) :=
     Shape.hasNonemptyAxisZeroOfPos hWidth
   simp only [shortConvTerm, Term.eval_op, Term.evalArgs,
     NN.GraphSpec.DAG.PrimOp.matmul_specFwd,
     NN.GraphSpec.DAG.PrimOp.batchedDepthwiseWeightedSum_specFwd,
     NN.GraphSpec.DAG.PrimOp.add_specFwd]
-  simp only [Spec.Tensor.matmulSpec,
-    Spec.Tensor.Internal.matmulCommonBatchSpec,
-    Spec.Tensor.Internal.extendBroadcastSuffix,
-    Spec.Tensor.broadcastTo]
-  cases hWindow : Term.eval env window
-  cases hProjection : Term.eval env projection
-  rw [Spec.Tensor.Internal.broadcastTo_extendBroadcastSuffix_scalarTo_dim,
-    Spec.Tensor.Internal.broadcastTo_extendBroadcastSuffix_refl]
+  simp [TorchLean.Tensor.matmulSpec,
+    TorchLean.Tensor.broadcastTo_dim_self,
+    TorchLean.Tensor.LinearAlgebra.Internal.matmulCommonBatchSpec]
   rfl
 
 /-- Short-convolution projection followed by SiLU. This is the complete value preparation path. -/
@@ -339,7 +338,7 @@ def activatedProjectionTerm {Γ : List Shape}
     (bias : Term Γ (.dim heads (.dim channels .scalar))) :
     Term.eval env (activatedProjectionTerm heads convWidth modelDim channels
       hHeads hWidth hChannels window projection kernel bias) =
-      Spec.Tensor.mapSpec Activation.Math.swishSpec
+      TorchLean.Tensor.mapSpec Activation.Math.swishSpec
         (Term.eval env (shortConvTerm heads convWidth modelDim channels
           hHeads hWidth hChannels window projection kernel bias)) := by
   simp only [activatedProjectionTerm, Term.eval_op, Term.evalArgs,
@@ -374,16 +373,10 @@ def normalizedProjectionTerm {Γ : List Shape}
           (Term.eval env (activatedProjectionTerm heads convWidth modelDim channels
             hHeads hWidth hChannels window projection kernel bias)) head)
         (Tensor.item (Term.eval env epsilon)) := by
-  cases hEpsilon : Term.eval env epsilon with
-  | scalar epsilonValue =>
-      simp only [normalizedProjectionTerm, Term.eval_op, Term.evalArgs,
-        NN.GraphSpec.DAG.PrimOp.l2Normalize_specFwd,
-        Tensor.item_scalar, hEpsilon]
-      cases hActivated : Term.eval env
-        (activatedProjectionTerm heads convWidth modelDim channels
-          hHeads hWidth hChannels window projection kernel bias)
-      rw [NN.GraphSpec.DAG.PrimOp.l2NormalizeSemantics_dim]
-      congr
+  simp only [normalizedProjectionTerm, Term.eval_op, Term.evalArgs,
+    NN.GraphSpec.DAG.PrimOp.l2Normalize,
+    NN.GraphSpec.DAG.PrimOp.l2NormalizeSemantics]
+  rfl
 
 /-- Multiply one shared vector by a matrix for each head. -/
 def batchedSharedVecMatTerm {Γ : List Shape} (heads inputDim outputDim : Nat)
@@ -411,16 +404,10 @@ def batchedVecMatTerm {Γ : List Shape} (heads inputDim outputDim : Nat)
     Term.eval env (batchedSharedVecMatTerm heads inputDim outputDim vector matrices) =
       .dim (fun head => vecMatMulSpec (Term.eval env vector)
         (Spec.get (Term.eval env matrices) head)) := by
-  simp only [batchedSharedVecMatTerm, Term.eval_op, Term.evalArgs,
+  simp [batchedSharedVecMatTerm, Term.eval_op, Term.evalArgs,
     NN.GraphSpec.DAG.PrimOp.broadcastVecMat_specFwd,
-    NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec,
-    Spec.Tensor.Internal.extendBroadcastSuffix, Spec.Tensor.broadcastTo]
-  cases hVector : Term.eval env vector
-  cases hMatrices : Term.eval env matrices
-  rw [Spec.Tensor.Internal.broadcastTo_extendBroadcastSuffix_scalarTo_dim,
-    Spec.Tensor.Internal.broadcastTo_extendBroadcastSuffix_refl,
-    NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec_dim]
-  rfl
+    TorchLean.Tensor.broadcastTo_dim_self,
+    NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec]
 
 /-- Pure semantics of independently multiplying one vector and matrix per head. -/
 @[simp] theorem eval_batchedVecMatTerm {Γ : List Shape}
@@ -431,16 +418,9 @@ def batchedVecMatTerm {Γ : List Shape} (heads inputDim outputDim : Nat)
       .dim (fun head => vecMatMulSpec
         (Spec.get (Term.eval env vectors) head)
         (Spec.get (Term.eval env matrices) head)) := by
-  simp only [batchedVecMatTerm, Term.eval_op, Term.evalArgs,
+  simp [batchedVecMatTerm, Term.eval_op, Term.evalArgs,
     NN.GraphSpec.DAG.PrimOp.broadcastVecMat_specFwd,
-    NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec,
-    Spec.Tensor.Internal.extendBroadcastSuffix, Spec.Tensor.broadcastTo]
-  cases hVectors : Term.eval env vectors
-  cases hMatrices : Term.eval env matrices
-  rw [Spec.Tensor.Internal.broadcastTo_extendBroadcastSuffix_refl,
-    Spec.Tensor.Internal.broadcastTo_extendBroadcastSuffix_refl,
-    NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec_dim]
-  rfl
+    NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec]
 
 /-- Shapes of the current token and the five quantities prepared before the recurrent update.
 
@@ -519,7 +499,11 @@ def prepareTerms {Γ : List Shape}
   .cons current <|
     .cons query (.cons key (.cons value (.cons retention (.cons beta .nil))))
 
-/-- Read the updated recurrent matrix with each query and normalize each head independently. -/
+set_option linter.unusedVariables false in
+/-- Read the updated recurrent matrix with each query and normalize each head independently.
+
+The named argument `hHeads` is retained for the graph-building interface. Normalization operates
+within each head, so its primitive requires positivity of `valueDim` alone. -/
 def normalizedHeadReadTerm {Γ : List Shape} (heads keyDim valueDim : Nat)
     (hHeads : 0 < heads) (hValue : 0 < valueDim)
     (query : Term Γ (.dim heads (.dim keyDim .scalar)))
@@ -545,11 +529,9 @@ def normalizedHeadReadTerm {Γ : List Shape} (heads keyDim valueDim : Nat)
   simp only [normalizedHeadReadTerm, Term.eval_op, Term.evalArgs,
     eval_batchedVecMatTerm,
     NN.GraphSpec.DAG.PrimOp.rmsNormElementwise_specFwd, KDA.read]
-  cases hScale : Term.eval env outputNormScale
-  rw [NN.GraphSpec.DAG.PrimOp.rmsNormElementwiseSemantics_dim]
-  congr
-  funext head
-  exact GraphSpec.rmsNormVectorSemantics_eq_scale hValue _ _
+  simp [NN.GraphSpec.DAG.PrimOp.rmsNormElementwiseSemantics,
+    GraphSpec.rmsNormVectorSemantics_eq_scale]
+  rfl
 
 /-- Compute the full-rank output gate for every KDA head. -/
 def outputGateTerm {Γ : List Shape} (modelDim heads valueDim : Nat)
@@ -578,10 +560,7 @@ def outputGateTerm {Γ : List Shape} (modelDim heads valueDim : Nat)
     eval_batchedSharedVecMatTerm,
     NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth_specFwd,
     NN.GraphSpec.DAG.PrimOp.sigmoid_specFwd, Activation.sigmoidSpec]
-  cases hGateWeight : Term.eval env gateWeight with
-  | dim gateValues =>
-      rw [Spec.Tensor.swapAdjacentAxes_zero]
-      rfl
+  simp [TorchLean.Tensor.swapAdjacentAxes_zero]
 
 /-- Gate, project, and sum the packed KDA head outputs. -/
 def projectHeadReadoutTerm {Γ : List Shape} (modelDim heads valueDim : Nat)
@@ -614,7 +593,7 @@ def projectHeadReadoutTerm {Γ : List Shape} (modelDim heads valueDim : Nat)
           (Spec.get (mulSpec (Term.eval env gate) (Term.eval env normalizedHeadOutput)) head)
           (Spec.get (Term.eval env outputWeight) head)))
         (Shape.hasNonemptyAxisZeroOfPos hHeads).proof := by
-  letI : Shape.HasNonemptyAxis 0 (.dim heads (.dim modelDim .scalar)) :=
+  let : Shape.HasNonemptyAxis 0 (.dim heads (.dim modelDim .scalar)) :=
     Shape.hasNonemptyAxisZeroOfPos hHeads
   simp only [projectHeadReadoutTerm, Term.eval_op, Term.evalArgs,
     NN.GraphSpec.DAG.PrimOp.mul_specFwd,
@@ -646,15 +625,12 @@ private theorem reduceSum_outer_matrix_eq_foldl {rows columns : Nat}
     Tensor.reduceSum 0 tensor h = Tensor.dim fun column => Tensor.scalar <|
       (List.finRange rows).foldl
         (fun total row => total + Tensor.getScalar (Spec.get tensor row) column) 0 := by
-  cases tensor with
-  | dim slices =>
-      simp only [Tensor.reduceSum, Tensor.reduceDim, Tensor.Internal.reduceDimCore,
-        Tensor.Internal.reduceOuterAxis]
-      apply congrArg Tensor.dim
-      funext column
-      apply congrArg Tensor.scalar
-      rw [sum_spec_vec, List.finRange_foldl_add_eq_finset_sum]
-      rfl
+  apply Tensor.ext_vector
+  intro column
+  simp [Tensor.reduceSum, Tensor.reduceDim, Tensor.Reduction.Internal.reduceDimCore,
+    Tensor.Reduction.Internal.reduceOuterAxis, sum_spec_vec,
+    List.finRange_foldl_add_eq_finset_sum]
+  rfl
 
 /-- The compositional readout term denotes KDA's packed multi-head readout equation. -/
 theorem eval_readoutTerm {Γ : List Shape}
@@ -761,7 +737,7 @@ def prepareBlock (modelDim heads keyDim valueDim convWidth decayRank : Nat)
 This is the semantic view of the graph boundary, not another KDA state type.  Its entries are the
 current token and the five fields obtained by applying `KDAHead.prepareWindow` independently to
 each head. -/
-def preparedTensors {α : Type} [Context α]
+def preparedTensors {α : Type} [Storage α] [Context α]
     {modelDim heads keyDim valueDim convWidth decayRank : Nat}
     (layer : KDALayer α modelDim heads keyDim valueDim convWidth decayRank)
     (hWidth : 0 < convWidth) (logFloor : α)
@@ -776,6 +752,35 @@ def preparedTensors {α : Type} [Context α]
     .cons (Tensor.dim fun head => (prepared head).retention) <|
     .cons (Tensor.dim fun head => Tensor.scalar (prepared head).writeStrength) .nil
 
+/-- Packed scaling, sigmoid, and exponentiation give the per-head retention formula. -/
+private theorem retention_eq {heads keyDim : Nat}
+    (logScale : Fin heads → ℝ) (logit : Fin heads → Tensor ℝ [keyDim]) (logFloor : ℝ) :
+    (Tensor.dim fun i =>
+      mapSpec (fun value => logFloor * value)
+        (mapSpec Activation.Math.sigmoidSpec
+          (mapSpec (fun x =>
+            (Spec.get (Tensor.dim fun head => Tensor.scalar (logScale head)).expSpec i).item * x)
+            (logit i)))).expSpec =
+    Tensor.dim fun head => mapSpec
+      (fun z => MathFunctions.exp
+        (logFloor * Activation.Math.sigmoidSpec (MathFunctions.exp (logScale head) * z)))
+      (logit head) := by
+  simp only [Tensor.expSpec, Tensor.mapSpec_dim, Spec.get_dim,
+    Tensor.mapSpec_scalar, Tensor.item_scalar, Spec.map_spec_comp, Function.comp_def]
+
+/-- Each packed write strength is the sigmoid of its head's linear projection. -/
+private theorem writeStrength_eq {heads modelDim : Nat}
+    (current : Tensor ℝ [modelDim]) (weight : Fin heads → Tensor ℝ [modelDim]) :
+    mapSpec Activation.Math.sigmoidSpec
+      ((PrimOp.batchedSharedDot heads modelDim).specFwd
+        (.cons current (.cons (Tensor.dim weight) .nil))) =
+    Tensor.dim fun head => Tensor.scalar
+      (Activation.Math.sigmoidSpec (current.dotSpec (weight head))) := by
+  change mapSpec Activation.Math.sigmoidSpec
+    (Tensor.dim fun head => Tensor.scalar
+      (current.dotSpec (Spec.get (Tensor.dim weight) head))) = _
+  simp only [Spec.get_dim, Tensor.mapSpec_dim, Tensor.mapSpec_scalar]
+
 /-- The first graph block computes exactly the fixed-window KDA preparation equations. -/
 theorem eval_prepareBlock_eq_preparedTensors
     {modelDim heads keyDim valueDim convWidth decayRank : Nat}
@@ -786,7 +791,7 @@ theorem eval_prepareBlock_eq_preparedTensors
     (state : KDALayer.State ℝ heads keyDim valueDim) (logFloor : ℝ) :
     Block.eval
         (TorchLean.TensorPack.append (layerParameters layer)
-          (layerInputs window state logFloor Numbers.epsilon))
+          (layerInputs window state logFloor Normalize.l2Epsilon))
         (prepareBlock modelDim heads keyDim valueDim convWidth decayRank
           hHeads hKey hValue hWidth) =
       preparedTensors layer hWidth logFloor window := by
@@ -796,17 +801,20 @@ theorem eval_prepareBlock_eq_preparedTensors
     Env.tget,
     NN.GraphSpec.DAG.PrimOp.select, NN.GraphSpec.DAG.PrimOp.add,
     NN.GraphSpec.DAG.PrimOp.exp, NN.GraphSpec.DAG.PrimOp.sigmoid,
-    KDAHead.prepareWindow, ShortConv.forwardWindow, Activation.sigmoidSpec]
-  congr
-  apply congrArg Tensor.dim
-  funext head
-  simp only [Spec.Tensor.addSpec, Spec.Tensor.get_map2Spec,
-    Spec.get_dim, Spec.Tensor.mapSpec_dim, Spec.Tensor.toScalar_mapSpec]
-  unfold Spec.Tensor.expSpec
-  rw [Spec.map_spec_comp, Spec.map_spec_comp]
-  change Spec.Tensor.mapSpec MathFunctions.exp (Spec.Tensor.mapSpec _ _) = _
-  rw [Spec.map_spec_comp]
-  rfl
+    KDAHead.prepareWindow, ShortConv.forwardWindow, Activation.sigmoidSpec,
+    Tensor.addSpec, Tensor.map2Spec_dim]
+  apply congrArg (TensorPack.cons (Spec.get window ⟨0, hWidth⟩))
+  apply congrArg (TensorPack.cons _)
+  apply congrArg (TensorPack.cons _)
+  apply congrArg (TensorPack.cons _)
+  apply congrArg₂ TensorPack.cons
+  · exact retention_eq (fun head => (layer.head head).decayLogScale)
+      (fun head => map2Spec (· + ·)
+        (vecMatMulSpec (vecMatMulSpec (Spec.get window ⟨0, hWidth⟩)
+          (layer.head head).decayDown) (layer.head head).decayUp)
+        (layer.head head).decayBias) logFloor
+  · apply congrArg (fun beta => TensorPack.cons beta .nil)
+    exact writeStrength_eq (Spec.get window ⟨0, hWidth⟩) (fun head => (layer.head head).betaWeight)
 
 /-- Packed recurrent update used by the second half of a KDA layer.
 
@@ -866,7 +874,7 @@ theorem eval_updateTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
     NN.GraphSpec.DAG.PrimOp.batchedOuter_specFwd,
     NN.GraphSpec.DAG.PrimOp.batchedScale_specFwd,
     NN.GraphSpec.DAG.PrimOp.sub_specFwd, NN.GraphSpec.DAG.PrimOp.add_specFwd]
-  congr
+  simp [KDA.update, Tensor.addSpec, Tensor.subSpec, Tensor.map2Spec_dim]
 
 /-- Assemble the recurrent update and readout from terms in an arbitrary graph environment. -/
 def updateReadoutTermsBlock {Γ : List Shape}
@@ -1011,8 +1019,7 @@ theorem eval_updateReadoutBlock_eq_stepPrepared
     TorchLean.TensorPack.append,
     layerParameters, layerInputs,
     KDALayer.stepPrepared, KDALayer.gates]
-  cases query
-  rfl
+  simp only [Spec.get, Tensor.dim_unstack]
 
 /-- Complete fixed-window multi-head KDA token step as a typed TorchLean graph. -/
 def layerModel (modelDim heads keyDim valueDim convWidth decayRank : Nat)
@@ -1038,7 +1045,7 @@ theorem layerModel_specFwd_eq_stepWindow
     (state : KDALayer.State ℝ heads keyDim valueDim) (logFloor : ℝ) :
     (layerModel modelDim heads keyDim valueDim convWidth decayRank
       hModel hHeads hKey hValue hWidth).specFwd (layerParameters layer)
-        (layerInputs window state logFloor Numbers.epsilon) =
+        (layerInputs window state logFloor Normalize.l2Epsilon) =
       let result := layer.stepWindow hWidth logFloor window state
       .cons result.1 (.cons result.2 .nil) := by
   simp only [NN.GraphSpec.DAG.MultiModel.specFwd, layerModel]
@@ -1046,7 +1053,7 @@ theorem layerModel_specFwd_eq_stepWindow
   rw [eval_prepareBlock_eq_preparedTensors hHeads hKey hValue hWidth layer window state logFloor]
   simp only [preparedTensors]
   rw [eval_updateReadoutBlock_eq_stepPrepared]
-  rfl
+  simp only [Spec.get_dim, Tensor.item_scalar, KDALayer.stepWindow]
 
 end KDA
 end GraphSpec

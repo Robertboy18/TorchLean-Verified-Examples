@@ -34,7 +34,6 @@ All four weeks share one Lake project and one pinned TorchLean dependency. On a 
 ```bash
 git clone https://github.com/Robertboy18/TorchLean-Verified-Examples.git
 cd TorchLean-Verified-Examples
-lake update
 
 lake build BatchInvariantInference
 lake build VerifiableTransformers
@@ -52,14 +51,18 @@ CPU builds need no CUDA installation. For examples that run real NVIDIA kernels,
 option through Lake when building and running:
 
 ```bash
-lake -R -K cuda=true build \
+lake -R -Kcuda=true \
+  -KverifiedExamplesBuildDir=.lake/build-cuda \
+  -KtorchleanBuildDir=.lake/build-cuda build \
   train_torchlean_gpt \
   generate_torchlean_gpt_cached \
   check_torchlean_gpt_cache \
   benchmark_torchlean_gpt_cache
 ```
 
-The project currently uses Lean 4.33. `lake-manifest.json` pins the TorchLean revision used by the
-checked build, so later upstream changes cannot silently alter an example. The
+The project uses Lean 4.33.0. Both the Lake dependency declaration and `lake-manifest.json` pin
+TorchLean to the revision used by the checked build. The CUDA command keeps its native objects
+in separate build directories; pass the same options when running a CUDA executable through
+`lake exe`. The
 [TorchLean installation guide](https://lean-dojo.github.io/TorchLean/installation/) covers Elan,
 CPU-only builds, CUDA discovery, and supported platforms.

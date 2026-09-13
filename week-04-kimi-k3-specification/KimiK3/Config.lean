@@ -283,23 +283,23 @@ def layerNumbers (cfg : TextConfig) (kind : AttentionKind) : Array Nat :=
 /-- Require a natural-number field to equal the architecture value used by the specification. -/
 def expectNatFieldEq (json : Json) (context field : String) (expected : Nat) :
     Except String Unit := do
-  let value ← TorchLean.Json.expectNatE s!"{context}.{field}"
-    (← TorchLean.Json.expectFieldE context field json)
+  let value ← TorchLean.Json.expectNat s!"{context}.{field}"
+    (← TorchLean.Json.expectField context field json)
   unless value = expected do
     throw s!"{context}.{field}: expected {expected}, found {value}"
 
 /-- Require a string field to equal the expected checkpoint metadata. -/
 def expectStringFieldEq (json : Json) (context field expected : String) :
     Except String Unit := do
-  let value ← TorchLean.Json.expectStringE s!"{context}.{field}"
-    (← TorchLean.Json.expectFieldE context field json)
+  let value ← TorchLean.Json.expectString s!"{context}.{field}"
+    (← TorchLean.Json.expectField context field json)
   unless value = expected do
     throw s!"{context}.{field}: expected {repr expected}, found {repr value}"
 
 /-- Require a Boolean field to equal the expected checkpoint metadata. -/
 def expectBoolFieldEq (json : Json) (context field : String) (expected : Bool) :
     Except String Unit := do
-  let valueJson ← TorchLean.Json.expectFieldE context field json
+  let valueJson ← TorchLean.Json.expectField context field json
   let value ← match valueJson with
     | .bool value => pure value
     | _ => throw s!"{context}.{field}: expected boolean"
@@ -310,7 +310,7 @@ def expectBoolFieldEq (json : Json) (context field : String) (expected : Bool) :
 only for small integral constants that the released file writes with decimal syntax. -/
 def expectFloatFieldEq (json : Json) (context field : String) (expected : Float) :
     Except String Unit := do
-  let valueJson ← TorchLean.Json.expectFieldE context field json
+  let valueJson ← TorchLean.Json.expectField context field json
   let value ← match valueJson with
     | .num number => pure number.toFloat
     | _ => throw s!"{context}.{field}: expected number"
@@ -321,9 +321,9 @@ def expectFloatFieldEq (json : Json) (context field : String) (expected : Float)
 def expectNatArrayFieldEq (json : Json) (context field : String)
     (expected : Array Nat) : Except String Unit := do
   let fieldContext := s!"{context}.{field}"
-  let entries ← TorchLean.Json.expectArrayE fieldContext
-    (← TorchLean.Json.expectFieldE context field json)
-  let value ← entries.mapM (TorchLean.Json.expectNatE fieldContext)
+  let entries ← TorchLean.Json.expectArray fieldContext
+    (← TorchLean.Json.expectField context field json)
+  let value ← entries.mapM (TorchLean.Json.expectNat fieldContext)
   unless value = expected do
     throw s!"{context}.{field}: expected {repr expected}, found {repr value}"
 
@@ -334,11 +334,11 @@ are exactly those used by the Lean architecture, the multimodal splice, and the 
 checkpoint representation.
 -/
 def validateJson (json : Json) : Except String Unit := do
-  let _ ← TorchLean.Json.expectObjE "Kimi K3 config" json
+  let _ ← TorchLean.Json.expectObject "Kimi K3 config" json
   expectStringFieldEq json "Kimi K3 config" "model_type" "kimi_k3"
   expectNatFieldEq json "Kimi K3 config" "media_placeholder_token_id" 163605
 
-  let text ← TorchLean.Json.expectFieldE "Kimi K3 config" "text_config" json
+  let text ← TorchLean.Json.expectField "Kimi K3 config" "text_config" json
   let cfg := releasedCheckpointConfig.text
   expectNatFieldEq text "text_config" "hidden_size" cfg.hiddenDim
   expectNatFieldEq text "text_config" "num_hidden_layers" cfg.numLayers
@@ -362,7 +362,7 @@ def validateJson (json : Json) : Except String Unit := do
   expectFloatFieldEq text "text_config" "activation_situ_beta" cfg.situGateCap.toFloat
   expectFloatFieldEq text "text_config" "activation_situ_linear_beta" cfg.situUpCap.toFloat
 
-  let linearAttention ← TorchLean.Json.expectFieldE "text_config" "linear_attn_config" text
+  let linearAttention ← TorchLean.Json.expectField "text_config" "linear_attn_config" text
   expectNatFieldEq linearAttention "linear_attn_config" "head_dim" cfg.kdaHeadDim
   expectNatFieldEq linearAttention "linear_attn_config" "num_heads" cfg.numHeads
   expectNatFieldEq linearAttention "linear_attn_config" "short_conv_kernel_size"
@@ -373,7 +373,7 @@ def validateJson (json : Json) : Except String Unit := do
   expectNatArrayFieldEq linearAttention "linear_attn_config" "kda_layers"
     (layerNumbers cfg .kda)
 
-  let vision ← TorchLean.Json.expectFieldE "Kimi K3 config" "vision_config" json
+  let vision ← TorchLean.Json.expectField "Kimi K3 config" "vision_config" json
   let visionCfg := releasedCheckpointConfig.vision
   expectNatFieldEq vision "vision_config" "patch_size" visionCfg.patchSize
   expectNatFieldEq vision "vision_config" "vt_hidden_size" visionCfg.hiddenDim
@@ -385,11 +385,11 @@ def validateJson (json : Json) : Except String Unit := do
     #[visionCfg.mergeHeight, visionCfg.mergeWidth]
   expectNatFieldEq vision "vision_config" "text_hidden_size" visionCfg.textHiddenDim
 
-  let quantization ← TorchLean.Json.expectFieldE "text_config" "quantization_config" text
+  let quantization ← TorchLean.Json.expectField "text_config" "quantization_config" text
   expectStringFieldEq quantization "quantization_config" "format" "mxfp4-pack-quantized"
-  let groups ← TorchLean.Json.expectFieldE "quantization_config" "config_groups" quantization
-  let group ← TorchLean.Json.expectFieldE "config_groups" "group_0" groups
-  let weights ← TorchLean.Json.expectFieldE "group_0" "weights" group
+  let groups ← TorchLean.Json.expectField "quantization_config" "config_groups" quantization
+  let group ← TorchLean.Json.expectField "config_groups" "group_0" groups
+  let weights ← TorchLean.Json.expectField "group_0" "weights" group
   expectNatFieldEq weights "quantization weights" "group_size" 32
   expectNatFieldEq weights "quantization weights" "num_bits" 4
   expectStringFieldEq weights "quantization weights" "scale_dtype" "torch.uint8"
@@ -398,7 +398,7 @@ def validateJson (json : Json) : Except String Unit := do
 
 /-- Read and validate a released Kimi K3 Hugging Face configuration file. -/
 def validateFile (path : System.FilePath) : IO Unit := do
-  let json ← TorchLean.Json.parseFile path
+  let json ← TorchLean.Json.readFile path
   match validateJson json with
   | .ok () => pure ()
   | .error message => throw <| IO.userError s!"{path}: {message}"
@@ -407,27 +407,27 @@ end ReleasedCheckpoint
 
 /-- The dimensions transcribed from the paper and released config are internally consistent. -/
 theorem paperConfig_wf : paperConfig.WF := by
-  constructor <;> native_decide
+  constructor <;> decide
 
 /-- The paper schedule contains 69 recurrent KDA layers. -/
 theorem paperConfig_kda_layer_count : paperConfig.text.countAttentionKind .kda = 69 := by
-  native_decide
+  decide
 
 /-- The paper schedule contains 24 global Gated MLA layers, including the final layer. -/
 theorem paperConfig_mla_layer_count : paperConfig.text.countAttentionKind .mla = 24 := by
-  native_decide
+  decide
 
 /-- At the published dimensions, MLA stores 576 scalars per token instead of 30,720. The integer
 identity records the exact compression ratio `160 / 3 = 53 1/3` without introducing division. -/
 theorem paperConfig_mla_cache_compression :
     paperConfig.text.mlaUncompressedScalarsPerToken * 3 =
       paperConfig.text.mlaCompressedScalarsPerToken * 160 := by
-  native_decide
+  decide
 
 /-- Block AttnRes retains the embedding and eight block summaries, rather than all 93 layer
 outputs. -/
 theorem paperConfig_attnRes_source_capacity :
     paperConfig.text.attnResSourceCapacity = 9 := by
-  native_decide
+  decide
 
 end KimiK3

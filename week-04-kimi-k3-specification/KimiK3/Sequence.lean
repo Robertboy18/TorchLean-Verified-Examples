@@ -38,6 +38,8 @@ https://arxiv.org/abs/2607.24653.
 
 namespace KimiK3
 
+open TorchLean
+
 open Spec
 open Tensor
 
@@ -84,13 +86,13 @@ end CausalScan
 /-! ## Kimi Delta Attention -/
 
 /-- Parameters of one causal depthwise short convolution. -/
-structure ShortConv (α : Type) (width channels : Nat) where
+structure ShortConv (α : Type) [Storage α] (width channels : Nat) where
   weight : Tensor α (.dim width (.dim channels .scalar))
   bias : Tensor α (.dim channels .scalar)
 
 namespace ShortConv
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {width channels : Nat}
 
 /--
@@ -99,7 +101,7 @@ padded, so the definition is causal for every history length.
 -/
 def forward (conv : ShortConv α width channels)
     (history : List (Tensor α (.dim channels .scalar))) : Tensor α (.dim channels .scalar) :=
-  let zero : Tensor α (.dim channels .scalar) := Spec.fill 0 (.dim channels .scalar)
+  let zero : Tensor α (.dim channels .scalar) := Tensor.full (.dim channels .scalar) 0
   Tensor.dim (fun channel => Tensor.scalar <|
     (List.finRange width).foldl (fun total tap =>
       total + Tensor.getScalar (history.getD tap.val zero) channel * get2 conv.weight tap channel)
@@ -121,7 +123,7 @@ def forwardWindow (conv : ShortConv α width channels) (hWidth : 0 < width)
 end ShortConv
 
 /-- Input to the mathematical single-head KDA recurrence in Eq. 1. -/
-structure KDAStepInput (α : Type) (keyDim valueDim : Nat) where
+structure KDAStepInput (α : Type) [Storage α] (keyDim valueDim : Nat) where
   query : Tensor α (.dim keyDim .scalar)
   key : Tensor α (.dim keyDim .scalar)
   value : Tensor α (.dim valueDim .scalar)
@@ -130,11 +132,11 @@ structure KDAStepInput (α : Type) (keyDim valueDim : Nat) where
 
 namespace KDA
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {keyDim valueDim : Nat}
 
 /-- Recurrent KDA state `S ∈ R^(d_k × d_v)`. -/
-abbrev State (α : Type) (keyDim valueDim : Nat) :=
+abbrev State (α : Type) [Storage α] (keyDim valueDim : Nat) :=
   Tensor α (.dim keyDim (.dim valueDim .scalar))
 
 /--
@@ -154,10 +156,10 @@ def update (state : State α keyDim valueDim) (input : KDAStepInput α keyDim va
   Tensor.addSpec
     (Tensor.subSpec decayed
       (Tensor.mulSpec
-        (Spec.fill input.writeStrength (.dim keyDim (.dim valueDim .scalar)))
+        (Tensor.full (.dim keyDim (.dim valueDim .scalar)) input.writeStrength)
         (outerProductSpec input.key correction)))
     (Tensor.mulSpec
-      (Spec.fill input.writeStrength (.dim keyDim (.dim valueDim .scalar)))
+      (Tensor.full (.dim keyDim (.dim valueDim .scalar)) input.writeStrength)
       (outerProductSpec input.key input.value))
 
 /-- Coordinate form of the factorized KDA update.
@@ -231,7 +233,7 @@ theorem paper_retention_bounds (logScale logit : ℝ) :
 end KDA
 
 /-- Projection and gating parameters for one KDA head. -/
-structure KDAHead (α : Type) (modelDim keyDim valueDim convWidth decayRank : Nat) where
+structure KDAHead (α : Type) [Storage α] (modelDim keyDim valueDim convWidth decayRank : Nat) where
   queryWeight : Tensor α (.dim modelDim (.dim keyDim .scalar))
   keyWeight : Tensor α (.dim modelDim (.dim keyDim .scalar))
   valueWeight : Tensor α (.dim modelDim (.dim valueDim .scalar))
@@ -246,7 +248,7 @@ structure KDAHead (α : Type) (modelDim keyDim valueDim convWidth decayRank : Na
 
 namespace KDAHead
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {modelDim keyDim valueDim convWidth decayRank : Nat}
 
 /-- Project a newest-first input history through one matrix. -/
@@ -265,9 +267,9 @@ def prepare (head : KDAHead α modelDim keyDim valueDim convWidth decayRank)
   let vHistory := history.map (fun token => vecMatMulSpec token head.valueWeight)
   let vPre := head.valueConv.forward (vecMatMulSpec current head.valueWeight :: vHistory)
   let query := Normalize.regularizedL2 (Tensor.mapSpec Activation.Math.swishSpec qPre)
-    Numbers.epsilon
+    Normalize.l2Epsilon
   let key := Normalize.regularizedL2 (Tensor.mapSpec Activation.Math.swishSpec kPre)
-    Numbers.epsilon
+    Normalize.l2Epsilon
   let value := Tensor.mapSpec Activation.Math.swishSpec vPre
   let decayLogit :=
     Tensor.addSpec (vecMatMulSpec (vecMatMulSpec current head.decayDown) head.decayUp)
@@ -293,9 +295,9 @@ def prepareWindow (head : KDAHead α modelDim keyDim valueDim convWidth decayRan
   let kPre := head.keyConv.forwardWindow hWidth (matMulSpec window head.keyWeight)
   let vPre := head.valueConv.forwardWindow hWidth (matMulSpec window head.valueWeight)
   let query := Normalize.regularizedL2 (Tensor.mapSpec Activation.Math.swishSpec qPre)
-    Numbers.epsilon
+    Normalize.l2Epsilon
   let key := Normalize.regularizedL2 (Tensor.mapSpec Activation.Math.swishSpec kPre)
-    Numbers.epsilon
+    Normalize.l2Epsilon
   let value := Tensor.mapSpec Activation.Math.swishSpec vPre
   let decayLogit :=
     Tensor.addSpec (vecMatMulSpec (vecMatMulSpec current head.decayDown) head.decayUp)
@@ -309,7 +311,7 @@ def prepareWindow (head : KDAHead α modelDim keyDim valueDim convWidth decayRan
 end KDAHead
 
 /-- Complete multi-head KDA layer with a full-rank output gate (Eq. 6). -/
-structure KDALayer (α : Type)
+structure KDALayer (α : Type) [Storage α]
     (modelDim heads keyDim valueDim convWidth decayRank : Nat) where
   head : Fin heads → KDAHead α modelDim keyDim valueDim convWidth decayRank
   gateWeight : Tensor α (.dim modelDim (.dim heads (.dim valueDim .scalar)))
@@ -318,7 +320,7 @@ structure KDALayer (α : Type)
 
 namespace KDALayer
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {modelDim heads keyDim valueDim convWidth decayRank : Nat}
 
 /-- State carried by every KDA head.
@@ -328,7 +330,7 @@ function `Fin heads → KDA.State`, makes the mathematical state identical to th
 through GraphSpec and the runtime.  Individual head equations remain available through
 `Spec.get state head`.
 -/
-abbrev State (α : Type) (heads keyDim valueDim : Nat) :=
+abbrev State (α : Type) [Storage α] (heads keyDim valueDim : Nat) :=
   Tensor α (.dim heads (.dim keyDim (.dim valueDim .scalar)))
 
 /-- Full-rank output gates, arranged as one row per attention head.
@@ -434,7 +436,7 @@ def rollWindow (hWidth : 0 < convWidth)
 
 /-- Streaming KDA state: recurrent head matrices together with newest-first token history for the
 causal short convolutions. -/
-abbrev ScanState (α : Type) (modelDim heads keyDim valueDim : Nat) :=
+abbrev ScanState (α : Type) [Storage α] (modelDim heads keyDim valueDim : Nat) :=
   State α heads keyDim valueDim × List (Tensor α (.dim modelDim .scalar))
 
 /-- One streaming layer step, including the short-convolution history update. -/
@@ -467,7 +469,7 @@ end KDALayer
 /-! ## Gated Multi-head Latent Attention -/
 
 /-- Per-head up-projections from MLA's compressed query and KV latents. -/
-structure MLAHead (α : Type)
+structure MLAHead (α : Type) [Storage α]
     (queryLatentDim kvLatentDim contentKeyDim sharedKeyDim valueDim : Nat) where
   queryContentUp : Tensor α (.dim queryLatentDim (.dim contentKeyDim .scalar))
   querySharedUp : Tensor α (.dim queryLatentDim (.dim sharedKeyDim .scalar))
@@ -475,12 +477,12 @@ structure MLAHead (α : Type)
   valueUp : Tensor α (.dim kvLatentDim (.dim valueDim .scalar))
 
 /-- One cached MLA token: a normalized KV latent and a shared, unrotated key component. -/
-structure MLACacheEntry (α : Type) (kvLatentDim sharedKeyDim : Nat) where
+structure MLACacheEntry (α : Type) [Storage α] (kvLatentDim sharedKeyDim : Nat) where
   latent : Tensor α (.dim kvLatentDim .scalar)
   sharedKey : Tensor α (.dim sharedKeyDim .scalar)
 
 /-- Gated MLA parameters.  No positional-encoding operation appears in this structure. -/
-structure GatedMLA (α : Type)
+structure GatedMLA (α : Type) [Storage α]
     (modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim valueDim : Nat) where
   queryDown : Tensor α (.dim modelDim (.dim queryLatentDim .scalar))
   queryNormScale : Tensor α (.dim queryLatentDim .scalar)
@@ -494,11 +496,11 @@ structure GatedMLA (α : Type)
 
 namespace GatedMLA
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim valueDim : Nat}
 
 /-- The cache stores the two shared representations needed to reconstruct every head. -/
-abbrev Cache (α : Type) (kvLatentDim sharedKeyDim : Nat) :=
+abbrev Cache (α : Type) [Storage α] (kvLatentDim sharedKeyDim : Nat) :=
   List (MLACacheEntry α kvLatentDim sharedKeyDim)
 
 /-- Unnormalized global content attention for one head over a nonempty latent cache. -/
@@ -517,7 +519,7 @@ def attendHead
     let weight := score entry / denominator
     output + Tensor.mapSpec (fun value => weight * value)
       (vecMatMulSpec entry.latent head.valueUp))
-    (Spec.fill 0 (.dim valueDim .scalar))
+    (Tensor.full (.dim valueDim .scalar) 0)
 
 /-- Evaluate one MLA head from a fixed-length tensor cache.
 
@@ -542,7 +544,7 @@ def attendHeadFixed (tokens : Nat)
   let values := matMulSpec latentCache head.valueUp
   let contentScores := vecMatMulSpec queryContent (Tensor.swapAdjacentAxes keys 0)
   let sharedScores := vecMatMulSpec queryShared (Tensor.swapAdjacentAxes sharedKeyCache 0)
-  let scores := Tensor.mulSpec (Spec.fill scoreScale (.dim tokens .scalar))
+  let scores := Tensor.mulSpec (Tensor.full (.dim tokens .scalar) scoreScale)
     (Tensor.addSpec contentScores sharedScores)
   vecMatMulSpec (Activation.softmaxSpec 0 scores) values
 
@@ -639,7 +641,7 @@ def stepFixed (pastTokens : Nat)
   let sharedScores :=
     Tensor.matmulSpec sameBatch sameBatch queryShared (Tensor.swapAdjacentAxes sharedBatch 1)
   let scoreShape := .dim heads (.dim 1 (.dim (pastTokens + 1) .scalar))
-  let scores := Tensor.mulSpec (Spec.fill scoreScale scoreShape)
+  let scores := Tensor.mulSpec (Tensor.full scoreShape scoreScale)
     (Tensor.addSpec contentScores sharedScores)
   let headOutput3 := Tensor.matmulSpec sameBatch sameBatch
     (Activation.softmaxSpec 2 scores) values
@@ -705,7 +707,7 @@ end GatedMLA
 
 namespace AttnRes
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {modelDim : Nat}
 
 /-- Positive softmax kernel `exp(qᵀ RMSNorm(k))` from Eq. 9. -/
@@ -749,7 +751,7 @@ def attend (query : Tensor α (.dim modelDim .scalar))
   sources.foldl (fun output source =>
     let weight := kernel query source / denominator
     output + Tensor.mapSpec (fun value => weight * value) source)
-    (Spec.fill 0 (.dim modelDim .scalar))
+    (Tensor.full (.dim modelDim .scalar) 0)
 
 /-- Fixed-shape form of depth attention used at graph and backend boundaries.
 
@@ -761,7 +763,7 @@ def attendPacked {sources : Nat} (hModel : 0 < modelDim)
     (query : Tensor α (.dim modelDim .scalar))
     (values : Tensor α (.dim sources (.dim modelDim .scalar))) :
     Tensor α (.dim modelDim .scalar) :=
-  let unitScale := Spec.fill 1 (.dim modelDim .scalar)
+  let unitScale := Tensor.full (.dim modelDim .scalar) 1
   let normalized := Tensor.dim fun row =>
     RMSNorm.scalePositive hModel (Spec.get values row) unitScale
   let scores := vecMatMulSpec query (Tensor.swapAdjacentAxes normalized 0)
@@ -771,7 +773,7 @@ def attendPacked {sources : Nat} (hModel : 0 < modelDim)
   vecMatMulSpec weights values
 
 /-- State retained by Block AttnRes while traversing layers. -/
-structure BlockState (α : Type) (modelDim : Nat) where
+structure BlockState (α : Type) [Storage α] (modelDim : Nat) where
   embedding : Tensor α (.dim modelDim .scalar)
   completedBlocks : List (Tensor α (.dim modelDim .scalar))
   partialBlock : Tensor α (.dim modelDim .scalar)
@@ -838,7 +840,7 @@ def finishLayer (state : BlockState α modelDim) (blockSize : Nat)
   if state.partialSize + 1 = blockSize then
     { state with
       completedBlocks := state.completedBlocks ++ [partialSum]
-      partialBlock := Spec.fill 0 (.dim modelDim .scalar)
+      partialBlock := Tensor.full (.dim modelDim .scalar) 0
       partialSize := 0 }
   else
     { state with partialBlock := partialSum, partialSize := state.partialSize + 1 }

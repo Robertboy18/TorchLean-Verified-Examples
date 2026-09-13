@@ -23,11 +23,13 @@ graph below executes the differentiable computation for the resulting route.
 @[expose] public section
 
 namespace KimiK3
+
+open TorchLean
 namespace GraphSpec
 namespace StableLatentMoE
 
 open Spec
-open Spec.Tensor
+open TorchLean.Tensor
 open NN.GraphSpec.DAG
 
 /-- Packed parameter shapes for one Stable LatentMoE layer. -/
@@ -53,24 +55,24 @@ abbrev Inputs (modelDim : Nat) : List Shape :=
 def initialParams (modelDim latentDim sharedHidden routedHidden numShared numRouted : Nat) :
     TorchLean.TensorPack Float
       (Params modelDim latentDim sharedHidden routedHidden numShared numRouted) :=
-  .cons (Spec.fill 0 (.dim modelDim (.dim latentDim .scalar))) <|
-    .cons (Spec.fill 0 (.dim latentDim (.dim modelDim .scalar))) <|
-      .cons (Spec.fill 0 (.dim latentDim .scalar)) <|
-        .cons (Spec.fill 0 (.dim modelDim (.dim numRouted .scalar))) <|
-          .cons (Spec.fill 0 (.dim numRouted .scalar)) <|
-            .cons (Spec.fill 0 (.dim numShared (.dim modelDim (.dim sharedHidden .scalar)))) <|
-              .cons (Spec.fill 0 (.dim numShared (.dim modelDim (.dim sharedHidden .scalar)))) <|
-                .cons (Spec.fill 0 (.dim numShared (.dim sharedHidden (.dim modelDim .scalar)))) <|
+  .cons (Tensor.full (.dim modelDim (.dim latentDim .scalar)) 0) <|
+    .cons (Tensor.full (.dim latentDim (.dim modelDim .scalar)) 0) <|
+      .cons (Tensor.full (.dim latentDim .scalar) 0) <|
+        .cons (Tensor.full (.dim modelDim (.dim numRouted .scalar)) 0) <|
+          .cons (Tensor.full (.dim numRouted .scalar) 0) <|
+            .cons (Tensor.full (.dim numShared (.dim modelDim (.dim sharedHidden .scalar))) 0) <|
+              .cons (Tensor.full (.dim numShared (.dim modelDim (.dim sharedHidden .scalar))) 0) <|
+                .cons (Tensor.full (.dim numShared (.dim sharedHidden (.dim modelDim .scalar))) 0) <|
                   .cons
-                    (Spec.fill 0 (.dim numRouted (.dim latentDim (.dim routedHidden .scalar)))) <|
+                    (Tensor.full (.dim numRouted (.dim latentDim (.dim routedHidden .scalar))) 0) <|
                     .cons
-                      (Spec.fill 0 (.dim numRouted (.dim latentDim (.dim routedHidden .scalar)))) <|
+                      (Tensor.full (.dim numRouted (.dim latentDim (.dim routedHidden .scalar))) 0) <|
                       .cons
-                        (Spec.fill 0 (.dim numRouted (.dim routedHidden (.dim latentDim .scalar))))
+                        (Tensor.full (.dim numRouted (.dim routedHidden (.dim latentDim .scalar))) 0)
                         .nil
 
 /-- Pack the mathematical MoE record into the graph's expert-bank layout. -/
-def parameters {α : Type}
+def parameters {α : Type} [Storage α]
     {modelDim latentDim sharedHidden routedHidden numShared numRouted activeExperts : Nat}
     (moe : KimiK3.StableLatentMoE α modelDim latentDim sharedHidden routedHidden numShared
       numRouted activeExperts) :
@@ -86,7 +88,7 @@ def parameters {α : Type}
                 .cons (Tensor.dim fun expert => (moe.routed expert).downWeight) .nil
 
 /-- Package one token and its SiTU caps in the graph input layout. -/
-def inputs {α : Type} {modelDim : Nat}
+def inputs {α : Type} [Storage α] {modelDim : Nat}
     (input : Tensor α (.dim modelDim .scalar)) (gateCap upCap : α) :
     TorchLean.TensorPack α (Inputs modelDim) :=
   .cons input <| .cons (.scalar gateCap) <| .cons (.scalar upCap) .nil
@@ -157,10 +159,12 @@ def modelGivenRoute
       let downWeight := selectLeadingTerm numShared
         (.dim sharedHidden (.dim modelDim .scalar)) expert sharedDown
       Expert.term modelDim sharedHidden modelDim input gateWeight upWeight downWeight gateCap upCap
-  let latent := Term.op (NN.GraphSpec.DAG.PrimOp.vecMat modelDim latentDim)
+  let latent := Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      modelDim latentDim .scalar .scalar)
     (.cons input (.cons downProject .nil))
   let rawScores := Term.op (NN.GraphSpec.DAG.PrimOp.sigmoid (.dim numRouted .scalar))
-    (.cons (Term.op (NN.GraphSpec.DAG.PrimOp.vecMat modelDim numRouted)
+    (.cons (Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      modelDim numRouted .scalar .scalar)
       (.cons input (.cons routerWeight .nil))) .nil)
   let selectedTotal := Term.sum .scalar <|
     (List.finRange activeExperts).map fun slot =>
@@ -185,7 +189,8 @@ def modelGivenRoute
         (.cons weight (.cons expertOutput .nil))
   let normalized := Term.op (NN.GraphSpec.DAG.PrimOp.rmsNorm .scalar latentDim hLatent)
     (.cons routedOutput (.cons routedNormScale .nil))
-  let projected := Term.op (NN.GraphSpec.DAG.PrimOp.vecMat latentDim modelDim)
+  let projected := Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      latentDim modelDim .scalar .scalar)
     (.cons normalized (.cons upProject .nil))
   { initParams := initialParams modelDim latentDim sharedHidden routedHidden numShared numRouted
     body := Term.op (NN.GraphSpec.DAG.PrimOp.add (.dim modelDim .scalar))
@@ -206,26 +211,28 @@ theorem modelGivenRoute_specFwd_eq_forward
       (List.finRange activeExperts).foldl
           (fun total slot => Tensor.addSpec total
             (Spec.get (moe.rawRouterScores input) (route.expert slot)))
-          (Spec.fill 0 .scalar) =
+          (Tensor.full .scalar 0) =
         Tensor.scalar (Tensor.sumSpec (Tensor.dim fun slot => Tensor.scalar
           (Tensor.getScalar (moe.rawRouterScores input) (route.expert slot)))) := by
     change
       (List.finRange activeExperts).foldl
         (fun total slot => total + Spec.get (moe.rawRouterScores input) (route.expert slot))
         (Tensor.scalar 0) = _
-    rw [Spec.foldl_add_scalar]
+    erw [Spec.foldl_add_scalar
+      (fun slot => Spec.get (moe.rawRouterScores input) (route.expert slot))
+      (List.finRange activeExperts) 0]
     congr 1
     rw [List.finRange_foldl_add_eq_finset_sum, Spec.sum_spec_vec]
     apply Finset.sum_congr rfl
     intro slot _
-    rfl
+    simp [Tensor.getScalar]
   simp only [KimiK3.StableLatentMoE.rawRouterScores] at selectedTotal_eq
   simp [modelGivenRoute, parameters, inputs,
     NN.GraphSpec.DAG.Model.specFwd, Term.eval_sum, List.foldl_map,
     eval_selectLeadingTerm, Term.eval, Term.evalArgs, Env.tget,
     TorchLean.TensorPack.append,
     NN.GraphSpec.DAG.PrimOp.add,
-    NN.GraphSpec.DAG.PrimOp.vecMat, NN.GraphSpec.DAG.PrimOp.sigmoid,
+    NN.GraphSpec.DAG.PrimOp.sigmoid,
     NN.GraphSpec.DAG.PrimOp.rmsNorm,
     KimiK3.StableLatentMoE.forward, KimiK3.StableLatentMoE.sharedOutput,
     KimiK3.StableLatentMoE.routedAggregate,

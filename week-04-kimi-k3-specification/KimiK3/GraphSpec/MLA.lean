@@ -28,11 +28,13 @@ operation: its two score contributions are the content key and the shared unrota
 @[expose] public section
 
 namespace KimiK3
+
+open TorchLean
 namespace GraphSpec
 namespace MLA
 
 open Spec
-open Spec.Tensor
+open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
 
@@ -72,26 +74,20 @@ def initialLayerParams
     (modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim valueDim : Nat) :
     TorchLean.TensorPack Float
       (LayerParams modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim valueDim) :=
-  .cons (Spec.fill 0 (.dim modelDim (.dim queryLatentDim .scalar))) <|
-    .cons (Spec.fill 0 (.dim queryLatentDim .scalar)) <|
-      .cons (Spec.fill 0 (.dim modelDim (.dim kvLatentDim .scalar))) <|
-        .cons (Spec.fill 0 (.dim kvLatentDim .scalar)) <|
-          .cons (Spec.fill 0 (.dim modelDim (.dim sharedKeyDim .scalar))) <|
-            .cons (Spec.fill 0
-              (.dim heads (.dim queryLatentDim (.dim contentKeyDim .scalar)))) <|
-              .cons (Spec.fill 0
-                (.dim heads (.dim queryLatentDim (.dim sharedKeyDim .scalar)))) <|
-                .cons (Spec.fill 0
-                  (.dim heads (.dim kvLatentDim (.dim contentKeyDim .scalar)))) <|
-                  .cons (Spec.fill 0
-                    (.dim heads (.dim kvLatentDim (.dim valueDim .scalar)))) <|
-                    .cons (Spec.fill 0
-                      (.dim modelDim (.dim heads (.dim valueDim .scalar)))) <|
-                      .cons (Spec.fill 0
-                        (.dim heads (.dim valueDim (.dim modelDim .scalar))) ) .nil
+  .cons (Tensor.full (.dim modelDim (.dim queryLatentDim .scalar)) 0) <|
+    .cons (Tensor.full (.dim queryLatentDim .scalar) 0) <|
+      .cons (Tensor.full (.dim modelDim (.dim kvLatentDim .scalar)) 0) <|
+        .cons (Tensor.full (.dim kvLatentDim .scalar) 0) <|
+          .cons (Tensor.full (.dim modelDim (.dim sharedKeyDim .scalar)) 0) <|
+            .cons (Tensor.full (.dim heads (.dim queryLatentDim (.dim contentKeyDim .scalar))) 0) <|
+              .cons (Tensor.full (.dim heads (.dim queryLatentDim (.dim sharedKeyDim .scalar))) 0) <|
+                .cons (Tensor.full (.dim heads (.dim kvLatentDim (.dim contentKeyDim .scalar))) 0) <|
+                  .cons (Tensor.full (.dim heads (.dim kvLatentDim (.dim valueDim .scalar))) 0) <|
+                    .cons (Tensor.full (.dim modelDim (.dim heads (.dim valueDim .scalar))) 0) <|
+                      .cons (Tensor.full (.dim heads (.dim valueDim (.dim modelDim .scalar))) 0 ) .nil
 
 /-- Package a theorem-level Gated MLA layer in the graph parameter ABI. -/
-def layerParameters {α : Type}
+def layerParameters {α : Type} [Storage α]
     {modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim valueDim : Nat}
     (layer :
       GatedMLA α modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim valueDim) :
@@ -104,7 +100,7 @@ def layerParameters {α : Type}
           .cons layer.outputWeight .nil
 
 /-- Package one fixed-context causal step in the graph input ABI. -/
-def stepInputs {α : Type} {pastTokens modelDim kvLatentDim sharedKeyDim : Nat}
+def stepInputs {α : Type} [Storage α] {pastTokens modelDim kvLatentDim sharedKeyDim : Nat}
     (pastLatentCache : Tensor α (.dim pastTokens (.dim kvLatentDim .scalar)))
     (pastSharedKeyCache : Tensor α (.dim pastTokens (.dim sharedKeyDim .scalar)))
     (x : Tensor α (.dim modelDim .scalar)) (scoreScale : α) :
@@ -166,19 +162,22 @@ def stepModel (pastTokens modelDim heads queryLatentDim kvLatentDim contentKeyDi
       (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail
         (.tail (.tail (.tail (.tail .head))))))))))))))
   let queryProjected : Term Γ (.dim queryLatentDim .scalar) :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.vecMat modelDim queryLatentDim)
+    Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      modelDim queryLatentDim .scalar .scalar)
       (.cons x (.cons queryDown .nil))
   let queryLatent : Term Γ (.dim queryLatentDim .scalar) :=
     Term.op (NN.GraphSpec.DAG.PrimOp.rmsNorm .scalar queryLatentDim hQueryLatent)
       (.cons queryProjected (.cons queryNormScale .nil))
   let kvProjected : Term Γ (.dim kvLatentDim .scalar) :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.vecMat modelDim kvLatentDim)
+    Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      modelDim kvLatentDim .scalar .scalar)
       (.cons x (.cons kvDown .nil))
   let currentKV : Term Γ (.dim kvLatentDim .scalar) :=
     Term.op (NN.GraphSpec.DAG.PrimOp.rmsNorm .scalar kvLatentDim hKVLatent)
       (.cons kvProjected (.cons kvNormScale .nil))
   let currentShared : Term Γ (.dim sharedKeyDim .scalar) :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.vecMat modelDim sharedKeyDim)
+    Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      modelDim sharedKeyDim .scalar .scalar)
       (.cons x (.cons sharedKeyDown .nil))
   let currentKVRow : Term Γ (.dim 1 (.dim kvLatentDim .scalar)) :=
     Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
@@ -280,7 +279,8 @@ def stepModel (pastTokens modelDim heads queryLatentDim kvLatentDim contentKeyDi
     Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
       (.cons gateWeight .nil)
   let gateFlat : Term Γ (.dim (heads * valueDim) .scalar) :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.vecMat modelDim (heads * valueDim))
+    Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      modelDim (heads * valueDim) .scalar .scalar)
       (.cons x (.cons gateMatrix .nil))
   let gateUnactivated : Term Γ (.dim heads (.dim valueDim .scalar)) :=
     Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
@@ -298,7 +298,8 @@ def stepModel (pastTokens modelDim heads queryLatentDim kvLatentDim contentKeyDi
     Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size, Nat.mul_assoc]))
       (.cons outputWeight .nil)
   let output : Term Γ (.dim modelDim .scalar) :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.vecMat (heads * valueDim) modelDim)
+    Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      (heads * valueDim) modelDim .scalar .scalar)
       (.cons gatedFlat (.cons outputMatrix .nil))
   { initParams :=
       initialLayerParams modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim
@@ -354,7 +355,7 @@ theorem stepModel_specFwd_eq_stepFixed
     NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth_specFwd,
     NN.GraphSpec.DAG.PrimOp.add_specFwd, NN.GraphSpec.DAG.PrimOp.scalarMul_specFwd,
     NN.GraphSpec.DAG.PrimOp.sigmoid_specFwd, NN.GraphSpec.DAG.PrimOp.mul_specFwd,
-    NN.GraphSpec.DAG.PrimOp.vecMat, NN.GraphSpec.DAG.PrimOp.broadcast,
+    broadcastVecMat_scalar_specFwd, NN.GraphSpec.DAG.PrimOp.broadcast,
     NN.GraphSpec.DAG.PrimOp.softmax, GatedMLA.stepFixed, Tensor.item_scalar,
     GraphSpec.rmsNormVectorSemantics_eq_scale]
   simp [Tensor.permuteByAdjacentSwaps]

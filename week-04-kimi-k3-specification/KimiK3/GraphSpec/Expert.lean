@@ -22,10 +22,12 @@ linear, elementwise, `tanh`, and `sigmoid` primitives. No opaque K3 operation is
 @[expose] public section
 
 namespace KimiK3
+
+open TorchLean
 namespace GraphSpec
 
 open Spec
-open Spec.Tensor
+open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
 
@@ -48,9 +50,9 @@ The semantic theorem below quantifies over arbitrary expert weights.
 -/
 def initialParams (inputDim hiddenDim outputDim : Nat) :
     TorchLean.TensorPack Float (Params inputDim hiddenDim outputDim) :=
-  .cons (Spec.fill 0 (.dim inputDim (.dim hiddenDim .scalar))) <|
-    .cons (Spec.fill 0 (.dim inputDim (.dim hiddenDim .scalar))) <|
-      .cons (Spec.fill 0 (.dim hiddenDim (.dim outputDim .scalar))) .nil
+  .cons (Tensor.full (.dim inputDim (.dim hiddenDim .scalar)) 0) <|
+    .cons (Tensor.full (.dim inputDim (.dim hiddenDim .scalar)) 0) <|
+      .cons (Tensor.full (.dim hiddenDim (.dim outputDim .scalar)) 0) .nil
 
 /-- Build the typed DAG term for one SiTU expert from explicit input and parameter terms.
 
@@ -63,9 +65,11 @@ def term {Γ : List Shape} (inputDim hiddenDim outputDim : Nat)
     (gateWeight upWeight : Term Γ (.dim inputDim (.dim hiddenDim .scalar)))
     (downWeight : Term Γ (.dim hiddenDim (.dim outputDim .scalar)))
     (gateCap upCap : Term Γ .scalar) : Term Γ (.dim outputDim .scalar) :=
-  let gate := Term.op (NN.GraphSpec.DAG.PrimOp.vecMat inputDim hiddenDim)
+  let gate := Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      inputDim hiddenDim .scalar .scalar)
     (.cons input (.cons gateWeight .nil))
-  let up := Term.op (NN.GraphSpec.DAG.PrimOp.vecMat inputDim hiddenDim)
+  let up := Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      inputDim hiddenDim .scalar .scalar)
     (.cons input (.cons upWeight .nil))
   let cappedGate := Term.op (PrimOp.softCap hiddenDim) (.cons gateCap (.cons gate .nil))
   let sigmoidGate := Term.op (NN.GraphSpec.DAG.PrimOp.sigmoid (.dim hiddenDim .scalar))
@@ -75,7 +79,8 @@ def term {Γ : List Shape} (inputDim hiddenDim outputDim : Nat)
   let cappedUp := Term.op (PrimOp.softCap hiddenDim) (.cons upCap (.cons up .nil))
   let hidden := Term.op (NN.GraphSpec.DAG.PrimOp.mul (.dim hiddenDim .scalar))
     (.cons gated (.cons cappedUp .nil))
-  Term.op (NN.GraphSpec.DAG.PrimOp.vecMat hiddenDim outputDim)
+  Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      hiddenDim outputDim .scalar .scalar)
     (.cons hidden (.cons downWeight .nil))
 
 /-- Evaluation of the compositional expert term is the SiTU expert equation on its subterms. -/
@@ -94,16 +99,10 @@ def term {Γ : List Shape} (inputDim hiddenDim outputDim : Nat)
           (vecMatMulSpec (Term.eval env input) (Term.eval env gateWeight))
           (vecMatMulSpec (Term.eval env input) (Term.eval env upWeight)))
         (Term.eval env downWeight) := by
-  generalize hGateCap : Term.eval env gateCap = gateCapValue
-  generalize hUpCap : Term.eval env upCap = upCapValue
-  cases gateCapValue with
-  | scalar gateCapValue =>
-      cases upCapValue with
-      | scalar upCapValue =>
-          simp [term, Term.eval, Term.evalArgs, NN.GraphSpec.DAG.PrimOp.vecMat,
-            PrimOp.softCap, NN.GraphSpec.DAG.PrimOp.sigmoid, NN.GraphSpec.DAG.PrimOp.mul,
-            hGateCap, hUpCap, one_div]
-          rw [SiTU.expanded_eq_vector]
+  simp only [term, Term.eval, Term.evalArgs, broadcastVecMat_scalar_specFwd,
+    PrimOp.softCap, NN.GraphSpec.DAG.PrimOp.sigmoid, NN.GraphSpec.DAG.PrimOp.mul,
+    one_div]
+  rw [SiTU.expanded_eq_vector]
 
 /-- Typed GraphSpec representation of one SiTU-GLU expert. -/
 def model (inputDim hiddenDim outputDim : Nat) :
@@ -129,13 +128,13 @@ def model (inputDim hiddenDim outputDim : Nat) :
     body := term inputDim hiddenDim outputDim input gateWeight upWeight downWeight gateCap upCap }
 
 /-- Convert the theorem-oriented expert record to GraphSpec's parameter ABI. -/
-def parameters {α : Type} {inputDim hiddenDim outputDim : Nat}
+def parameters {α : Type} [Storage α] {inputDim hiddenDim outputDim : Nat}
     (expert : KimiK3.Expert α inputDim hiddenDim outputDim) :
     TorchLean.TensorPack α (Params inputDim hiddenDim outputDim) :=
   .cons expert.gateWeight <| .cons expert.upWeight <| .cons expert.downWeight .nil
 
 /-- Package an expert input and its two caps in GraphSpec's typed input ABI. -/
-def inputs {α : Type} {inputDim : Nat}
+def inputs {α : Type} [Storage α] {inputDim : Nat}
     (input : Tensor α (.dim inputDim .scalar)) (gateCap upCap : α) :
     TorchLean.TensorPack α (Inputs inputDim) :=
   .cons input <| .cons (.scalar gateCap) <| .cons (.scalar upCap) .nil

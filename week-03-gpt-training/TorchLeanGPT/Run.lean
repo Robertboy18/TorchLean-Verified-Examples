@@ -170,13 +170,13 @@ def parseModelConfig (args : List String) (base : ModelConfig) :
 /-- Parse training, artifact, tokenizer, and generation options. -/
 def RunConfig.parse (seed : Nat) (args : List String) : IO RunConfig := do
   let (presetName, args) ← orThrow <|
-    CLI.takeFlagValueDefault args "preset" "quick"
+    CLI.takeFlagValue args "preset" "quick"
   let preset ← orThrow <| ModelConfig.ofName presetName
   let (model, args) ← parseModelConfig args preset
   let defaultSteps := if presetName.toLower == "gpt2-small" then 1000 else 2
   let defaultBatch := if presetName.toLower == "gpt2-small" then 4 else 2
-  let (steps?, args) ← orThrow <| CLI.takeNatFlagOnce args "steps"
-  let (tokenBudget?, args) ← orThrow <| CLI.takeNatFlagOnce args "token-budget"
+  let (steps?, args) ← orThrow <| CLI.takeNatFlag? args "steps"
+  let (tokenBudget?, args) ← orThrow <| CLI.takeNatFlag? args "token-budget"
   let (batch, args) ← orThrow <|
     CLI.takePositiveNatFlag args exeName "batch" defaultBatch
   if steps?.isSome && tokenBudget?.isSome then
@@ -199,17 +199,17 @@ def RunConfig.parse (seed : Nat) (args : List String) : IO RunConfig := do
     else
       0
   let (warmupSteps, args) ← orThrow <|
-    CLI.takeNatFlagDefault args "warmup-steps" defaultWarmupSteps
+    CLI.takeNatFlag args "warmup-steps" defaultWarmupSteps
   let (weightDecay, args) ← orThrow <|
     CLI.takeNonnegativeFloatFlag args exeName "weight-decay" 0.1
   let (evalEvery, args) ← orThrow <|
-    CLI.takeNatFlagDefault args "eval-every" (if steps <= 10 then 1 else 100)
+    CLI.takeNatFlag args "eval-every" (if steps <= 10 then 1 else 100)
   let (evalBatches, args) ← orThrow <|
     CLI.takePositiveNatFlag args exeName "eval-batches" 4
   let (trainBin, args) ← orThrow <|
-    CLI.takePathFlagDefault args "train-bin" (defaultDataDir / "train.bin")
+    CLI.takePathFlag args "train-bin" (defaultDataDir / "train.bin")
   let (valBin, args) ← orThrow <|
-    CLI.takePathFlagDefault args "val-bin" (defaultDataDir / "val.bin")
+    CLI.takePathFlag args "val-bin" (defaultDataDir / "val.bin")
   let ((trainMask?, valMask?), args) ← orThrow <|
     CLI.takePairedPathFlags args "train-mask" "val-mask"
   let ((trainRecords?, valRecords?), args) ← orThrow <|
@@ -217,29 +217,29 @@ def RunConfig.parse (seed : Nat) (args : List String) : IO RunConfig := do
   if trainMask?.isSome != trainRecords?.isSome then
     throw <| IO.userError <|
       s!"{exeName}: target masks and dialogue records must be supplied together"
-  let (loadParams?, args) ← orThrow <| CLI.takePathFlagOnce args "load-params"
-  let (saveParams?, args) ← orThrow <| CLI.takePathFlagOnce args "save-params"
-  let (resume?, args) ← orThrow <| CLI.takePathFlagOnce args "resume"
-  let (checkpointDir?, args) ← orThrow <| CLI.takePathFlagOnce args "checkpoint-dir"
-  let (checkpointEvery, args) ← orThrow <| CLI.takeNatFlagDefault args "checkpoint-every" 0
+  let (loadParams?, args) ← orThrow <| CLI.takePathFlag? args "load-params"
+  let (saveParams?, args) ← orThrow <| CLI.takePathFlag? args "save-params"
+  let (resume?, args) ← orThrow <| CLI.takePathFlag? args "resume"
+  let (checkpointDir?, args) ← orThrow <| CLI.takePathFlag? args "checkpoint-dir"
+  let (checkpointEvery, args) ← orThrow <| CLI.takeNatFlag args "checkpoint-every" 0
   if loadParams?.isSome && resume?.isSome then
     throw <| IO.userError s!"{exeName}: --load-params and --resume are mutually exclusive"
   if checkpointEvery != 0 && checkpointDir?.isNone then
     throw <| IO.userError s!"{exeName}: --checkpoint-every requires --checkpoint-dir"
   let (metricsPath, args) ← orThrow <|
-    CLI.takePathFlagDefault args "metrics"
+    CLI.takePathFlag args "metrics"
       "week-03-gpt-training/artifacts/training-metrics.json"
   let (passportPath, args) ← orThrow <|
-    CLI.takePathFlagDefault args "passport"
+    CLI.takePathFlag args "passport"
       "week-03-gpt-training/artifacts/run-passport.json"
   let ((tokenizerVocab?, tokenizerMerges?), args) ← orThrow <|
     CLI.takePairedPathFlags args "tokenizer-vocab" "tokenizer-merges"
   let (prompt, args) ← orThrow <|
-    CLI.takeFlagValueDefault args "prompt" "The meaning of verification is"
-  let (generate, args) ← orThrow <| CLI.takeNatFlagDefault args "generate" 0
+    CLI.takeFlagValue args "prompt" "The meaning of verification is"
+  let (generate, args) ← orThrow <| CLI.takeNatFlag args "generate" 0
   let (temperature, args) ← orThrow <|
     CLI.takePositiveFloatFlag args exeName "temperature" 0.8
-  let (topK, args) ← orThrow <| CLI.takeNatFlagDefault args "top-k" 40
+  let (topK, args) ← orThrow <| CLI.takeNatFlag args "top-k" 40
   orThrow <| CLI.checkNoArgs args
   orThrow <| requireFinite "lr" learningRate
   orThrow <| requireFinite "min-lr" minLearningRate
@@ -453,27 +453,27 @@ def causalLmTokenBatchFromShard
     (vocab batch seqLen : Nat) [NeZero vocab]
     (shard : TokenShard) (seed step : Nat) (padId : Nat := 0) :
     Tensor (Fin vocab) [batch, seqLen] × Tensor (Fin vocab) [batch, seqLen] :=
-  let offsetAt := text.Corpus.randomBatchOffsets shard.size seqLen batch seed step
-  let offsets := Array.ofFn offsetAt
-  (Spec.Tensor.generate [batch, seqLen] fun
-      | [bi, i] => Fin.ofNat vocab (shard.getD (offsets.getD bi 0 + i) padId)
-      | _ => Fin.ofNat vocab padId,
-    Spec.Tensor.generate [batch, seqLen] fun
-      | [bi, i] => Fin.ofNat vocab (shard.getD (offsets.getD bi 0 + i + 1) padId)
-      | _ => Fin.ofNat vocab padId)
+  let offsets := Tensor.to
+    (text.Corpus.randomBatchOffsets shard.size seqLen batch seed step) (Array Nat)
+  -- Consecutive positions occupy one row of the flat buffer. The target reads the same window
+  -- shifted by one token, including the token immediately after the input window.
+  (Tensor.generateFlat [batch, seqLen] fun index =>
+      Fin.ofNat vocab (shard.getD (offsets.getD (index / seqLen) 0 + index % seqLen) padId),
+    Tensor.generateFlat [batch, seqLen] fun index =>
+      Fin.ofNat vocab (shard.getD (offsets.getD (index / seqLen) 0 + index % seqLen + 1) padId))
 
 /-- Build a deterministic dialogue-bounded batch from compact token, mask, and record shards. -/
 def causalLmMaskedTokenBatchFromRecords
-    {α : Type} [_root_.Context α] [Runtime.FromFloat α]
+    {α : Type} [TorchLean.Storage α] [_root_.Context α] [Runtime.FromFloat α]
     (vocab batch seqLen : Nat) [NeZero vocab]
     (shard : TokenShard) (targetMask : TargetMask)
     (records : DialogueRecords)
     (seed step : Nat) (padId : Nat := 0) :
     Tensor (Fin vocab) [batch, seqLen] ×
       Tensor (Fin vocab) [batch, seqLen] × Tensor α [batch, seqLen] :=
-  let key := Runtime.Autograd.TorchLean.Random.keyOf seed step
+  let key := Spec.Random.keyOf seed step
   let recordAt (batchIndex : Nat) : DialogueRecord :=
-    records.entries[Runtime.Autograd.TorchLean.Random.sampleNat
+    records.entries[Spec.Random.sampleNat
       key batchIndex records.entries.size]!
   let (xTokens, yTokens, enabledTargets) := Id.run do
     let mut xs := Array.mkEmpty (batch * seqLen)
@@ -500,15 +500,12 @@ def causalLmMaskedTokenBatchFromRecords
   let activeWeight :=
     if activeCount = 0 then 0 else 1.0 / Float.ofNat activeCount
   let rowWeights := enabledTargets.map (fun active => if active then activeWeight else 0)
-  (Spec.Tensor.generate [batch, seqLen] fun
-      | [bi, i] => Fin.ofNat vocab (xTokens.getD (bi * seqLen + i) padId)
-      | _ => Fin.ofNat vocab padId,
-    Spec.Tensor.generate [batch, seqLen] fun
-      | [bi, i] => Fin.ofNat vocab (yTokens.getD (bi * seqLen + i) padId)
-      | _ => Fin.ofNat vocab padId,
-    Spec.Tensor.generate [batch, seqLen] fun
-      | [bi, i] => Runtime.ofFloat (rowWeights.getD (bi * seqLen + i) 0.0)
-      | _ => Runtime.ofFloat 0.0)
+  (Tensor.generateFlat [batch, seqLen] fun index =>
+      Fin.ofNat vocab (xTokens.getD index padId),
+    Tensor.generateFlat [batch, seqLen] fun index =>
+      Fin.ofNat vocab (yTokens.getD index padId),
+    Tensor.generateFlat [batch, seqLen] fun index =>
+      Runtime.ofFloat (rowWeights.getD index 0.0))
 
 /-- Ensure a generated artifact's parent directory exists. -/
 def ensureParent (path : System.FilePath) : IO Unit :=
@@ -523,7 +520,7 @@ def floatJson (value : Float) : Lean.Json :=
   | .inl spelling => .str spelling
 
 /-- Name of the backend profile selected by the runtime options. -/
-def backendProfileName (opts : Options) : String :=
+def backendProfileName (opts : TorchLean.Runtime.Config) : String :=
   match opts.resolveBackendProfile with
   | .ok profile => profile.name
   | .error _ => "unresolved"
@@ -579,7 +576,7 @@ def checkpointConfigJsonV1 (cfg : RunConfig) : Lean.Json :=
 
 /-- Resume identity used by newly written checkpoints. -/
 def checkpointConfigJson
-    (cfg : RunConfig) (opts : Options) (data : DatasetIdentity) : Lean.Json :=
+    (cfg : RunConfig) (opts : TorchLean.Runtime.Config) (data : DatasetIdentity) : Lean.Json :=
   Lean.Json.mkObj
     [ ("run", checkpointConfigJsonV1 cfg)
     , ("train_content_hash64",
@@ -606,7 +603,7 @@ def checkpointConfigJson
 
 /-- Manifest committed last inside each complete checkpoint directory. -/
 def checkpointManifest
-    (cfg : RunConfig) (opts : Options) (data : DatasetIdentity)
+    (cfg : RunConfig) (opts : TorchLean.Runtime.Config) (data : DatasetIdentity)
     (completedStep : Nat) : Lean.Json :=
   Lean.Json.mkObj
     [ ("schema", .str "torchlean.gpt-training.resume.v2")
@@ -629,7 +626,7 @@ def resolveCheckpointDirectory (path : System.FilePath) : IO System.FilePath := 
 
 /-- Parse and validate a checkpoint manifest before mutating model or optimizer state. -/
 def readCheckpointStep
-    (cfg : RunConfig) (opts : Options) (data : DatasetIdentity)
+    (cfg : RunConfig) (opts : TorchLean.Runtime.Config) (data : DatasetIdentity)
     (directory : System.FilePath) : IO Nat := do
   let path := directory / "manifest.json"
   let json ← match Lean.Json.parse (← IO.FS.readFile path) with
@@ -670,8 +667,8 @@ directory becomes visible only after both payloads, the metric snapshot, and the
 been written successfully.
 -/
 def saveTrainingCheckpoint
-    {β : Type} {stateShapes inputShapes dataInputShapes : List Shape}
-    (cfg : RunConfig)
+    {β : Type} [TorchLean.Storage β] {stateShapes inputShapes dataInputShapes : List Shape}
+    (cfg : RunConfig) (opts : TorchLean.Runtime.Config)
     (module : Module.Objective Float β stateShapes inputShapes dataInputShapes)
     (data : DatasetIdentity)
     (root : System.FilePath) (completedStep : Nat)
@@ -685,11 +682,11 @@ def saveTrainingCheckpoint
   if ← temporary.pathExists then
     IO.FS.removeDirAll temporary
   IO.FS.createDirAll temporary
-  Checkpoint.saveModule module (temporary / "parameters.tlf32")
-  Checkpoint.saveOptimizerState module (temporary / "optimizer.tladam")
+  Checkpoint.save module (temporary / "parameters.tlf32")
+  Checkpoint.Optimizer.save module (temporary / "optimizer.tladam")
   writeMetrics (temporary / "metrics.json") points
   IO.FS.writeFile (temporary / "manifest.json")
-    (checkpointManifest cfg module.opts data completedStep).pretty
+    (checkpointManifest cfg opts data completedStep).pretty
   IO.FS.rename temporary destination
   let latestTemporary := root / ".LATEST.tmp"
   IO.FS.writeFile latestTemporary (name ++ "\n")
@@ -698,20 +695,20 @@ def saveTrainingCheckpoint
 
 /-- Restore model parameters, CUDA AdamW moments, and the completed global step. -/
 def loadTrainingCheckpoint
-    {β : Type} {stateShapes inputShapes dataInputShapes : List Shape}
-    (cfg : RunConfig)
+    {β : Type} [TorchLean.Storage β] {stateShapes inputShapes dataInputShapes : List Shape}
+    (cfg : RunConfig) (opts : TorchLean.Runtime.Config)
     (module : Module.Objective Float β stateShapes inputShapes dataInputShapes)
     (data : DatasetIdentity)
     (path : System.FilePath) : IO (Nat × System.FilePath) := do
   let directory ← resolveCheckpointDirectory path
-  let completed ← readCheckpointStep cfg module.opts data directory
-  Checkpoint.loadModule module (directory / "parameters.tlf32")
-  Checkpoint.loadOptimizerState module (directory / "optimizer.tladam")
+  let completed ← readCheckpointStep cfg opts data directory
+  Checkpoint.load module (directory / "parameters.tlf32")
+  Checkpoint.Optimizer.load module (directory / "optimizer.tladam")
   pure (completed, directory)
 
 /-- Write the architectural and runtime boundary associated with one run. -/
 def writePassport
-    (path : System.FilePath) (cfg : RunConfig) (opts : Options)
+    (path : System.FilePath) (cfg : RunConfig) (opts : TorchLean.Runtime.Config)
     (data : DatasetIdentity) (actualParameters : Nat) : IO Unit := do
   ensureParent path
   let model := cfg.model
@@ -803,40 +800,39 @@ def writePassport
 
 /-- Predictor with discrete token ids and floating-point vocabulary logits. -/
 abbrev Predictor (cfg : nn.models.CausalTransformer.Config) (batch : Nat) :=
-  Tensor (Fin cfg.vocab) (tokenShape cfg batch) →
+  Tensor (Fin cfg.vocabularySize) (tokenShape cfg batch) →
     IO (Tensor Float (logitShape cfg batch))
 
 /-- Repeat one padded token row across the configured batch. -/
 def tokenBatchTensor
-    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocab]
+    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocabularySize]
     (batch : Nat) (tokens : List Nat) :
-    Tensor (Fin cfg.vocab) (tokenShape cfg batch) :=
-  let row := (tokens.take cfg.seqLen ++
-    List.replicate (cfg.seqLen - Nat.min tokens.length cfg.seqLen) 0).toArray
-  Spec.Tensor.generate [batch, cfg.seqLen] fun
-    | [_batch, position] => Fin.ofNat cfg.vocab (row.getD position 0)
-    | _ => Fin.ofNat cfg.vocab 0
+    Tensor (Fin cfg.vocabularySize) (tokenShape cfg batch) :=
+  let row := (tokens.take cfg.sequenceLength ++
+    List.replicate (cfg.sequenceLength - Nat.min tokens.length cfg.sequenceLength) 0).toArray
+  Tensor.generateFlat [batch, cfg.sequenceLength] fun index =>
+    Fin.ofNat cfg.vocabularySize (row.getD (index % cfg.sequenceLength) 0)
 
 /-- Sample a continuation without restarting the model's learned absolute positions. -/
 partial def generateIds
-    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocab]
+    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocabularySize]
     (batch : Nat) (predict : Predictor cfg batch)
     (promptIds : List Nat)
     (steps : Nat) (temperature : Float) (topK seed : Nat)
     (stopToken? : Option Nat := none) : IO (List Nat) := do
-  if promptIds.length + steps > cfg.seqLen then
+  if promptIds.length + steps > cfg.sequenceLength then
     throw <| IO.userError <|
       s!"generation: prompt ({promptIds.length}) plus requested continuation ({steps}) " ++
-        s!"exceeds context length {cfg.seqLen}"
+        s!"exceeds context length {cfg.sequenceLength}"
   else if hBatch : batch = 0 then
     pure promptIds
-  else if hSeq : cfg.seqLen = 0 then
+  else if hSeq : cfg.sequenceLength = 0 then
     pure promptIds
   else
-    letI : NeZero cfg.seqLen := ⟨hSeq⟩
+    letI : NeZero cfg.sequenceLength := ⟨hSeq⟩
     let generation : text.GenerationOptions :=
       { prompt := ""
-        generate := steps
+        newTokenCount := steps
         temperature
         topK
         repeatPenalty := 1.05
@@ -847,37 +843,38 @@ partial def generateIds
     let rec loop (ids : List Nat) : Nat → IO (List Nat)
       | 0 => pure ids
       | remaining + 1 => do
-          let generatedSoFar := generation.generate - (remaining + 1)
+          let generatedSoFar := generation.newTokenCount - (remaining + 1)
           let predictionPosition := if ids.isEmpty then 0 else ids.length - 1
           let x := tokenBatchTensor cfg batch ids
           let logits ← predict x
           let scores := text.batchLogitScoresAt logits firstBatch
-            (Fin.ofNat cfg.seqLen predictionPosition)
+            (Fin.ofNat cfg.sequenceLength predictionPosition)
           let recent :=
             if generation.repeatWindow = 0 then
               #[]
             else
               (ids.drop (ids.length - Nat.min ids.length generation.repeatWindow)).toArray
-          let nextToken ← orThrow <| text.chooseNextToken scores generation generatedSoFar recent
+          let nextToken ← orThrow <|
+            text.chooseNextToken scores generation generatedSoFar (Tensor.from recent)
           if stopToken? = some nextToken.val then
             pure ids
           else
             loop (ids ++ [nextToken.val]) remaining
-    loop promptIds generation.generate
+    loop promptIds generation.newTokenCount
 
 /-- Load the optional GPT-2 BPE tokenizer pair. -/
 def loadTokenizer? (cfg : RunConfig) : IO (Option text.GPT2BPE.Tokenizer) :=
   match cfg.tokenizerVocab?, cfg.tokenizerMerges? with
   | some vocab, some merges =>
       some <$> LeanProfiler.span "tokenizer.load"
-        (text.GPT2BPE.loadWithProgress exeName vocab merges)
+        (text.GPT2BPE.load vocab merges (progress := true) (label := exeName))
         (metadata := { phase := some "data", activity := some "tokenizer" })
   | _, _ => pure none
 
 /-- Generate and print one completion when tokenizer assets were supplied. -/
 def printCompletion
     (runCfg : RunConfig) (modelCfg : nn.models.CausalTransformer.Config)
-    [NeZero modelCfg.vocab]
+    [NeZero modelCfg.vocabularySize]
     (predict : Predictor modelCfg runCfg.batch) (tokenizer : text.GPT2BPE.Tokenizer) : IO Unit := do
   let promptIds ← orThrow <| text.GPT2BPE.encode tokenizer runCfg.prompt
   let outputIds ← LeanProfiler.span "generation.complete"
@@ -887,10 +884,20 @@ def printCompletion
       { phase := some "generation"
         activity := some "autoregressive"
         stepIndex := some runCfg.generate })
-  let output := text.GPT2BPE.decodeOrEmpty tokenizer outputIds.toArray
+  let output ← orThrow <| text.GPT2BPE.decode tokenizer outputIds.toArray
   IO.println "\n--- completion ---"
   IO.println output
   IO.println "------------------"
+
+/-- Set the scheduled learning rate without changing AdamW moments or update counters. -/
+def setAdamWLearningRate {shapes : List Shape} (learningRate : Float) :
+    _root_.Runtime.Autograd.Model.Optim.StateList
+      _root_.Optim.AdamW.State Float shapes →
+    _root_.Runtime.Autograd.Model.Optim.StateList
+      _root_.Optim.AdamW.State Float shapes
+  | .nil => .nil
+  | .cons state rest =>
+      .cons { state with learningRate := learningRate } (setAdamWLearningRate learningRate rest)
 
 /--
 Run optimization for any scalar objective over this causal Transformer.
@@ -899,33 +906,23 @@ The input pack is abstract: ordinary next-token training uses `(tokens, targets)
 training uses `(tokens, targets, rowWeights)`. Initialization, AdamW state, checkpointing,
 evaluation, metrics, and profiling are shared.
 -/
-def setAdamWLearningRate {shapes : List Shape} (learningRate : Float) :
-    _root_.Runtime.Autograd.TorchLean.Optim.StateList
-      _root_.Optim.AdamW.State Float shapes →
-    _root_.Runtime.Autograd.TorchLean.Optim.StateList
-      _root_.Optim.AdamW.State Float shapes
-  | .nil => .nil
-  | .cons state rest =>
-      .cons { state with lr := learningRate } (setAdamWLearningRate learningRate rest)
-
 def optimizeObjective
     {inputShapes dataInputShapes : List Shape}
-    (runCfg : RunConfig) (opts : Options)
-    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocab]
-    (model : nn.Sequential
-      (nn.models.CausalTransformer.embeddingShape cfg [runCfg.batch])
-      (nn.models.CausalTransformer.embeddingShape cfg [runCfg.batch]))
+    (runCfg : RunConfig) (opts : TorchLean.Runtime.Config)
+    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocabularySize]
+    (model : nn.IndexedModel (tokenShape cfg runCfg.batch) (logitShape cfg runCfg.batch)
+      (Fin cfg.vocabularySize))
     (data : DatasetIdentity) (actualParameterCount : Nat)
-    (trainDef : Module.ObjectiveDef (Fin cfg.vocab)
-      (nn.models.CausalTransformer.Tied.stateShapes cfg model) inputShapes dataInputShapes)
-    (evalDef : Module.ObjectiveDef (Fin cfg.vocab)
-      (nn.models.CausalTransformer.Tied.stateShapes cfg model) inputShapes dataInputShapes)
+    (trainDef : Module.ObjectiveDefinition (Fin cfg.vocabularySize)
+      (model.stateShapes) inputShapes dataInputShapes)
+    (evalDef : Module.ObjectiveDefinition (Fin cfg.vocabularySize)
+      (model.stateShapes) inputShapes dataInputShapes)
     (trainSample validationSample : Nat →
-      TensorPack Float inputShapes × TensorPack (Fin cfg.vocab) dataInputShapes) :
+      TensorPack Float inputShapes × TensorPack (Fin cfg.vocabularySize) dataInputShapes) :
     IO (_root_.Runtime.Autograd.Torch.ParamList Float
-      (nn.models.CausalTransformer.Tied.stateShapes cfg model)) := do
+      (model.stateShapes)) := do
   let module ← LeanProfiler.span "model.initialize"
-    (TorchLean.Module.instantiateAs (α := Float) trainDef id opts)
+    (TorchLean.Module.instantiate trainDef opts (α := Float))
     (metadata :=
       { phase := some "initialization"
         activity := some "parameters"
@@ -936,14 +933,14 @@ def optimizeObjective
   | none => pure ()
   | some checkpoint =>
       LeanProfiler.span "checkpoint.load"
-        (Checkpoint.loadModule module checkpoint)
+        (Checkpoint.load module checkpoint)
         (metadata := { phase := some "checkpoint", activity := some "load" })
 
-  let optimizer := _root_.Runtime.Autograd.TorchLean.Optim.adamw
-    (α := Float) (paramShapes := nn.models.CausalTransformer.Tied.stateShapes cfg model)
+  let optimizer := _root_.Runtime.Autograd.Model.Optim.adamw
+    (α := Float) (paramShapes := model.stateShapes)
     runCfg.learningRate runCfg.weightDecay 0.9 0.999 1e-8
   let optimizerState ← LeanProfiler.span "optimizer.initialize"
-    (TorchLean.Module.initOptimizer module optimizer)
+    (TorchLean.Module.Objective.initOptimizer module optimizer)
     (metadata :=
       { phase := some "initialization"
         activity := some "adamw"
@@ -952,14 +949,16 @@ def optimizeObjective
   let metricPoints ← IO.mkRef (#[] : Array MetricPoint)
   let schedule := Trainer.Scheduler.warmupCosine
     runCfg.learningRate runCfg.minLearningRate runCfg.warmupSteps runCfg.steps
-  let evaluator ← TorchLean.Module.evaluatorWithState
-    evalDef opts module.trainer.state
+  -- The weighted objective has both floating-point weights and discrete token inputs.
+  -- Share its live parameter handles so validation observes each completed update.
+  let evaluator ← _root_.Runtime.Autograd.Model.Module.ObjectiveDef.evaluatorWithState
+    evalDef opts (Module.Objective.Internal.runtime module).trainer.state
 
   let startStep ← match runCfg.resume? with
     | none => pure 0
     | some checkpoint => do
         let (completed, directory) ← LeanProfiler.span "checkpoint.resume"
-          (loadTrainingCheckpoint runCfg module data checkpoint)
+          (loadTrainingCheckpoint runCfg opts module data checkpoint)
           (metadata := { phase := some "checkpoint", activity := some "resume" })
         IO.println s!"resumed checkpoint: {directory} (completed_step={completed})"
         pure completed
@@ -967,8 +966,8 @@ def optimizeObjective
   let evaluate (_step : Nat) : IO Float := do
     let losses ← (List.range runCfg.evalBatches).mapM fun batchIndex => do
       let (inputs, dataInputs) := validationSample batchIndex
-      let loss ← TorchLean.Module.Evaluator.run evaluator inputs dataInputs
-      pure (Spec.Tensor.item loss)
+      let loss ← _root_.Runtime.Autograd.Model.Module.Evaluator.run evaluator inputs dataInputs
+      pure (Tensor.item loss)
     pure (losses.foldl (· + ·) 0.0 / Float.ofNat losses.length)
 
   let initialValidation ← LeanProfiler.span "evaluation.validation"
@@ -984,12 +983,14 @@ def optimizeObjective
 
   let trainOneStep (step : Nat) : IO Unit := do
     let state ← optimizerStateRef.get
-    let learningRate := Trainer.Scheduler.lrAt schedule step
+    let learningRate := Trainer.Scheduler.learningRateAt schedule step
     let state := setAdamWLearningRate learningRate state
     let startedAt ← IO.monoMsNow
     let (inputs, dataInputs) := trainSample step
     let (nextState, trainLossTensor) ← LeanProfiler.span "training.update"
-      (TorchLean.Module.optimizerStepWithLoss module optimizer state inputs dataInputs)
+      (TorchLean.Module.Objective.step module optimizer state
+        (Arguments.Internal.fromTensorPack inputs)
+        (Arguments.Internal.fromTensorPack dataInputs) (loss := true))
       (metadata :=
         { phase := some "training"
           activity := some "forward-backward-update"
@@ -1003,9 +1004,9 @@ def optimizeObjective
       if durationMs = 0 then
         0.0
       else
-        Float.ofNat (runCfg.batch * cfg.seqLen) * 1000.0 / Float.ofNat durationMs
+        Float.ofNat (runCfg.batch * cfg.sequenceLength) * 1000.0 / Float.ofNat durationMs
     optimizerStateRef.set nextState
-    let trainLoss := Spec.Tensor.item trainLossTensor
+    let trainLoss := Tensor.item trainLossTensor
     metricPoints.modify (·.push
       { phase := "train"
         step := step + 1
@@ -1039,7 +1040,7 @@ def optimizeObjective
             (completed % runCfg.checkpointEvery == 0 || completed == runCfg.steps) then
           let points ← metricPoints.get
           let checkpoint ← LeanProfiler.span "checkpoint.save-resumable"
-            (saveTrainingCheckpoint runCfg module data root completed points)
+            (saveTrainingCheckpoint runCfg opts module data root completed points)
             (metadata :=
               { phase := some "checkpoint"
                 activity := some "save-resumable"
@@ -1061,7 +1062,7 @@ def optimizeObjective
   | some checkpoint =>
       ensureParent checkpoint
       LeanProfiler.span "checkpoint.save"
-        (Checkpoint.saveModule module checkpoint)
+        (Checkpoint.save module checkpoint)
         (metadata := { phase := some "checkpoint", activity := some "save" })
       IO.println s!"wrote checkpoint: {checkpoint}"
 
@@ -1070,10 +1071,10 @@ def optimizeObjective
   writePassport runCfg.passportPath runCfg opts data actualParameterCount
   IO.println s!"wrote metrics: {runCfg.metricsPath}"
   IO.println s!"wrote passport: {runCfg.passportPath}"
-  pure module.trainer.state
+  pure (Module.Objective.Internal.runtime module).trainer.state
 
 /-- Complete one training run after TorchLean has selected the runtime profile. -/
-def train (opts : Options) (args : List String) : IO Unit := do
+def train (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
   let runCfg ← RunConfig.parse opts.seed args
   let trainTokens ← LeanProfiler.span "dataset.train.read"
     (readTokenShard runCfg.trainBin runCfg.model.vocab)
@@ -1146,103 +1147,95 @@ def train (opts : Options) (args : List String) : IO Unit := do
       validationRecordsHash? := valRecords?.map (·.contentHash) }
 
   let cfg := runCfg.model.toTorchLean
-  if hSeq : cfg.seqLen = 0 then
+  if cfg.sequenceLength = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero context after validation"
-  else if hModel : cfg.dModel = 0 then
+  else if cfg.modelWidth = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero model width after validation"
-  else if hVocab : cfg.vocab = 0 then
+  else if hVocab : cfg.vocabularySize = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero vocabulary after validation"
   else
-    letI : NeZero cfg.vocab := ⟨hVocab⟩
+    letI : NeZero cfg.vocabularySize := ⟨hVocab⟩
     do
       _root_.TorchLean.rand.manualSeed runCfg.seed
-      nn.withModel (buildModel cfg runCfg.batch hSeq hModel) fun model =>
-        letI : NeZero cfg.vocab := ⟨hVocab⟩
-        do
-          let actualParameterCount :=
-            (nn.models.CausalTransformer.Tied.stateShapes cfg model).foldl
-              (fun total shape => total + Shape.size shape) 0
+      let model := nn.build (← rand.nextSeedGlobal) (buildModel cfg runCfg.batch opts)
+      let actualParameterCount :=
+        model.stateShapes.foldl
+          (fun total shape => total + Shape.size shape) 0
 
-          IO.println s!"preset={runCfg.presetName}"
-          IO.println <|
-            s!"model=context {cfg.seqLen}, vocab {cfg.vocab}, width {cfg.dModel}, " ++
-            s!"heads {cfg.numHeads}, layers {cfg.layers}"
-          IO.println s!"parameters={actualParameterCount}"
-          IO.println s!"device={opts.deviceName} profile={backendProfileName opts}"
-          IO.println s!"tokens=train {trainTokens.size}, validation {valTokens.size}"
-          IO.println <|
-            s!"schedule=steps {runCfg.steps}, tokens/update {runCfg.batch * cfg.seqLen}, " ++
-              s!"total {runCfg.steps * runCfg.batch * cfg.seqLen}"
+      IO.println s!"preset={runCfg.presetName}"
+      IO.println <|
+        s!"model=context {cfg.sequenceLength}, vocab {cfg.vocabularySize}, width {cfg.modelWidth}, " ++
+        s!"heads {cfg.headCount}, layers {cfg.layerCount}"
+      IO.println s!"parameters={actualParameterCount}"
+      IO.println s!"device={opts.deviceName} profile={backendProfileName opts}"
+      IO.println s!"tokens=train {trainTokens.size}, validation {valTokens.size}"
+      IO.println <|
+        s!"schedule=steps {runCfg.steps}, tokens/update {runCfg.batch * cfg.sequenceLength}, " ++
+          s!"total {runCfg.steps * runCfg.batch * cfg.sequenceLength}"
 
-          let trainedParams ← match trainMask?, valMask?, trainRecords?, valRecords? with
-            | none, none, none, none =>
-                let trainDef := nn.models.CausalTransformer.Tied.objective cfg model
-                let evalDef :=
-                  nn.models.CausalTransformer.Tied.objectiveWithMode .eval cfg model
-                let trainSample (step : Nat) :=
-                  let (tokens, targets) := causalLmTokenBatchFromShard
-                    cfg.vocab runCfg.batch cfg.seqLen trainTokens runCfg.seed step (padId := 0)
-                  (.nil, .cons tokens (.cons targets .nil))
-                let validationSample (step : Nat) :=
-                  let (tokens, targets) := causalLmTokenBatchFromShard
-                    cfg.vocab runCfg.batch cfg.seqLen valTokens (runCfg.seed + 1000003) step (padId := 0)
-                  (.nil, .cons tokens (.cons targets .nil))
-                optimizeObjective runCfg opts cfg model
-                  dataIdentity actualParameterCount
-                  trainDef evalDef trainSample validationSample
-            | some trainMask, some valMask, some trainRecords, some valRecords =>
-                IO.println <|
-                  s!"objective=dialogue-bounded weighted next-token loss, " ++
-                    s!"records=train {trainRecords.entries.size}, validation {valRecords.entries.size}"
-                let trainDef := weightedTiedTokenScalarModuleDef cfg runCfg.batch model
-                let evalDef :=
-                  weightedTiedTokenScalarModuleDefWithMode .eval cfg runCfg.batch model
-                let trainSample (step : Nat) :=
-                  let (tokens, targets, rowWeights) := causalLmMaskedTokenBatchFromRecords
-                    (α := Float) cfg.vocab runCfg.batch cfg.seqLen trainTokens trainMask trainRecords
-                    runCfg.seed step (padId := 0)
-                  (.cons rowWeights .nil, .cons tokens (.cons targets .nil))
-                let validationSample (step : Nat) :=
-                  let (tokens, targets, rowWeights) := causalLmMaskedTokenBatchFromRecords
-                    (α := Float) cfg.vocab runCfg.batch cfg.seqLen valTokens valMask valRecords
-                    (runCfg.seed + 1000003) step (padId := 0)
-                  (.cons rowWeights .nil, .cons tokens (.cons targets .nil))
-                optimizeObjective runCfg opts cfg model
-                  dataIdentity actualParameterCount
-                  trainDef evalDef trainSample validationSample
-            | _, _, _, _ =>
-                throw <| IO.userError
-                  s!"{exeName}: training masks and dialogue records must be supplied as paired sets"
+      let trainedParams ← match trainMask?, valMask?, trainRecords?, valRecords? with
+        | none, none, none, none =>
+            let trainDef := nn.models.CausalTransformer.objective cfg model
+            let evalDef :=
+              nn.models.CausalTransformer.objective cfg model (mode := .eval)
+            let trainSample (step : Nat) :=
+              let (tokens, targets) := causalLmTokenBatchFromShard
+                cfg.vocabularySize runCfg.batch cfg.sequenceLength trainTokens runCfg.seed step (padId := 0)
+              (.nil, .cons tokens (.cons targets .nil))
+            let validationSample (step : Nat) :=
+              let (tokens, targets) := causalLmTokenBatchFromShard
+                cfg.vocabularySize runCfg.batch cfg.sequenceLength valTokens
+                (runCfg.seed + 1000003) step (padId := 0)
+              (.nil, .cons tokens (.cons targets .nil))
+            optimizeObjective runCfg opts cfg model
+              dataIdentity actualParameterCount
+              trainDef evalDef trainSample validationSample
+        | some trainMask, some valMask, some trainRecords, some valRecords =>
+            IO.println <|
+              s!"objective=dialogue-bounded weighted next-token loss, " ++
+                s!"records=train {trainRecords.entries.size}, validation {valRecords.entries.size}"
+            let trainDef := weightedObjective cfg runCfg.batch model
+            let evalDef :=
+              weightedObjective cfg runCfg.batch model (mode := .eval)
+            let trainSample (step : Nat) :=
+              let (tokens, targets, rowWeights) := causalLmMaskedTokenBatchFromRecords
+                (α := Float) cfg.vocabularySize runCfg.batch cfg.sequenceLength
+                trainTokens trainMask trainRecords runCfg.seed step (padId := 0)
+              (.cons rowWeights .nil, .cons tokens (.cons targets .nil))
+            let validationSample (step : Nat) :=
+              let (tokens, targets, rowWeights) := causalLmMaskedTokenBatchFromRecords
+                (α := Float) cfg.vocabularySize runCfg.batch cfg.sequenceLength valTokens valMask valRecords
+                (runCfg.seed + 1000003) step (padId := 0)
+              (.cons rowWeights .nil, .cons tokens (.cons targets .nil))
+            optimizeObjective runCfg opts cfg model
+              dataIdentity actualParameterCount
+              trainDef evalDef trainSample validationSample
+        | _, _, _, _ =>
+            throw <| IO.userError
+              s!"{exeName}: training masks and dialogue records must be supplied as paired sets"
 
-          let forwardProgram : _root_.Runtime.Autograd.TorchLean.ProgramWithDataInputs
-              Float (Fin cfg.vocab)
-              (nn.models.CausalTransformer.Tied.stateShapes cfg model ++ [])
-              [tokenShape cfg runCfg.batch] (logitShape cfg runCfg.batch) := by
-            exact fun {m} _ _ =>
-              by
-                simpa [tokenShape, logitShape] using
-                  nn.models.CausalTransformer.Tied.program cfg model (α := Float) (m := m)
-          let evaluator ← TorchLean.Module.withState
-            forwardProgram opts trainedParams
-          let predict : Predictor cfg runCfg.batch := fun tokens =>
-            TorchLean.Module.Evaluator.run evaluator .nil (.cons tokens .nil)
-          let tokenizer? ← loadTokenizer? runCfg
-          match tokenizer? with
-          | none =>
-              if runCfg.generate != 0 then
-                IO.println "generation skipped: pass both --tokenizer-vocab and --tokenizer-merges"
-          | some tokenizer =>
-              if runCfg.generate != 0 then
-                printCompletion runCfg cfg predict tokenizer
+      let predict ← predictorWithParameters cfg runCfg.batch model opts
+        trainedParams
+      let tokenizer? ← loadTokenizer? runCfg
+      match tokenizer? with
+      | none =>
+          if runCfg.generate != 0 then
+            IO.println "generation skipped: pass both --tokenizer-vocab and --tokenizer-merges"
+      | some tokenizer =>
+          if runCfg.generate != 0 then
+            printCompletion runCfg cfg predict tokenizer
 
 /-- Parse the shared runtime flags for commands that execute the host `Float` model. -/
 def runFloatCommand
     (commandName : String) (args : List String) (banner : String)
-    (command : Options → List String → IO Unit) : IO UInt32 := do
-  let (seed, args) ← CLI.seed commandName args
+    (command : TorchLean.Runtime.Config → List String → IO Unit)
+    (defaultSeed : Nat := 0) : IO UInt32 := do
+  let (seed, args) ← CLI.seed commandName args (default := defaultSeed)
   let (execConfig, rest) ← orThrowFor commandName <|
-    TorchLean.Module.ExecConfig.parseWithScalar args .float32
-  let opts ← orThrowFor commandName <| execConfig.toOptions seed
+    TorchLean.Module.RuntimeSelection.parse args .native
+  if execConfig.arithmetic != .native then
+    throw <| IO.userError s!"{commandName}: this runner requires --arithmetic native"
+  let opts ← orThrowFor commandName <| execConfig.toConfig seed
   opts.validateForExecution
   IO.println banner
   command opts rest

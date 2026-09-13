@@ -15,8 +15,11 @@ private def torchLeanOptions : NameMap String :=
   let opts := match get_config? libtorch with
     | some value => opts.insert `libtorch value
     | none => opts
-  match get_config? libtorch_home with
-  | some value => opts.insert `libtorch_home value
+  let opts := match get_config? libtorch_home with
+    | some value => opts.insert `libtorch_home value
+    | none => opts
+  match get_config? torchleanBuildDir with
+  | some value => opts.insert `torchleanBuildDir value
   | none => opts
 
 /-- CUDA libraries needed when this downstream package links a TorchLean executable. -/
@@ -42,11 +45,13 @@ private def cudaEnabled : Bool :=
   | none => false
 
 /-- Build the example-local key/value-cache runtime for the active device configuration. -/
-private def buildCachedDecoder (pkg : Package) := do
+private def buildCachedDecoder (pkg : Package) : FetchM (Job FilePath) := do
   let lean ← getLeanInstall
+  let some torchLean ← findPackageByName? `TorchLean
+    | error "The cached decoder requires the TorchLean package."
   let includeArgs := #[
     "-I", lean.includeDir.toString,
-    "-I", (pkg.dir / ".lake/packages/TorchLean/csrc/cuda/common").toString
+    "-I", (torchLean.dir / "csrc/cuda/common").toString
   ]
   let libFile := pkg.buildDir / nameToStaticLib "torchlean_gpt_cached_decode"
   if cudaEnabled then
@@ -79,6 +84,7 @@ package instead of creating a separate Lake project.
 -/
 
 package TorchLeanVerifiedExamples where
+  buildDir := FilePath.mk ((get_config? verifiedExamplesBuildDir).getD ".lake/build")
   version := v!"0.1.0"
   description := "Weekly TorchLean examples with checked Lean developments."
   moreLinkArgs := nativeLinkArgs
@@ -143,8 +149,9 @@ lean_exe benchmark_torchlean_gpt_cache where
   root := `TorchLeanGPT.CachedDecode.Benchmark
 
 require TorchLean from git
-  "https://github.com/lean-dojo/TorchLean.git" @ "main" with torchLeanOptions
+  "https://github.com/lean-dojo/TorchLean.git" @
+    "4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1" with torchLeanOptions
 
 require LeanProfiler from git
-  "https://github.com/wadkisson/LeanProfiler.git" @
-    "69b3193344f0fadd1d80c0c3607ba2cedaef178b"
+  "https://github.com/Robertboy18/LeanProfiler.git" @
+    "1008fc1dd7c416d0d225383f75ee5e581ad55712"

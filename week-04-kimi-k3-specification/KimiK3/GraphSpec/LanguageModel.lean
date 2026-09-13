@@ -23,11 +23,13 @@ Pattern matching then selects one of the four refinement theorems proved in `Bac
 @[expose] public section
 
 namespace KimiK3
+
+open TorchLean
 namespace GraphSpec
 namespace DecoderLayer
 
 open Spec
-open Spec.Tensor
+open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
 
@@ -162,7 +164,7 @@ noncomputable def inputs (pastTokens : Nat) (sequence : SequenceMixer ℝ cfg de
       match state with
       | .cons previousWindow (.cons previousState .nil) =>
           Backbone.KDADense.inputs completed partialState previousWindow previousState logFloor
-            Numbers.epsilon cfg.situGateCap cfg.situUpCap
+            Normalize.l2Epsilon cfg.situGateCap cfg.situUpCap
   | .mla _ =>
       match state with
       | .cons pastLatentCache (.cons pastSharedKeyCache .nil) =>
@@ -313,7 +315,7 @@ theorem evalArgs_inputTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ
     (state : Args Γ (StateShapes pastTokens sequence))
     (control epsilon gateCap upCap : Term Γ .scalar) (scoreScale : ℝ)
     (hControl : Term.eval env control = .scalar (controlValue sequence scoreScale))
-    (hEpsilon : Term.eval env epsilon = .scalar Numbers.epsilon)
+    (hEpsilon : Term.eval env epsilon = .scalar Normalize.l2Epsilon)
     (hGateCap : Term.eval env gateCap = .scalar (cfg.situGateCap : ℝ))
     (hUpCap : Term.eval env upCap = .scalar (cfg.situUpCap : ℝ)) :
     Term.evalArgs env
@@ -342,11 +344,15 @@ theorem evalArgs_inputTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ
                 Backbone.MLADense.inputs, Backbone.depthInputs,
                 TorchLean.TensorPack.append, hControl, hGateCap, hUpCap]
 
+set_option linter.unusedVariables false in
 /-- Mathematical transition denoted by the graph selected for `layer`.
 
 This definition is intentionally only a dispatcher.  The four branch equations remain the
 substantive specifications in `Backbone`; this common result type lets the complete decoder recurse
 without erasing which causal state each layer owns.
+
+The named latent-width hypotheses `hQueryLatent` and `hKVLatent` match the graph construction
+interface. They remain part of this interface even though the branch equations do not require them.
 -/
 noncomputable def specStep (pastTokens : Nat) (layer : BackboneLayer ℝ cfg decayRank)
     {completedCount : Nat} (route : Route cfg.numRoutedExperts cfg.activeExperts)
@@ -393,11 +399,15 @@ noncomputable def specStep (pastTokens : Nat) (layer : BackboneLayer ℝ cfg dec
                 partialState pastLatentCache pastSharedKeyCache
                 scoreScale cfg.situGateCap cfg.situUpCap
 
+set_option linter.unusedVariables false in
 /-- Expert route determined by the channel input encountered at this decoder layer.
 
 Sparse layers apply K3's deterministic top-k rule to the bias-adjusted router scores. Dense layers
 do not inspect a route; the canonical zero-score route merely supplies the otherwise unused argument
 of the common layer interface. Thus this definition does not introduce routing into a dense layer.
+
+The named latent-width hypotheses are retained to match `specStep` and `RouteAgrees`. The route
+calculation itself does not depend on those positivity proofs.
 -/
 noncomputable def expectedRoute (pastTokens : Nat)
     (layer : BackboneLayer ℝ cfg decayRank) {completedCount : Nat}
@@ -560,7 +570,7 @@ theorem model_specFwd_eq_specStep
                       (⟨sequenceQuery, sequenceNormScale, .kda kda logFloor, channelQuery,
                         channelNormScale, .dense expert⟩ : BackboneLayer ℝ cfg decayRank)
                       kda expert completed partialState
-                      previousWindow previousState logFloor Numbers.epsilon cfg.situGateCap
+                      previousWindow previousState logFloor Normalize.l2Epsilon cfg.situGateCap
                       cfg.situUpCap rfl
       | sparse moe =>
           cases state with
@@ -575,7 +585,7 @@ theorem model_specFwd_eq_specStep
                       (⟨sequenceQuery, sequenceNormScale, .kda kda logFloor, channelQuery,
                         channelNormScale, .sparse moe⟩ : BackboneLayer ℝ cfg decayRank)
                       kda moe route
-                      completed partialState previousWindow previousState logFloor Numbers.epsilon
+                      completed partialState previousWindow previousState logFloor Normalize.l2Epsilon
                       cfg.situGateCap cfg.situUpCap rfl
   | mla mla =>
       cases channel with
@@ -614,7 +624,7 @@ end DecoderLayer
 namespace DepthSchedule
 
 open Spec
-open Spec.Tensor
+open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
 
@@ -685,7 +695,7 @@ def advance (blockSize processedLayers modelDim : Nat) (hBlockSize : 0 < blockSi
     let nextCompleted : Tensor ℝ
         (.dim (completedCount blockSize (processedLayers + 1)) (.dim modelDim .scalar)) :=
       Tensor.castShape appended hShape
-    .cons nextCompleted <| .cons (Spec.fill 0 (.dim modelDim .scalar)) .nil
+    .cons nextCompleted <| .cons (Tensor.full (.dim modelDim .scalar) 0) .nil
   else
     have hCount := completedCount_succ_of_not_boundary hBlockSize hBoundary
     have hShape :
@@ -775,7 +785,7 @@ already established layer ABIs while retaining every shape in the type.
 /-- Parameter shapes of the selected layers, in execution order. -/
 def ParamsFor (model : LanguageModel ℝ cfg decayRank) :
     List (Fin cfg.numLayers) → List Shape
-  | [] => []
+  | List.nil => []
   | index :: rest =>
       DecoderLayer.Params (model.layer index).sequence (model.layer index).channel ++
         ParamsFor model rest
@@ -783,7 +793,7 @@ def ParamsFor (model : LanguageModel ℝ cfg decayRank) :
 /-- Causal-state shapes before the selected layers process the current token. -/
 def StateShapesFor (pastTokens : Nat) (model : LanguageModel ℝ cfg decayRank) :
     List (Fin cfg.numLayers) → List Shape
-  | [] => []
+  | List.nil => []
   | index :: rest =>
       DecoderLayer.StateShapes pastTokens (model.layer index).sequence ++
         StateShapesFor pastTokens model rest
@@ -791,7 +801,7 @@ def StateShapesFor (pastTokens : Nat) (model : LanguageModel ℝ cfg decayRank) 
 /-- Causal-state shapes after the selected layers process the current token. -/
 def NextStateShapesFor (pastTokens : Nat) (model : LanguageModel ℝ cfg decayRank) :
     List (Fin cfg.numLayers) → List Shape
-  | [] => []
+  | List.nil => []
   | index :: rest =>
       DecoderLayer.NextStateShapes pastTokens (model.layer index).sequence ++
         NextStateShapesFor pastTokens model rest
@@ -799,12 +809,12 @@ def NextStateShapesFor (pastTokens : Nat) (model : LanguageModel ℝ cfg decayRa
 /-- One explicit numerical control for each sequence mixer. -/
 def ControlShapesFor (model : LanguageModel ℝ cfg decayRank) :
     List (Fin cfg.numLayers) → List Shape
-  | [] => []
+  | List.nil => []
   | _index :: rest => .scalar :: ControlShapesFor model rest
 
 /-- Number of processed layers after executing a concrete schedule segment. -/
 def processedAfter {Layer : Type} : Nat → List Layer → Nat
-  | processedLayers, [] => processedLayers
+  | processedLayers, List.nil => processedLayers
   | processedLayers, _layer :: rest => processedAfter (processedLayers + 1) rest
 
 /-- Executing a schedule advances the depth counter by its length. -/
@@ -833,7 +843,7 @@ abbrev OutputsFor (pastTokens processedLayers : Nat) (model : LanguageModel ℝ 
 /-- Extract the selected layers' parameters from the existing language-model value. -/
 def parametersFor (model : LanguageModel ℝ cfg decayRank) :
     (indices : List (Fin cfg.numLayers)) → TorchLean.TensorPack ℝ (ParamsFor model indices)
-  | [] => .nil
+  | List.nil => .nil
   | index :: rest =>
       TorchLean.TensorPack.append
         (DecoderLayer.parameters (model.layer index)) (parametersFor model rest)
@@ -843,7 +853,7 @@ def packStates (pastTokens : Nat) (model : LanguageModel ℝ cfg decayRank)
     (state : ∀ index, TorchLean.TensorPack ℝ
       (DecoderLayer.StateShapes pastTokens (model.layer index).sequence)) :
     (indices : List (Fin cfg.numLayers)) → TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices)
-  | [] => .nil
+  | List.nil => .nil
   | index :: rest =>
       TorchLean.TensorPack.append (state index)
         (packStates pastTokens model state rest)
@@ -853,12 +863,11 @@ def emptyState (sequence : SequenceMixer ℝ cfg decayRank) :
     TorchLean.TensorPack ℝ (DecoderLayer.StateShapes 0 sequence) :=
   match sequence with
   | .kda _ _ =>
-      .cons (Spec.fill 0 (.dim cfg.shortConvWidth (.dim cfg.hiddenDim .scalar))) <|
-        .cons (Spec.fill 0
-          (.dim cfg.numHeads (.dim cfg.kdaHeadDim (.dim cfg.kdaValueDim .scalar)))) .nil
+      .cons (Tensor.full (.dim cfg.shortConvWidth (.dim cfg.hiddenDim .scalar)) 0) <|
+        .cons (Tensor.full (.dim cfg.numHeads (.dim cfg.kdaHeadDim (.dim cfg.kdaValueDim .scalar))) 0) .nil
   | .mla _ =>
-      .cons (Spec.fill 0 (.dim 0 (.dim cfg.kvLatentDim .scalar))) <|
-        .cons (Spec.fill 0 (.dim 0 (.dim cfg.qkReservedHeadDim .scalar))) .nil
+      .cons (Tensor.full (.dim 0 (.dim cfg.kvLatentDim .scalar)) 0) <|
+        .cons (Tensor.full (.dim 0 (.dim cfg.qkReservedHeadDim .scalar)) 0) .nil
 
 /-- Empty causal states for a fresh decoder run. -/
 def initialStatesFor (model : LanguageModel ℝ cfg decayRank) :
@@ -878,7 +887,7 @@ def sequenceControl (layer : BackboneLayer ℝ cfg decayRank) (mlaScoreScale : �
 /-- Pack the numerical control of every selected sequence mixer. -/
 def controlsFor (model : LanguageModel ℝ cfg decayRank) (mlaScoreScale : ℝ) :
     (indices : List (Fin cfg.numLayers)) → TorchLean.TensorPack ℝ (ControlShapesFor model indices)
-  | [] => .nil
+  | List.nil => .nil
   | index :: rest =>
       .cons (.scalar (sequenceControl (model.layer index) mlaScoreScale))
         (controlsFor model mlaScoreScale rest)
@@ -894,7 +903,7 @@ noncomputable def inputsFor (pastTokens processedLayers : Nat)
   TorchLean.TensorPack.append depth <|
     TorchLean.TensorPack.append states <|
       TorchLean.TensorPack.append (controlsFor model mlaScoreScale indices) <|
-        .cons (.scalar Numbers.epsilon) <| .cons (.scalar cfg.situGateCap) <|
+        .cons (.scalar Normalize.l2Epsilon) <| .cons (.scalar cfg.situGateCap) <|
           .cons (.scalar cfg.situUpCap) .nil
 
 /-- The empty decoder schedule returns its depth state unchanged. -/
@@ -929,7 +938,7 @@ noncomputable def runSpec {architecture : Config} {decayRank : Nat}
         architecture.text.hiddenDim) →
       TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices) → ℝ →
       TorchLean.TensorPack ℝ (OutputsFor pastTokens processedLayers model indices)
-  | [], depth, _states, _mlaScoreScale =>
+  | List.nil, depth, _states, _mlaScoreScale =>
       outputsFor_nil pastTokens processedLayers model ▸ depth
   | index :: rest, depth, states, mlaScoreScale => by
       let layer := model.layer index
@@ -968,7 +977,7 @@ noncomputable def runSpecAuto {architecture : Config} {decayRank : Nat}
         architecture.text.hiddenDim) →
       TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices) → ℝ →
       TorchLean.TensorPack ℝ (OutputsFor pastTokens processedLayers model indices)
-  | [], depth, _states, _mlaScoreScale =>
+  | List.nil, depth, _states, _mlaScoreScale =>
       outputsFor_nil pastTokens processedLayers model ▸ depth
   | index :: rest, depth, states, mlaScoreScale => by
       let layer := model.layer index
@@ -1008,7 +1017,7 @@ noncomputable def RoutesAgree {architecture : Config} {decayRank : Nat}
       TorchLean.TensorPack ℝ (DepthSchedule.Shapes architecture.text.attnResBlockSize processedLayers
         architecture.text.hiddenDim) →
       TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices) → ℝ → Prop
-  | [], _depth, _states, _mlaScoreScale => True
+  | List.nil, _depth, _states, _mlaScoreScale => True
   | index :: rest, depth, states, mlaScoreScale =>
       let layer := model.layer index
       let stateParts := TorchLean.TensorPack.split
@@ -1083,7 +1092,7 @@ def runBlock {architecture : Config} {decayRank : Nat} (hcfg : architecture.WF)
       Args Γ (ControlShapesFor model indices) →
       Term Γ .scalar → Term Γ .scalar → Term Γ .scalar →
       Block Γ (OutputsFor pastTokens processedLayers model indices)
-  | [], params, depth, states, controls, _epsilon, _gateCap, _upCap => by
+  | List.nil, params, depth, states, controls, _epsilon, _gateCap, _upCap => by
       cases params
       cases states
       cases controls
@@ -1171,7 +1180,7 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
     (hParams : Term.evalArgs env params = parametersFor languageModel indices)
     (hControls : Term.evalArgs env controls =
       controlsFor languageModel mlaScoreScale indices)
-    (hEpsilon : Term.eval env epsilon = .scalar Numbers.epsilon)
+    (hEpsilon : Term.eval env epsilon = .scalar Normalize.l2Epsilon)
     (hGateCap : Term.eval env gateCap =
       .scalar (architecture.text.situGateCap : ℝ))
     (hUpCap : Term.eval env upCap = .scalar (architecture.text.situUpCap : ℝ)) :
@@ -1342,7 +1351,7 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
         rw [Term.evalArgs_rename_inLeft, Term.evalArgs_rename_inLeft]
         exact hRestControls
       have hLiftedEpsilon :
-          Term.eval envDepth (liftOriginal epsilon) = Tensor.scalar Numbers.epsilon := by
+          Term.eval envDepth (liftOriginal epsilon) = Tensor.scalar Normalize.l2Epsilon := by
         rw [show envDepth =
             TorchLean.TensorPack.append
               (TorchLean.TensorPack.append env layerResult) nextDepth by rfl]
@@ -1421,7 +1430,7 @@ def initialParamsFor {architecture : Config} {decayRank : Nat} (hcfg : architect
       Route architecture.text.numRoutedExperts architecture.text.activeExperts)
     (pastTokens processedLayers : Nat) :
     (indices : List (Fin architecture.text.numLayers)) → TorchLean.TensorPack Float (ParamsFor model indices)
-  | [] => .nil
+  | List.nil => .nil
   | index :: rest =>
       let layer := model.layer index
       let layerGraph := DecoderLayer.model pastTokens
@@ -1574,7 +1583,7 @@ noncomputable def inputs (pastTokens : Nat) (model : LanguageModel ℝ architect
   TorchLean.TensorPack.append states <|
     TorchLean.TensorPack.append
       (Decoder.controlsFor model mlaScoreScale (List.finRange architecture.text.numLayers)) <|
-        .cons (.scalar Numbers.epsilon) <| .cons (.scalar architecture.text.situGateCap) <|
+        .cons (.scalar Normalize.l2Epsilon) <| .cons (.scalar architecture.text.situGateCap) <|
           .cons (.scalar architecture.text.situUpCap) .nil
 
 /-- Pack a token embedding into the initial AttnRes state. -/
@@ -1583,7 +1592,7 @@ def initialDepth (embedding : Tensor ℝ (.dim architecture.text.hiddenDim .scal
       (DepthSchedule.Shapes architecture.text.attnResBlockSize 0 architecture.text.hiddenDim) :=
   .cons (Tensor.reshapeSpec embedding (by
       simp [Shape.size, DepthSchedule.completedCount])) <|
-    .cons (Spec.fill 0 (.dim architecture.text.hiddenDim .scalar)) .nil
+    .cons (Tensor.full (.dim architecture.text.hiddenDim .scalar) 0) .nil
 
 /-- Graph terms for the initial AttnRes state of one token. -/
 def initialDepthTerms {Γ : List Shape}
@@ -1675,8 +1684,7 @@ theorem eval_finalSourcesTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ 
     rw [hCompleted, Tensor.eqRec_eq_cast_shape]
   · have hCompleted := Term.eval_get env depth (Var.head)
     have hPartial := Term.eval_get env depth (.tail .head)
-    simp only [finalSourcesTerm, finalSources, hBoundary, dite_false, Term.eval_cast,
-      Term.evalArgs]
+    simp only [finalSourcesTerm, finalSources, hBoundary, dite_false, Term.eval_cast]
     rw [GraphSpec.eval_concatAxisZeroTerm]
     simp only [Term.eval_op, Term.evalArgs, NN.GraphSpec.DAG.PrimOp.reshape_specFwd]
     rw [hCompleted, hPartial]
@@ -1785,8 +1793,7 @@ def initialParams (hcfg : architecture.WF)
     (route : ∀ _index : Fin architecture.text.numLayers,
       Route architecture.text.numRoutedExperts architecture.text.activeExperts)
     (pastTokens : Nat) : TorchLean.TensorPack Float (Params languageModel) :=
-  .cons (Spec.fill 0
-      (.dim architecture.text.vocabSize (.dim architecture.text.hiddenDim .scalar))) <|
+  .cons (Tensor.full (.dim architecture.text.vocabSize (.dim architecture.text.hiddenDim .scalar)) 0) <|
     TorchLean.TensorPack.append
       (ss₁ := Decoder.ParamsFor languageModel (List.finRange architecture.text.numLayers))
       (ss₂ :=
@@ -1794,11 +1801,10 @@ def initialParams (hcfg : architecture.WF)
           .dim architecture.text.hiddenDim .scalar,
           .dim architecture.text.hiddenDim (.dim architecture.text.vocabSize .scalar)])
       (Decoder.fullModel hcfg languageModel route pastTokens).initParams <|
-        .cons (Spec.fill 0 (.dim architecture.text.hiddenDim .scalar)) <|
-          .cons (Spec.fill 0 (.dim architecture.text.hiddenDim .scalar)) <|
-            .cons (Spec.fill 0
-              (.dim architecture.text.hiddenDim
-                (.dim architecture.text.vocabSize .scalar))) .nil
+        .cons (Tensor.full (.dim architecture.text.hiddenDim .scalar) 0) <|
+          .cons (Tensor.full (.dim architecture.text.hiddenDim .scalar) 0) <|
+            .cons (Tensor.full (.dim architecture.text.hiddenDim
+                (.dim architecture.text.vocabSize .scalar)) 0) .nil
 
 def embeddingTableTerm {Γ : List Shape}
     (languageModel : LanguageModel ℝ architecture.text decayRank)
@@ -1924,8 +1930,8 @@ def graph (hcfg : architecture.WF)
             hcfg.hiddenDim_pos)
           (.cons retrieved (.cons finalNormScale .nil))
         let logits := Term.op
-          (NN.GraphSpec.DAG.PrimOp.vecMat architecture.text.hiddenDim
-            architecture.text.vocabSize)
+          (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      architecture.text.hiddenDim architecture.text.vocabSize .scalar .scalar)
           (.cons hidden (.cons vocabularyHead .nil))
         Block.ret (Args.append resultParts.1 (.cons logits .nil)) }
 
@@ -1950,7 +1956,7 @@ theorem graph_specFwd_eq_runSpec (hcfg : architecture.WF)
   rw [eval_decoderParameterTerms, eval_decoderInputTerms]
   simp only [Term.evalArgs_splitAppend_fst, Term.evalArgs_splitAppend_snd,
     Term.evalArgs_vars, TorchLean.TensorPack.split_append,
-    Term.eval, Term.evalArgs, Term.eval_get, Env.tget, embeddingTableTerm,
+    Term.eval_get, Env.tget, embeddingTableTerm,
     StableLatentMoE.eval_selectLeadingTerm]
   have hDecoder :
       (Decoder.fullModel hcfg languageModel route pastTokens).specFwd
@@ -1961,7 +1967,7 @@ theorem graph_specFwd_eq_runSpec (hcfg : architecture.WF)
                 TorchLean.TensorPack.append
                   (Decoder.controlsFor languageModel mlaScoreScale
                     (List.finRange architecture.text.numLayers)) <|
-                    .cons (.scalar Numbers.epsilon) <|
+                    .cons (.scalar Normalize.l2Epsilon) <|
                       .cons (.scalar architecture.text.situGateCap) <|
                         .cons (.scalar architecture.text.situUpCap) .nil) =
         Decoder.runSpec hcfg languageModel route pastTokens 0
@@ -1977,7 +1983,7 @@ theorem graph_specFwd_eq_runSpec (hcfg : architecture.WF)
     Term.evalArgs_splitAppend_snd, TorchLean.TensorPack.split_append,
     Term.eval, Term.eval_get, Env.tget, eval_finalSourcesTerm, AttnRes.eval_term,
     NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd,
-    NN.GraphSpec.DAG.PrimOp.vecMat]
+    broadcastVecMat_scalar_specFwd]
   rw [runSpec]
   rw [GraphSpec.rmsNormSemantics_scalar_eq_scale]
   rfl

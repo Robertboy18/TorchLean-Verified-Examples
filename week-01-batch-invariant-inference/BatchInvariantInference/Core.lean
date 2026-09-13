@@ -22,6 +22,8 @@ import Mathlib.Tactic.Linarith
 
 universe u v w x
 
+open TorchLean (Storage Tensor)
+
 namespace BatchInvariantInference
 
 /-- Use TorchLean's deployment-aware reduction tree as the schedule object.
@@ -369,35 +371,40 @@ theorem matmul_batchInvariant {K : Type u} {Out : Type v} {β : Type w}
   | node l r ihL ihR =>
       simp [SumTree.evalWith, ihL, ihR]
 
-/-- Read one row of a TorchLean vector batch as a function. This bridges the
-earlier function-level lemmas to TorchLean's shape-indexed tensor API. -/
-def tensorRow {α : Type} {B K : Nat}
-    (x : Spec.Tensor α (.dim B (.dim K .scalar))) (b : Fin B) : Fin K -> α :=
-  fun k => (Spec.get (Spec.get x b) k).item
+/-- Read one row of a TorchLean tensor as a function of the feature index.
+
+The tensor owns one row-major buffer, while the reduction theorem observes only
+the selected row. `Spec.get2` reads each matrix entry directly when compiled, so
+observing the row does not build an intermediate tensor for every scalar. The
+storage instance stays explicit: the same argument applies to ordinary arrays
+and to TorchLean's packed scalar buffers. -/
+def tensorRow {α : Type} [Storage α] {B K : Nat}
+    (x : Tensor α [B, K]) (b : Fin B) : Fin K -> α :=
+  Spec.get2 x b
 
 /-- Read one output row of a TorchLean weight matrix as a function. -/
-def tensorWeightRow {α : Type} {Out K : Nat}
-    (w : Spec.Tensor α (.dim Out (.dim K .scalar))) (o : Fin Out) : Fin K -> α :=
-  fun k => (Spec.get (Spec.get w o) k).item
+def tensorWeightRow {α : Type} [Storage α] {Out K : Nat}
+    (w : Tensor α [Out, K]) (o : Fin Out) : Fin K -> α :=
+  tensorRow w o
 
 /-- A selected scalar output of schedule-explicit tensor matmul. -/
-def tensorBatchedMatmul {β : Type} {B K Out : Nat}
+def tensorBatchedMatmul {β : Type} [Storage β] {B K Out : Nat}
     (add mul : β -> β -> β)
     (sched : SumTree (Fin K))
-    (x : Spec.Tensor β (.dim B (.dim K .scalar)))
-    (w : Spec.Tensor β (.dim Out (.dim K .scalar)))
+    (x : Tensor β [B, K])
+    (w : Tensor β [Out, K])
     (b : Fin B)
     (o : Fin Out) : β :=
   scheduledDot add mul sched (tensorRow x b) (tensorWeightRow w o)
 
 /-- TorchLean tensor version of selected-row matmul invariance. The selected
 input rows are equal as shape-indexed tensors, and the weight payload is shared. -/
-theorem tensorMatmul_batchInvariant {β : Type} {B C K Out : Nat}
+theorem tensorMatmul_batchInvariant {β : Type} [Storage β] {B C K Out : Nat}
     (add mul : β -> β -> β)
     (sched : SumTree (Fin K))
-    (x1 : Spec.Tensor β (.dim B (.dim K .scalar)))
-    (x2 : Spec.Tensor β (.dim C (.dim K .scalar)))
-    (w : Spec.Tensor β (.dim Out (.dim K .scalar)))
+    (x1 : Tensor β [B, K])
+    (x2 : Tensor β [C, K])
+    (w : Tensor β [Out, K])
     (i : Fin B) (j : Fin C) (o : Fin Out)
     (hrow : Spec.get x1 i = Spec.get x2 j) :
     tensorBatchedMatmul add mul sched x1 w i o =
@@ -405,7 +412,7 @@ theorem tensorMatmul_batchInvariant {β : Type} {B C K Out : Nat}
   unfold tensorBatchedMatmul
   apply matmul_batchInvariant
   · intro k
-    unfold tensorRow
+    unfold tensorRow Spec.get2
     rw [hrow]
   · intro k
     rfl
@@ -837,24 +844,26 @@ namespace TorchLeanFlashAttention
 
 open Spec
 
-/-- Runtime refinement certificate for TorchLean's proof-facing FlashAttention
-operator. The native CUDA path in `csrc/cuda/kernels/torchlean_cuda_kernels.cu`
-must be validated against `Spec.flashAttention`; this certificate is the Lean
-boundary once that validation has been supplied by tests, an analyzer, or a
-future proof-carrying kernel extractor. -/
+/-- Runtime refinement certificate for TorchLean's FlashAttention denotation.
+
+The `runtime_refines_spec` field is a Lean proof that this output agrees with
+`Spec.flashAttention`. Numerical tests of the native path can provide evidence
+about an implementation, but they do not construct this equality. A verified
+analyzer or kernel semantics would still need to establish it for the concrete
+runtime output. -/
 structure NativeForwardCert
-    (α : Type) [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    (α : Type) [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0} where
   cfg : Spec.FlashAttentionConfig
   ctx : Spec.AttentionContext α nQ nK dModel h1 h2
-  runtimeOut : Spec.Tensor α (Spec.Shape.dim nQ (Spec.Shape.dim dModel Spec.Shape.scalar))
+  runtimeOut : Tensor α [nQ, dModel]
   runtime_refines_spec :
     runtimeOut = Spec.flashAttention cfg ctx
 
 /-- A native output that refines TorchLean's FlashAttention denotation also
 refines the standard scaled-dot-product attention spec. -/
 theorem NativeForwardCert.refines_scaledDotProduct
-    {α : Type} [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
     (cert : NativeForwardCert α (nQ := nQ) (nK := nK) (dModel := dModel)
       (h1 := h1) (h2 := h2)) :
@@ -869,7 +878,7 @@ theorem NativeForwardCert.refines_scaledDotProduct
 semantic operator. This is the bridge from the existing TorchLean FlashAttention
 spec to the runtime-refinement certificate above. -/
 theorem NativeForwardCert.refines_flashAttention
-    {α : Type} [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
     (cert : NativeForwardCert α (nQ := nQ) (nK := nK) (dModel := dModel)
       (h1 := h1) (h2 := h2)) :
@@ -1336,7 +1345,7 @@ with an explicit payload, chooses a token from the denotational result, and
 updates the request-local state. This is the bridge from the abstract DVR
 serving theorem to TorchLean's actual op-tagged graph semantics. -/
 structure IRDecoderConfig
-    (α : Type) [Context α]
+    (α : Type) [Storage α] [Context α]
     (State Token : Type) where
   graph : NN.IR.Graph
   payload : NN.IR.Payload α
@@ -1355,7 +1364,7 @@ structure IRDecoderConfig
         (tok, update st tok)
 
 def toReferenceDecoder
-    {α : Type} [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token : Type}
     (cfg : IRDecoderConfig α State Token) :
     ReferenceDecoder State Token where
@@ -1365,7 +1374,7 @@ def toReferenceDecoder
 match the canonical `NN.IR.Graph.denote`-based reference decoder. Executable
 certificate checkers should target this predicate. -/
 def IRVerifyWindowSound
-    {α : Type} [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token : Type}
     (cfg : IRDecoderConfig α State Token)
     (st : State) (accepted : List Token) (st' : State) : Prop :=
@@ -1378,7 +1387,7 @@ semantics. For any legal DVR trace whose commits are sound with respect to
 `NN.IR.Graph.denote`, the user-visible tokens are a prefix of the canonical
 TorchLean-IR decoder. -/
 theorem ServeDVR_refines_TorchLeanIRDecode
-    {α : Type} [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (cfg : IRDecoderConfig α State Token)
     (initialRef : State)
@@ -1402,7 +1411,7 @@ theorem ServeDVR_refines_TorchLeanIRDecode
 decoder produce the same committed tokens whenever they commit the same number
 of tokens. -/
 theorem TorchLeanIR_user_observable_determinism_of_same_commit_length
-    {α : Type} [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (cfg : IRDecoderConfig α State Token)
     (initialRef : State)
@@ -1459,7 +1468,7 @@ postprocessing, or a margin-certified argmax policy. What is fixed here is the
 important semantic target: the reference step must be exactly
 `NN.IR.Graph.denote` followed by token choice and request-local update. -/
 structure CausalTransformerIRPackage
-    (α : Type) [Context α] [DecidableEq _root_.Spec.Shape]
+    (α : Type) [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     (State Token Fast : Type) where
   dims : TransformerDims
   cfg : IRDecoderConfig α State Token
@@ -1471,21 +1480,21 @@ structure CausalTransformerIRPackage
 /-- The common concrete specialization: a decoder package whose request state
 has prompt tokens, generated tokens, a request-local KV cache, and a position. -/
 abbrev ConcreteCausalTransformerPackage
-    (α : Type) [Context α] [DecidableEq _root_.Spec.Shape]
+    (α : Type) [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     (Token KV Fast : Type) :=
   CausalTransformerIRPackage α (CausalRequestState Token KV) Token Fast
 
 namespace CausalTransformerIRPackage
 
 def refDecoder
-    {α : Type} [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (pkg : CausalTransformerIRPackage α State Token Fast) :
     ReferenceDecoder State Token :=
   toReferenceDecoder (cfg := pkg.cfg)
 
 def initialServer
-    {α : Type} [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (pkg : CausalTransformerIRPackage α State Token Fast) :
     ServerState State Token Fast :=
@@ -1495,7 +1504,7 @@ def initialServer
     candidates := ([] : List Token) }
 
 theorem initial_invariant
-    {α : Type} [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (pkg : CausalTransformerIRPackage α State Token Fast) :
     DVRInvariant (pkg.refDecoder) pkg.initialRef pkg.initialServer :=
@@ -1506,7 +1515,7 @@ instance only has to fill the package fields and ensure each committed window is
 checked against `pkg.refDecoder`; every legal decode/verify/rollback trace then
 releases exactly a prefix of the canonical TorchLean-IR decoder. -/
 theorem serve_refines_reference
-    {α : Type} [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (pkg : CausalTransformerIRPackage α State Token Fast)
     {sN : ServerState State Token Fast}
@@ -1520,7 +1529,7 @@ theorem serve_refines_reference
 observationally equal whenever they commit the same number of verified tokens.
 The fast-path state, speculative candidates, and batching schedule may differ. -/
 theorem observable_determinism_of_same_commit_length
-    {α : Type} [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (pkg : CausalTransformerIRPackage α State Token Fast)
     {sNa sNb : ServerState State Token Fast}

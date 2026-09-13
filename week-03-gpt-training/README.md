@@ -78,25 +78,23 @@ covers CUDA discovery and the CPU-only build on Linux and macOS.
 
 ## Model configuration
 
-The Lean model definition is short:
+The architecture comes from TorchLean's tied-token constructor:
 
 ```lean
-def buildModel
+def tiedArchitecture
     (cfg : nn.models.CausalTransformer.Config)
-    (batch : Nat)
-    (hContext : cfg.seqLen ≠ 0)
-    (hWidth : cfg.dModel ≠ 0) :
-    nn.Builder (nn.Sequential
-      (nn.models.CausalTransformer.embeddingShape cfg [batch])
-      (nn.models.CausalTransformer.embeddingShape cfg [batch])) :=
-  nn.models.CausalTransformer.hidden cfg [batch] hContext hWidth
+    (batch : Nat) :
+    nn.Builder (nn.IndexedModel
+      (cfg.tokens [batch]) (cfg.vocabulary [batch])
+      (Fin cfg.vocabularySize)) :=
+  nn.models.CausalTransformer.tied cfg [batch]
 ```
 
-This definition builds the hidden Transformer body: position embeddings,
+This definition builds the complete token-to-logit model: token and position embeddings,
 pre-normalized blocks, hard causal attention, GELU feed-forward layers, and the
-final LayerNorm. TorchLean's tied-token module places one token table around
-that body, using it first for embedding lookup and then, transposed, for the
-vocabulary projection. Token ids are represented as `Fin vocab`, so an out-of-range id cannot
+final LayerNorm. The tied constructor uses one token table for embedding lookup
+and, transposed, for the vocabulary projection. Token ids are represented as
+`Fin cfg.vocabularySize`, so an out-of-range id cannot
 reach the model, and they are never rounded through a floating-point representation. The dimensions
 are collected in one ordinary structure:
 
@@ -108,6 +106,14 @@ def gpt2Small : ModelConfig :=
     heads := 12
     layers := 12 }
 ```
+
+Week 3's `buildModel` retains the original runtime's LayerNorm epsilon: `1e-5` on CPU and `1e-6`
+on CUDA. The native cached decoder also uses `1e-6`. The current TorchLean constructor uses `1e-5`
+and does not expose this setting in its Transformer config, so the runner sets the epsilon at the
+model's operation boundary. The forward pass and its gradients use the selected backend's value;
+CUDA full-prefix and cached decoding agree on it. Keeping this distinction matters when loading
+an existing checkpoint: parameter bits alone do not preserve a model whose normalization formula
+changes. Comparisons between CPU and CUDA also include this difference in epsilon.
 
 The example uses TorchLean's tied-token constructor, so input lookup and output
 projection share one `(vocab × width)` matrix as they do in GPT-2. With the
@@ -122,11 +128,15 @@ second feed-forward projections write into residual streams, so they use
 `0.02 / sqrt(2 * layers)`. For GPT-2 small this is about `0.00408`. The
 depth-dependent factor prevents the variance contributed by 24 residual
 branches from accumulating at full scale. It is exposed through
-`residualProjectionInit?` rather than hidden in the training script. This is
+`residualProjectionInitialization?` rather than hidden in the training script. This is
 the convention implemented by
 [Hugging Face's GPT-2 model](https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/modeling_gpt2.py)
 and described in OpenAI's
 [GPT-2 report](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf).
+
+The current builder allocates initialization seeds differently from the version used for the
+recorded runs. Load the saved parameter file to reproduce a trained model; the old seed alone
+does not reconstruct its original initialization.
 
 ## Prepare the data
 

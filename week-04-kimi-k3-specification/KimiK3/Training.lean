@@ -39,6 +39,8 @@ and 4.1, https://arxiv.org/abs/2607.24653.
 
 namespace KimiK3
 
+open TorchLean
+
 open Spec
 open Tensor
 open scoped BigOperators
@@ -50,7 +52,7 @@ namespace PerHeadMuon
 open Optim.Muon
 
 /-- One momentum matrix for every attention head. -/
-abbrev HeadMatrices (α : Type) (heads rows columns : Nat) :=
+abbrev HeadMatrices (α : Type) [Storage α] (heads rows columns : Nat) :=
   Fin heads → MatrixTensor α rows columns
 
 /-- Partition a projection matrix along its output-head axis.
@@ -59,14 +61,14 @@ For a matrix of shape `rows × (heads * columns)`, output column `(head, column)
 `head`-th `rows × columns` block. This is the layout used when Per-Head Muon treats Q, K, and V
 momentum buffers independently by attention head.
 -/
-def split {α : Type} {heads rows columns : Nat}
+def split {α : Type} [Storage α] {heads rows columns : Nat}
     (momentum : MatrixTensor α rows (heads * columns)) :
     HeadMatrices α heads rows columns :=
   fun head => Tensor.dim fun row => Tensor.dim fun column =>
     Tensor.scalar (get2 momentum row (finProdFinEquiv (head, column)))
 
 /-- Reassemble per-head matrices into the original projection layout. -/
-def merge {α : Type} {heads rows columns : Nat}
+def merge {α : Type} [Storage α] {heads rows columns : Nat}
     (blocks : HeadMatrices α heads rows columns) :
     MatrixTensor α rows (heads * columns) :=
   Tensor.dim fun row => Tensor.dim fun outputColumn =>
@@ -74,64 +76,40 @@ def merge {α : Type} {heads rows columns : Nat}
     Tensor.scalar (get2 (blocks headColumn.1) row headColumn.2)
 
 /-- Splitting and reassembling a projection momentum matrix preserves every entry. -/
-theorem merge_split {α : Type} {heads rows columns : Nat}
+theorem merge_split {α : Type} [Storage α] {heads rows columns : Nat}
     (momentum : MatrixTensor α rows (heads * columns)) :
     merge (split momentum) = momentum := by
-  cases momentum with
-  | dim matrixRows =>
-      apply congrArg Tensor.dim
-      funext row
-      cases hRow : matrixRows row with
-      | dim matrixColumns =>
-          apply congrArg Tensor.dim
-          funext outputColumn
-          cases hValue : matrixColumns outputColumn with
-          | scalar value =>
-              have hIndex :
-                  finProdFinEquiv (finProdFinEquiv.symm outputColumn) = outputColumn :=
-                Equiv.apply_symm_apply finProdFinEquiv outputColumn
-              simp only [split]
-              change Tensor.scalar
-                (get2 (Tensor.dim matrixRows) row
-                  (finProdFinEquiv (finProdFinEquiv.symm outputColumn))) = Tensor.scalar value
-              rw [hIndex]
-              simp [get2, Spec.get, Spec.get, hRow, hValue]
+  apply (Tensor.dimEquiv rows _).injective
+  funext row
+  apply Tensor.ext_vector
+  intro column
+  change get2 (merge (split momentum)) row column = get2 momentum row column
+  simp only [merge, split, get2_dim]
+  change get2 momentum row (finProdFinEquiv (finProdFinEquiv.symm column)) = _
+  rw [Equiv.apply_symm_apply]
 
 /-- Reassembling and splitting an indexed head family returns the same family. -/
-theorem split_merge {α : Type} {heads rows columns : Nat}
+theorem split_merge {α : Type} [Storage α] {heads rows columns : Nat}
     (blocks : HeadMatrices α heads rows columns) :
     split (merge blocks) = blocks := by
   funext head
-  cases hBlock : blocks head with
-  | dim blockRows =>
-      apply congrArg Tensor.dim
-      funext row
-      cases hRow : blockRows row with
-      | dim blockColumns =>
-          apply congrArg Tensor.dim
-          funext column
-          cases hValue : blockColumns column with
-          | scalar value =>
-              have hIndex :
-                  finProdFinEquiv.symm (finProdFinEquiv (head, column)) = (head, column) :=
-                Equiv.symm_apply_apply finProdFinEquiv (head, column)
-              simp only [merge]
-              change Tensor.scalar
-                (get2 (blocks (finProdFinEquiv.symm (finProdFinEquiv (head, column))).1)
-                  row (finProdFinEquiv.symm (finProdFinEquiv (head, column))).2) =
-                  Tensor.scalar value
-              rw [hIndex]
-              simp [get2, Spec.get, Spec.get, hBlock, hRow, hValue]
+  apply (Tensor.dimEquiv rows _).injective
+  funext row
+  apply Tensor.ext_vector
+  intro column
+  change get2 (split (merge blocks) head) row column = get2 (blocks head) row column
+  simp only [merge, split, get2_dim]
+  rw [Equiv.symm_apply_apply]
 
 /-- Orthogonalize every output-head block independently and restore the projection layout. -/
-def orthogonalize {α : Type} [Context α] {heads rows columns : Nat}
+def orthogonalize {α : Type} [Storage α] [Context α] {heads rows columns : Nat}
     (orthogonalizer : Orthogonalizer α (.dim rows (.dim columns .scalar)))
     (momentum : MatrixTensor α rows (heads * columns)) :
     MatrixTensor α rows (heads * columns) :=
   merge fun head => orthogonalizer.apply (split momentum head)
 
 /-- Splitting a Per-Head Muon direction recovers the independently orthogonalized head blocks. -/
-theorem split_orthogonalize {α : Type} [Context α] {heads rows columns : Nat}
+theorem split_orthogonalize {α : Type} [Storage α] [Context α] {heads rows columns : Nat}
     (orthogonalizer : Orthogonalizer α (.dim rows (.dim columns .scalar)))
     (momentum : MatrixTensor α rows (heads * columns)) :
     split (orthogonalize orthogonalizer momentum) =
@@ -139,19 +117,19 @@ theorem split_orthogonalize {α : Type} [Context α] {heads rows columns : Nat}
   exact split_merge _
 
 /-- Exact Per-Head Muon applies the matrix orthogonality contract separately to every head. -/
-def HasExactDirections {α : Type} [Context α] {heads rows columns : Nat}
+def HasExactDirections {α : Type} [Storage α] [Context α] {heads rows columns : Nat}
     (orthogonalizer : Orthogonalizer α (.dim rows (.dim columns .scalar)))
     (momentum : HeadMatrices α heads rows columns) : Prop :=
   ∀ head, HasExactColumnGram (orthogonalizer.apply (momentum head))
 
 /-- Approximate Per-Head Muon carries one Gram-residual bound per head. -/
-def HasApproxDirections {α : Type} [Context α] {heads rows columns : Nat} (epsilon : α)
+def HasApproxDirections {α : Type} [Storage α] [Context α] {heads rows columns : Nat} (epsilon : α)
     (orthogonalizer : Orthogonalizer α (.dim rows (.dim columns .scalar)))
     (momentum : HeadMatrices α heads rows columns) : Prop :=
   ∀ head, HasApproxColumnGram epsilon (orthogonalizer.apply (momentum head))
 
 /-- An exact Muon backend certifies every head block of the reassembled projection update. -/
-theorem orthogonalize_hasExactColumnGram {α : Type} [Context α]
+theorem orthogonalize_hasExactColumnGram {α : Type} [Storage α] [Context α]
     {heads rows columns : Nat}
     (orthogonalizer : Orthogonalizer α (.dim rows (.dim columns .scalar)))
     (hExact : ExactMatrixOrthogonalizer orthogonalizer)
@@ -162,7 +140,7 @@ theorem orthogonalize_hasExactColumnGram {α : Type} [Context α]
   exact hExact (split momentum head)
 
 /-- An approximate Muon backend transfers its Gram-residual bound to every reassembled head. -/
-theorem orthogonalize_hasApproxColumnGram {α : Type} [Context α]
+theorem orthogonalize_hasApproxColumnGram {α : Type} [Storage α] [Context α]
     {heads rows columns : Nat} (epsilon : α)
     (orthogonalizer : Orthogonalizer α (.dim rows (.dim columns .scalar)))
     (hApprox : ApproxMatrixOrthogonalizer epsilon orthogonalizer)
@@ -214,7 +192,7 @@ noncomputable def logitGradient {sequenceLength vocabSize : Nat}
           (TorchLean.Tensor.oneHot vocabSize (targets position)))
         (1 / supervised.card)
     else
-      Spec.fill 0 (.dim vocabSize .scalar)
+      Tensor.full (.dim vocabSize .scalar) 0
 
 /-- On every supervised position, the declared gradient is exactly TorchLean's stable
 cross-entropy-on-logits derivative, with the outer mean reduction applied. -/
@@ -238,7 +216,7 @@ theorem logitGradient_at_masked {sequenceLength vocabSize : Nat}
     (supervised : Finset (Fin sequenceLength)) (hSupervised : supervised.Nonempty)
     (position : Fin sequenceLength) (hPosition : position ∉ supervised) :
     Spec.get (logitGradient logits targets supervised hSupervised) position =
-      Spec.fill 0 (.dim vocabSize .scalar) := by
+      Tensor.full (.dim vocabSize .scalar) 0 := by
   simp only [logitGradient, Spec.get_dim]
   rw [if_neg hPosition]
 
@@ -296,7 +274,7 @@ end MOPD
 namespace Draft
 
 /-- Low-, middle-, and high-depth target-model features used by the draft layer. -/
-structure FeatureTriplet (α : Type) (hiddenDim : Nat) where
+structure FeatureTriplet (α : Type) [Storage α] (hiddenDim : Nat) where
   low : Tensor α (.dim hiddenDim .scalar)
   middle : Tensor α (.dim hiddenDim .scalar)
   high : Tensor α (.dim hiddenDim .scalar)
@@ -331,7 +309,7 @@ noncomputable def eagleFeaturesAt {cfg : TextConfig} {decayRank sequenceLength :
 end LanguageModel
 
 /-- Bias-free feature-fusion projection `W_E3`, represented as one matrix per source depth. -/
-structure FeatureFusion (α : Type) (hiddenDim : Nat) where
+structure FeatureFusion (α : Type) [Storage α] (hiddenDim : Nat) where
   weight : Fin 3 → Tensor α (.dim hiddenDim (.dim hiddenDim .scalar))
 
 namespace FeatureFusion
@@ -341,26 +319,26 @@ variable {hiddenDim : Nat}
 /-- Every entry of a constant square matrix is its fill value. -/
 @[simp]
 private theorem get2_fill (value : ℝ) (row column : Fin hiddenDim) :
-    get2 (Spec.fill value (.dim hiddenDim (.dim hiddenDim .scalar))) row column = value := by
-  rfl
+    get2 (Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) value) row column = value := by
+  simp
 
 /-- Multiplying a real vector by an all-zero square matrix gives the zero vector. -/
 @[simp]
 private theorem vecMatMul_fill_zero (values : Tensor ℝ (.dim hiddenDim .scalar)) :
-    vecMatMulSpec values (Spec.fill 0 (.dim hiddenDim (.dim hiddenDim .scalar))) =
-      Spec.fill 0 (.dim hiddenDim .scalar) := by
+    vecMatMulSpec values (Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) 0) =
+      Tensor.full (.dim hiddenDim .scalar) 0 := by
   let result := vecMatMulSpec values
-    (Spec.fill 0 (.dim hiddenDim (.dim hiddenDim .scalar)))
-  let zero : Tensor ℝ (.dim hiddenDim .scalar) := Spec.fill 0 (.dim hiddenDim .scalar)
+    (Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) 0)
+  let zero : Tensor ℝ (.dim hiddenDim .scalar) := Tensor.full (.dim hiddenDim .scalar) 0
   have coordinates : Tensor.getScalar result = Tensor.getScalar zero := by
     funext column
     dsimp [result]
     rw [getScalar_vec_mat_mul_spec]
     calc
       (∑ row : Fin hiddenDim, Tensor.getScalar values row *
-          get2 (Spec.fill 0 (.dim hiddenDim (.dim hiddenDim .scalar))) row column) = 0 := by
+          get2 (Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) 0) row column) = 0 := by
             simp only [get2_fill, mul_zero, Finset.sum_const_zero]
-      _ = Tensor.getScalar zero column := by rfl
+      _ = Tensor.getScalar zero column := by simp [zero]
   exact Tensor.ext_vector (fun column => congrFun coordinates column)
 
 /-- Entries of the spec identity matrix are the Kronecker delta. -/
@@ -385,7 +363,7 @@ private theorem vecMatMul_identity (values : Tensor ℝ (.dim hiddenDim .scalar)
     simp [result, getScalar_vec_mat_mul_spec]
   exact Tensor.ext_vector (fun column => congrFun coordinates column)
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 
 /-- Concatenate-and-project written as a sum of three matrix products. -/
 def forward (fusion : FeatureFusion α hiddenDim) (features : FeatureTriplet α hiddenDim) :
@@ -399,8 +377,8 @@ def forward (fusion : FeatureFusion α hiddenDim) (features : FeatureTriplet α 
 /-- The report's `[0 0 I]` initialization returns the high-level feature exactly. -/
 theorem initial_fusion_eq_high (features : FeatureTriplet ℝ hiddenDim)
     (fusion : FeatureFusion ℝ hiddenDim)
-    (hLow : fusion.weight 0 = Spec.fill 0 (.dim hiddenDim (.dim hiddenDim .scalar)))
-    (hMiddle : fusion.weight 1 = Spec.fill 0 (.dim hiddenDim (.dim hiddenDim .scalar)))
+    (hLow : fusion.weight 0 = Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) 0)
+    (hMiddle : fusion.weight 1 = Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) 0)
     (hHigh : fusion.weight 2 = identityTensorSpec hiddenDim) :
     fusion.forward features = features.high := by
   rw [forward, hLow, hMiddle, hHigh]
@@ -498,9 +476,9 @@ that justifies initializing the draft head from the MTP layer. -/
 theorem input_at_eagle_initialization (model : Model cfg decayRank)
     (token : Fin cfg.vocabSize) (features : FeatureTriplet ℝ cfg.hiddenDim)
     (hLow : model.featureFusion.weight 0 =
-      Spec.fill 0 (.dim cfg.hiddenDim (.dim cfg.hiddenDim .scalar)))
+      Tensor.full (.dim cfg.hiddenDim (.dim cfg.hiddenDim .scalar)) 0)
     (hMiddle : model.featureFusion.weight 1 =
-      Spec.fill 0 (.dim cfg.hiddenDim (.dim cfg.hiddenDim .scalar)))
+      Tensor.full (.dim cfg.hiddenDim (.dim cfg.hiddenDim .scalar)) 0)
     (hHigh : model.featureFusion.weight 2 = identityTensorSpec cfg.hiddenDim) :
     model.input token features =
       vecMatMulSpec (Spec.get model.tokenEmbedding token) model.tokenInputWeight +
@@ -528,7 +506,7 @@ noncomputable def ofLogits {vocabSize : Nat} (hVocab : 0 < vocabSize)
   | succ n =>
       let probabilities := Activation.softmaxVecSpec logits
       exact
-        { probability := Spec.Tensor.getScalar probabilities
+        { probability := TorchLean.Tensor.getScalar probabilities
           nonnegative := fun token =>
             le_of_lt (Proofs.softmax_vec_spec_pos logits token)
           sumsToOne := by

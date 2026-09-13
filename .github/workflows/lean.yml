@@ -1,0 +1,41 @@
+name: Lean
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lean-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  examples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the pinned Lean toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf \
+            https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh |
+            sh -s -- -y
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Download the Mathlib cache
+        run: lake exe cache get
+
+      - name: Build all four developments and native commands
+        run: |
+          lake --wfail build BatchInvariantInference VerifiableTransformers TorchLeanGPT KimiK3 \
+            verify_upstream_forward train_torchlean_gpt generate_torchlean_gpt \
+            generate_torchlean_gpt_cached check_torchlean_gpt_cache \
+            benchmark_torchlean_gpt_cache
+
+      - name: Replay the exported checkpoint
+        run: lake exe verify_upstream_forward

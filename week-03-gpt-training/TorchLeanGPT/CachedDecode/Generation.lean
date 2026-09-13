@@ -56,17 +56,17 @@ def generateIds
     (decoder : Runtime.Decoder)
     (promptIds : List Nat)
     (stopToken : Nat) : IO Result := do
-  if promptIds.length + config.generate > decoder.config.seqLen then
+  if promptIds.length + config.generate > decoder.config.sequenceLength then
     throw <| IO.userError <|
       s!"cached generation: prompt ({promptIds.length}) plus requested continuation " ++
-        s!"({config.generate}) exceeds context length {decoder.config.seqLen}"
+        s!"({config.generate}) exceeds context length {decoder.config.sequenceLength}"
 
   let prefillStart ← IO.monoNanosNow
   let mut logits ← decoder.prefill promptIds
   let prefillFinish ← IO.monoNanosNow
   let options : text.GenerationOptions :=
     { prompt := ""
-      generate := config.generate
+      newTokenCount := config.generate
       temperature := config.temperature
       topK := config.topK
       repeatPenalty := 1.05
@@ -82,11 +82,15 @@ def generateIds
     | 0 => pure suffix
     | remaining + 1 =>
         let recent := (recentTokens ids options.repeatWindow).toArray
-        let scoreTensor : Tensor Float [decoder.config.vocab] ←
-          Chat.orThrow "cached generation" <|
-            TorchLean.Tensor.ofArray [decoder.config.vocab] scores
+        let scoreTensor : Tensor Float [decoder.config.vocabularySize] ←
+          if hSize : scores.size = decoder.config.vocabularySize then
+            pure (hSize ▸ Tensor.from scores)
+          else
+            throw <| IO.userError <|
+              s!"cached generation: expected {decoder.config.vocabularySize} logits, " ++
+                s!"got {scores.size}"
         let token ← Chat.orThrow "cached generation" <|
-          text.chooseNextToken scoreTensor options counter recent
+          text.chooseNextToken scoreTensor options counter (Tensor.from recent)
         if token.val = stopToken then
           pure suffix
         else

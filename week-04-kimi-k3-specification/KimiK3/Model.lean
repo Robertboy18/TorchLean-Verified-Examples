@@ -26,11 +26,13 @@ from their own adjusted router scores. Exact score ties are resolved by expert i
 
 namespace KimiK3
 
+open TorchLean
+
 open Spec
 open Tensor
 
 /-- Either recurrent KDA or global Gated MLA at one backbone layer. -/
-inductive SequenceMixer (α : Type) (cfg : TextConfig) (decayRank : Nat) where
+inductive SequenceMixer (α : Type) [Storage α] (cfg : TextConfig) (decayRank : Nat) where
   | kda :
       KDALayer α cfg.hiddenDim cfg.numHeads cfg.kdaHeadDim cfg.kdaValueDim
         cfg.shortConvWidth decayRank → α → SequenceMixer α cfg decayRank
@@ -40,7 +42,7 @@ inductive SequenceMixer (α : Type) (cfg : TextConfig) (decayRank : Nat) where
 
 namespace SequenceMixer
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {cfg : TextConfig} {decayRank : Nat}
 
 /-- The schedule tag of a concrete sequence mixer. -/
@@ -60,8 +62,7 @@ def initialState (mixer : SequenceMixer α cfg decayRank) : mixer.CausalState :=
   match mixer with
   | .kda _ _ =>
       let headState : KDALayer.State α cfg.numHeads cfg.kdaHeadDim cfg.kdaValueDim :=
-        Spec.fill 0
-          (.dim cfg.numHeads (.dim cfg.kdaHeadDim (.dim cfg.kdaValueDim .scalar)))
+        Tensor.full (.dim cfg.numHeads (.dim cfg.kdaHeadDim (.dim cfg.kdaValueDim .scalar))) 0
       (headState, [])
   | .mla _ => []
 
@@ -88,7 +89,7 @@ theorem forward_length (mixer : SequenceMixer α cfg decayRank)
 end SequenceMixer
 
 /-- Dense first-layer FFN or sparse Stable LatentMoE used by later layers. -/
-inductive ChannelMixer (α : Type) (cfg : TextConfig) where
+inductive ChannelMixer (α : Type) [Storage α] (cfg : TextConfig) where
   | dense : Expert α cfg.hiddenDim cfg.denseHiddenDim cfg.hiddenDim → ChannelMixer α cfg
   | sparse :
       StableLatentMoE α cfg.hiddenDim cfg.routedLatentDim cfg.routedExpertHiddenDim
@@ -97,7 +98,7 @@ inductive ChannelMixer (α : Type) (cfg : TextConfig) where
 
 namespace ChannelMixer
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {cfg : TextConfig}
 
 /-- Whether this value is the initial dense channel mixer. -/
@@ -126,7 +127,7 @@ noncomputable def forward (mixer : ChannelMixer ℝ cfg)
 end ChannelMixer
 
 /-- One K3 backbone layer, including separate AttnRes queries for its two submodules. -/
-structure BackboneLayer (α : Type) (cfg : TextConfig) (decayRank : Nat) where
+structure BackboneLayer (α : Type) [Storage α] (cfg : TextConfig) (decayRank : Nat) where
   sequenceQuery : Tensor α (.dim cfg.hiddenDim .scalar)
   sequenceNormScale : Tensor α (.dim cfg.hiddenDim .scalar)
   sequence : SequenceMixer α cfg decayRank
@@ -136,7 +137,7 @@ structure BackboneLayer (α : Type) (cfg : TextConfig) (decayRank : Nat) where
 
 namespace BackboneLayer
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {cfg : TextConfig} {decayRank : Nat}
 
 /-- Initialize the depth-memory state of one token from its embedding. -/
@@ -144,7 +145,7 @@ def initialDepthState (embedding : Tensor α (.dim cfg.hiddenDim .scalar)) :
     AttnRes.BlockState α cfg.hiddenDim :=
   { embedding
     completedBlocks := []
-    partialBlock := Spec.fill 0 (.dim cfg.hiddenDim .scalar)
+    partialBlock := Tensor.full (.dim cfg.hiddenDim .scalar) 0
     partialSize := 0 }
 
 /-- Retrieve one input per token from the current depth state. -/
@@ -236,7 +237,7 @@ The final three fields make the architectural invariants part of the model value
 there is no separately supplied proof that expert routing is possible, and a caller cannot attach an
 arbitrary sequence of KDA, MLA, dense, and sparse layers to a K3 configuration.
 -/
-structure LanguageModel (α : Type) (cfg : TextConfig) (decayRank : Nat) where
+structure LanguageModel (α : Type) [Storage α] (cfg : TextConfig) (decayRank : Nat) where
   tokenEmbedding : Tensor α (.dim cfg.vocabSize (.dim cfg.hiddenDim .scalar))
   layer : Fin cfg.numLayers → BackboneLayer α cfg decayRank
   finalQuery : Tensor α (.dim cfg.hiddenDim .scalar)
@@ -262,7 +263,7 @@ inductive InputSlot (vocabSize visualTokens : Nat) where
 
 namespace LanguageModel
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {cfg : TextConfig} {decayRank : Nat}
 
 /-- Look up a fixed-length sequence of text-token embeddings. -/

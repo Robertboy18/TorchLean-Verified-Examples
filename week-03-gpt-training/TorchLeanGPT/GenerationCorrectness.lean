@@ -24,7 +24,7 @@ does not claim the latter.
 
 @[expose] public section
 
-open _root_.Spec
+open _root_.Spec TorchLean
 
 namespace TorchLeanGPT
 namespace Generation

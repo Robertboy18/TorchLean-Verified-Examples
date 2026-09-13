@@ -593,8 +593,15 @@ def checkpointPayloadOk : Bool :=
   vecShape finalnormbeta 16 &&
   matrixShape lmhead 32 16
 
+/-- The imported arrays have the dimensions used by the forward replay.
+
+Only array lengths enter this check. Rewriting the row traversal as a list traversal
+lets Lean's kernel reduce those lengths directly; the floating-point parameter values
+stay untouched. The executable replay checks the resulting model's finite-domain
+predictions separately. -/
 theorem checkpointPayload_ok :
     checkpointPayloadOk = true := by
-  native_decide
+  simp only [checkpointPayloadOk, vecShape, matrixShape, ← Array.all_toList]
+  rfl
 
 end VerifiableTransformers.Generated.UpstreamCheckpointPayload

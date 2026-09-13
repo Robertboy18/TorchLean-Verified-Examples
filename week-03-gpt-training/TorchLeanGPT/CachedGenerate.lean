@@ -66,9 +66,8 @@ def answer
           activity := some "kv-cache"
           stepIndex := some config.generate
           device := some deviceName })
-  let decoded :=
-    Chat.trimGeneratedTurn (text.GPT2BPE.decodeOrEmpty tokenizer result.tokenIds.toArray)
-  pure { text := decoded, generation := result }
+  let decoded ← Chat.orThrow exeName <| text.GPT2BPE.decode tokenizer result.tokenIds.toArray
+  pure { text := Chat.trimGeneratedTurn decoded, generation := result }
 
 /-- Print one timing line after a response. -/
 def printTiming (promptTokens : Nat) (answer : Answer) : IO Unit := do
@@ -106,62 +105,62 @@ partial def loop
   go []
 
 /-- Load the ordinary TorchLean model and borrow its checked checkpoint buffers for decoding. -/
-def run (opts : Options) (args : List String) : IO Unit := do
-  let config ← Chat.Config.parse exeName args
+def run (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
+  let config ← Chat.Config.parse exeName opts.seed args
   let cfg := config.model.toTorchLean
   if !opts.usesCuda then
     throw <| IO.userError s!"{exeName}: the incremental cache currently requires --device cuda"
-  else if hSeq : cfg.seqLen = 0 then
+  else if cfg.sequenceLength = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero context after validation"
-  else if hModel : cfg.dModel = 0 then
+  else if cfg.modelWidth = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero model width after validation"
-  else if hVocab : cfg.vocab = 0 then
+  else if hVocab : cfg.vocabularySize = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero vocabulary after validation"
   else
-    letI : NeZero cfg.vocab := ⟨hVocab⟩
+    letI : NeZero cfg.vocabularySize := ⟨hVocab⟩
     do
       _root_.TorchLean.rand.manualSeed config.seed
-      nn.withModel (buildModel cfg 1 hSeq hModel) fun model =>
-        letI : NeZero cfg.vocab := ⟨hVocab⟩
-        do
-          let actualParameterCount :=
-            (nn.models.CausalTransformer.Tied.stateShapes cfg model).foldl
-              (fun total shape => total + Shape.size shape) 0
-          let tokenizer ← LeanProfiler.span "tokenizer.load"
-            (text.GPT2BPE.loadWithProgress exeName config.tokenizerVocab config.tokenizerMerges)
-            (metadata := { phase := some "data", activity := some "tokenizer" })
-          let evalDef := nn.models.CausalTransformer.Tied.objectiveWithMode .eval cfg model
-          let runtimeModule ← LeanProfiler.span "model.initialize"
-            (TorchLean.Module.instantiateAs (α := Float) evalDef id opts)
-            (metadata :=
-              { phase := some "initialization"
-                activity := some "parameters"
-                backend := some (Run.backendProfileName opts)
-                dtype := some "Float"
-                device := some opts.deviceName })
-          LeanProfiler.span "checkpoint.load"
-            (Checkpoint.loadModule runtimeModule config.checkpoint)
-            (metadata := { phase := some "checkpoint", activity := some "load" })
-          let decoder ← LeanProfiler.span "decoder.initialize"
-            (CachedDecode.Runtime.Decoder.initialize cfg runtimeModule.trainer.state)
-            (metadata :=
-              { phase := some "initialization"
-                activity := some "kv-cache"
-                device := some opts.deviceName })
-          IO.println s!"loaded {actualParameterCount} parameters on {opts.deviceName}"
-          IO.println s!"cache capacity={cfg.seqLen}, layers={cfg.layers}, heads={cfg.numHeads}"
-          try
-            match config.message? with
-            | some message =>
-                let promptIds ← Chat.orThrow exeName <|
-                  Chat.encodeDialoguePrompt tokenizer config.systemPrompt [] message
-                let response ← answer config decoder tokenizer opts.deviceName promptIds
-                IO.println response.text
-                printTiming promptIds.length response
-            | none =>
-                loop config decoder tokenizer opts.deviceName
-          finally
-            decoder.close
+      let model := nn.build (← rand.nextSeedGlobal) (buildModel cfg 1 opts)
+      let actualParameterCount :=
+        model.stateShapes.foldl
+          (fun total shape => total + Shape.size shape) 0
+      let tokenizer ← LeanProfiler.span "tokenizer.load"
+        (text.GPT2BPE.load config.tokenizerVocab config.tokenizerMerges
+          (progress := true) (label := exeName))
+        (metadata := { phase := some "data", activity := some "tokenizer" })
+      let evalDef := nn.models.CausalTransformer.objective cfg model (mode := .eval)
+      let runtimeModule ← LeanProfiler.span "model.initialize"
+        (TorchLean.Module.instantiate evalDef opts (α := Float))
+        (metadata :=
+          { phase := some "initialization"
+            activity := some "parameters"
+            backend := some (Run.backendProfileName opts)
+            dtype := some "Float"
+            device := some opts.deviceName })
+      LeanProfiler.span "checkpoint.load"
+        (Checkpoint.load runtimeModule config.checkpoint)
+        (metadata := { phase := some "checkpoint", activity := some "load" })
+      let decoder ← LeanProfiler.span "decoder.initialize"
+        (CachedDecode.Runtime.Decoder.initialize cfg
+          (Module.Objective.Internal.runtime runtimeModule).trainer.state)
+        (metadata :=
+          { phase := some "initialization"
+            activity := some "kv-cache"
+            device := some opts.deviceName })
+      IO.println s!"loaded {actualParameterCount} parameters on {opts.deviceName}"
+      IO.println s!"cache capacity={cfg.sequenceLength}, layers={cfg.layerCount}, heads={cfg.headCount}"
+      try
+        match config.message? with
+        | some message =>
+            let promptIds ← Chat.orThrow exeName <|
+              Chat.encodeDialoguePrompt tokenizer config.systemPrompt [] message
+            let response ← answer config decoder tokenizer opts.deviceName promptIds
+            IO.println response.text
+            printTiming promptIds.length response
+        | none =>
+            loop config decoder tokenizer opts.deviceName
+      finally
+        decoder.close
 
 /-- Program entrypoint. -/
 def main (args : List String) : IO UInt32 := do
@@ -169,7 +168,7 @@ def main (args : List String) : IO UInt32 := do
     IO.println usage
     return 0
   LeanProfiler.profileFromEnvironment "torchlean-gpt.cached-generate" <|
-    Run.runFloatCommand exeName args "TorchLean GPT cached text generation" run
+    Run.runFloatCommand exeName args "TorchLean GPT cached text generation" run (defaultSeed := 1337)
 
 end CachedGenerate
 end TorchLeanGPT

@@ -7,7 +7,7 @@ Authors: Robert Joseph George
 module
 
 public import KimiK3.Sequence
-public import NN.GraphSpec.DAG
+public import KimiK3.GraphSpec.Primitives
 
 /-!
 # Block attention residual graph
@@ -22,11 +22,13 @@ multiplication nodes already understood by TorchLean.
 @[expose] public section
 
 namespace KimiK3
+
+open TorchLean
 namespace GraphSpec
 namespace AttnRes
 
 open Spec
-open Spec.Tensor
+open TorchLean.Tensor
 open NN.GraphSpec.DAG
 
 /-- A query vector and a packed matrix of visible depth representations. -/
@@ -38,7 +40,7 @@ can be embedded in a larger backbone graph without repacking it as a separate mo
 def initialParams : TorchLean.TensorPack Float [] := .nil
 
 /-- Package a query and packed source matrix in the graph's input order. -/
-def inputs {α : Type} {sources modelDim : Nat}
+def inputs {α : Type} [Storage α] {sources modelDim : Nat}
     (query : Tensor α (.dim modelDim .scalar))
     (values : Tensor α (.dim sources (.dim modelDim .scalar))) :
     TorchLean.TensorPack α (Inputs sources modelDim) :=
@@ -56,7 +58,8 @@ def term {Γ : List Shape} (sources modelDim : Nat)
   let transposed := Term.op (NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth
       (.dim sources (.dim modelDim .scalar)) 0)
     (.cons normalized .nil)
-  let scores := Term.op (NN.GraphSpec.DAG.PrimOp.vecMat modelDim sources)
+  let scores := Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      modelDim sources .scalar .scalar)
     (.cons query (.cons transposed .nil))
   let kernels := Term.op (NN.GraphSpec.DAG.PrimOp.exp (.dim sources .scalar))
     (.cons scores .nil)
@@ -68,10 +71,11 @@ def term {Γ : List Shape} (sources modelDim : Nat)
     let inverse := Term.op (NN.GraphSpec.DAG.PrimOp.inv .scalar) (.cons denominator .nil)
     let weights := Term.op (NN.GraphSpec.DAG.PrimOp.scalarMul (.dim sources .scalar))
       (.cons inverse (.cons boundKernels .nil))
-    Term.op (NN.GraphSpec.DAG.PrimOp.vecMat sources modelDim)
+    Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      sources modelDim .scalar .scalar)
       (.cons weights (.cons (Term.weakenRight values) .nil))
 
-private theorem eval_let1 {Γ : List Shape} {σ τ : Shape} {α : Type} [Context α]
+private theorem eval_let1 {Γ : List Shape} {σ τ : Shape} {α : Type} [Storage α] [Context α]
     (env : TorchLean.TensorPack α Γ) (value : Term Γ σ) (body : Term (Γ ++ [σ]) τ) :
     Term.eval env (.let1 value body) =
       Term.eval (TorchLean.TensorPack.append env (.cons (Term.eval env value) .nil)) body := by
@@ -91,14 +95,12 @@ theorem eval_term {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
     NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth_specFwd,
     NN.GraphSpec.DAG.PrimOp.inv_specFwd,
     NN.GraphSpec.DAG.PrimOp.scalarMul_specFwd,
-    NN.GraphSpec.DAG.PrimOp.vecMat, NN.GraphSpec.DAG.PrimOp.exp,
+    broadcastVecMat_scalar_specFwd, NN.GraphSpec.DAG.PrimOp.exp,
     NN.GraphSpec.DAG.PrimOp.sum, NN.GraphSpec.DAG.PrimOp.one]
-  generalize Term.eval env values = evaluatedValues
-  cases evaluatedValues with
-  | dim rows =>
-    simp only [KimiK3.AttnRes.attendPacked, NN.GraphSpec.DAG.PrimOp.rmsNormSemantics,
-      NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSemantics, RMSNorm.scalePositive]
-    simp [div_eq_mul_inv, mul_comm]
+  simp only [KimiK3.AttnRes.attendPacked, NN.GraphSpec.DAG.PrimOp.rmsNormSemantics,
+    NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSemantics, RMSNorm.scalePositive]
+  simp [div_eq_mul_inv, mul_comm]
+  rfl
 
 /-- Standalone graph wrapper for one packed AttnRes retrieval. -/
 def model (sources modelDim : Nat) (hModel : 0 < modelDim) :

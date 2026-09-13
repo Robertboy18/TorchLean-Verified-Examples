@@ -8,6 +8,7 @@ module
 
 public import KimiK3.Common
 public import NN.GraphSpec.DAG
+public import NN.GraphSpec.DAG.Model
 
 /-!
 # Graph primitives used by Kimi K3
@@ -21,11 +22,13 @@ with ordinary TorchLean operations; it does not call an expert implementation as
 @[expose] public section
 
 namespace KimiK3
+
+open TorchLean
 namespace GraphSpec
 namespace PrimOp
 
 open Spec
-open Spec.Tensor
+open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
 
@@ -37,52 +40,62 @@ graph ABI rather than freezing a paper-specific value into the operation.
 -/
 def softCap (n : Nat) : PrimOp [.scalar, .dim n .scalar] (.dim n .scalar) :=
   { name := "softCap"
-    specFwd := fun {_α} _ xs =>
+    specFwd := fun {_α} _storage _context xs =>
       match xs with
-      | .cons (.scalar cap) (.cons input .nil) =>
+      | .cons cap (.cons input .nil) =>
           Tensor.mulSpec
             (Activation.tanhSpec
-              (Tensor.mulSpec input (Spec.fill (1 / cap) (.dim n .scalar))))
-            (Spec.fill cap (.dim n .scalar))
+              (Tensor.mulSpec input (Tensor.full (.dim n .scalar) (1 / cap.item))))
+            (Tensor.full (.dim n .scalar) cap.item)
     program := fun {α} _ _ =>
       fun {m} _ _ => fun cap input =>
         (do
-          let inverse ← Runtime.Autograd.TorchLean.inv (m := m) (α := α) cap
-          let inverseVector ← Runtime.Autograd.TorchLean.broadcastTo (m := m) (α := α)
+          let inverse ← Runtime.Autograd.Model.inv (m := m) (α := α) cap
+          let inverseVector ← Runtime.Autograd.Model.broadcastTo (m := m) (α := α)
             (Shape.CanBroadcastTo.scalarTo (.dim n .scalar)) inverse
-          let scaled ← Runtime.Autograd.TorchLean.mul (m := m) (α := α) input inverseVector
-          let cappedUnit ← Runtime.Autograd.TorchLean.tanh (m := m) (α := α) scaled
-          let capVector ← Runtime.Autograd.TorchLean.broadcastTo (m := m) (α := α)
+          let scaled ← Runtime.Autograd.Model.mul (m := m) (α := α) input inverseVector
+          let cappedUnit ← Runtime.Autograd.Model.tanh (m := m) (α := α) scaled
+          let capVector ← Runtime.Autograd.Model.broadcastTo (m := m) (α := α)
             (Shape.CanBroadcastTo.scalarTo (.dim n .scalar)) cap
-          Runtime.Autograd.TorchLean.mul (m := m) (α := α) cappedUnit capVector :
-          m (Runtime.Autograd.TorchLean.RefTy (m := m) (α := α) (.dim n .scalar))) }
+          Runtime.Autograd.Model.mul (m := m) (α := α) cappedUnit capVector :
+          m (Runtime.Autograd.Model.RefTy (m := m) (α := α) (.dim n .scalar))) }
 
 end PrimOp
 
+/-- With no batch axes, the broadcast primitive is the ordinary vector-matrix product. -/
+@[simp] theorem broadcastVecMat_scalar_specFwd {α : Type} [Storage α] [Context α]
+    {rows columns : Nat} (vector : Tensor α [rows]) (matrix : Tensor α [rows, columns]) :
+    (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
+      rows columns .scalar .scalar).specFwd (.cons vector (.cons matrix .nil)) =
+      Spec.vecMatMulSpec vector matrix := by
+  simp [NN.GraphSpec.DAG.PrimOp.broadcastVecMat,
+    NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec,
+    Tensor.broadcastTo_self]
+
 /-- The K3 vector adapter and TorchLean's DAG vector primitive use the same RMSNorm semantics. -/
-@[simp] theorem rmsNormVectorSemantics_eq_scale {α : Type} [Context α] {width : Nat}
+@[simp] theorem rmsNormVectorSemantics_eq_scale {α : Type} [Storage α] [Context α] {width : Nat}
     (hWidth : 0 < width)
-    (input gamma : _root_.Spec.Tensor α (.dim width .scalar)) :
+    (input gamma : _root_.TorchLean.Tensor α (.dim width .scalar)) :
     NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSemantics hWidth input gamma =
       KimiK3.RMSNorm.scale input gamma := by
   rw [RMSNorm.scale_eq_scalePositive hWidth]
   rfl
 
 /-- Generalized RMS normalization specializes to the K3 vector adapter with no leading axes. -/
-theorem rmsNormSemantics_scalar_eq_scale {α : Type} [Context α] {width : Nat}
+theorem rmsNormSemantics_scalar_eq_scale {α : Type} [Storage α] [Context α] {width : Nat}
     (hWidth : 0 < width)
-    (input gamma : _root_.Spec.Tensor α (.dim width .scalar)) :
+    (input gamma : _root_.TorchLean.Tensor α (.dim width .scalar)) :
     NN.GraphSpec.DAG.PrimOp.rmsNormSemantics .scalar hWidth gamma input =
       KimiK3.RMSNorm.scale input gamma := by
   exact rmsNormVectorSemantics_eq_scale hWidth input gamma
 
 /-- Generalized axis concatenation reduces to ordinary leading-axis concatenation at axis zero. -/
-private theorem concatAxisSpec_zero {α : Type} [Context α] {left right : Nat}
+private theorem concatAxisSpec_zero {α : Type} [Storage α] [Context α] {left right : Nat}
     {rest : _root_.Spec.Shape}
-    (a : _root_.Spec.Tensor α (.dim left rest))
-    (b : _root_.Spec.Tensor α (.dim right rest)) :
+    (a : _root_.TorchLean.Tensor α (.dim left rest))
+    (b : _root_.TorchLean.Tensor α (.dim right rest)) :
     NN.GraphSpec.DAG.PrimOp.concatAxisSpec (.dim left rest) 0 left right a b =
-      _root_.Spec.Tensor.concatAxisSpec .scalar a b := by
+      _root_.TorchLean.Tensor.concatAxisSpec .scalar a b := by
   rfl
 
 /-- Concatenate two graph terms along their first axis through the generalized axis primitive. -/
@@ -103,7 +116,7 @@ def concatAxisZeroTerm {Γ : List _root_.Spec.Shape}
     (a : NN.GraphSpec.DAG.Term Γ (.dim left rest))
     (b : NN.GraphSpec.DAG.Term Γ (.dim right rest)) :
     NN.GraphSpec.DAG.Term.eval env (concatAxisZeroTerm left right rest a b) =
-      _root_.Spec.Tensor.concatAxisSpec .scalar
+      _root_.TorchLean.Tensor.concatAxisSpec .scalar
         (NN.GraphSpec.DAG.Term.eval env a) (NN.GraphSpec.DAG.Term.eval env b) := by
   unfold concatAxisZeroTerm
   rw [NN.GraphSpec.DAG.Term.eval_cast]

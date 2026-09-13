@@ -277,6 +277,11 @@ __global__ static void layer_norm_kernel(
     __syncthreads();
   }
   const float mean = partial[0] / (float)width;
+  /*
+   * Every warp must read the reduced sum before the variance reduction reuses partial.
+   * Otherwise warp 0 can overwrite partial[0] while another warp is still reading its mean.
+   */
+  __syncthreads();
 
   float local_variance = 0.0f;
   for (uint32_t i = threadIdx.x; i < width; i += blockDim.x) {

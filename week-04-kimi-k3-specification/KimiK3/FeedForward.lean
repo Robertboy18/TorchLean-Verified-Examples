@@ -11,6 +11,7 @@ public import KimiK3.Microscaling
 public import NN.Spec.Core.TensorReductionShape
 public import NN.Spec.Layers.Activation
 public import Mathlib.Analysis.SpecialFunctions.Sigmoid
+import NN.Proofs.Gradients.Activation
 
 /-!
 # Stable LatentMoE and Quantile Balancing
@@ -36,6 +37,8 @@ B--D, https://arxiv.org/abs/2607.24653.
 
 namespace KimiK3
 
+open TorchLean
+
 open Spec
 open Tensor
 
@@ -53,16 +56,14 @@ def scalar {α : Type} [Context α] (gateCap upCap gate up : α) : α :=
   (softCap gateCap gate * Activation.Math.sigmoidSpec gate) * softCap upCap up
 
 /-- SiTU-GLU applied coordinatewise to gate and up projections. -/
-def vector {α : Type} [Context α] {n : Nat} (gateCap upCap : α)
+def vector {α : Type} [Storage α] [Context α] {n : Nat} (gateCap upCap : α)
     (gate up : Tensor α (.dim n .scalar)) : Tensor α (.dim n .scalar) :=
   Tensor.dim (fun i => Tensor.scalar (scalar gateCap upCap (Tensor.getScalar gate i)
     (Tensor.getScalar up i)))
 
 /-- The generic TorchLean sigmoid agrees with Mathlib's real sigmoid. -/
 private theorem sigmoidSpec_real (x : ℝ) : Activation.Math.sigmoidSpec x = Real.sigmoid x := by
-  have hexp : MathFunctions.exp (-x) = Real.exp (-x) := by rfl
-  rw [Activation.Math.sigmoidSpec, Real.sigmoid, hexp]
-  simp [div_eq_mul_inv]
+  simpa [Real.sigmoid, one_div] using Proofs.sigmoid_eq_inv_exp x
 
 /-- The generic `MathFunctions` projection is definitionally real `tanh` at scalar type `ℝ`. -/
 private theorem tanh_real (x : ℝ) : MathFunctions.tanh x = Real.tanh x := by
@@ -110,43 +111,30 @@ theorem expanded_eq_vector {n : Nat} (gateCap upCap : ℝ)
     Tensor.mulSpec
       (Tensor.mulSpec
         (Tensor.mulSpec
-          (Activation.tanhSpec (Tensor.mulSpec gate (Spec.fill gateCap⁻¹ (.dim n .scalar))))
-          (Spec.fill gateCap (.dim n .scalar)))
+          (Activation.tanhSpec (Tensor.mulSpec gate (Tensor.full (.dim n .scalar) gateCap⁻¹)))
+          (Tensor.full (.dim n .scalar) gateCap))
         (Activation.sigmoidSpec gate))
       (Tensor.mulSpec
-        (Activation.tanhSpec (Tensor.mulSpec up (Spec.fill upCap⁻¹ (.dim n .scalar))))
-        (Spec.fill upCap (.dim n .scalar))) =
+        (Activation.tanhSpec (Tensor.mulSpec up (Tensor.full (.dim n .scalar) upCap⁻¹)))
+        (Tensor.full (.dim n .scalar) upCap)) =
       vector gateCap upCap gate up := by
-  cases gate with
-  | dim gateValues =>
-      cases up with
-      | dim upValues =>
-          apply congrArg Tensor.dim
-          funext index
-          cases hGate : gateValues index with
-          | scalar gateValue =>
-              cases hUp : upValues index with
-              | scalar upValue =>
-                  simp [Tensor.map2Spec, Spec.fill, scalar,
-                    softCap, Tensor.getScalar, Spec.get, Spec.get, hGate, hUp,
-                    div_eq_mul_inv]
-                  change
-                    (MathFunctions.tanh (gateValue * gateCap⁻¹) * gateCap *
-                        Activation.Math.sigmoidSpec gateValue) *
-                      (MathFunctions.tanh (upValue * upCap⁻¹) * upCap) = _
-                  ring
+  apply Tensor.ext_vector
+  intro index
+  simp [Tensor.mulSpec, Activation.tanhSpec, Activation.sigmoidSpec,
+    vector, scalar, softCap, Activation.Math.tanhSpec, div_eq_mul_inv]
+  ring
 
 end SiTU
 
 /-- A SiTU-GLU feed-forward expert with explicit input, hidden, and output widths. -/
-structure Expert (α : Type) (inputDim hiddenDim outputDim : Nat) where
+structure Expert (α : Type) [Storage α] (inputDim hiddenDim outputDim : Nat) where
   gateWeight : Tensor α (.dim inputDim (.dim hiddenDim .scalar))
   upWeight : Tensor α (.dim inputDim (.dim hiddenDim .scalar))
   downWeight : Tensor α (.dim hiddenDim (.dim outputDim .scalar))
 
 namespace Expert
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {inputDim hiddenDim outputDim : Nat}
 
 /-- Evaluate one SiTU-GLU expert. -/
@@ -271,8 +259,12 @@ theorem downProjection_error_le
 
 /-- Hidden SiTU activation produced when the first two expert matrices use MXFP8 inputs and MXFP4
 weights. The result is still real-valued; an MXFP8 encoder must certify the representation supplied
-to the final down projection. -/
-noncomputable def hiddenActivation {format : FP8Format}
+to the final down projection.
+
+The source stays as a named expression when Lean checks dependent encoding witnesses. Its defining
+formula can be unfolded explicitly in proofs, without normalizing packed buffers during witness
+construction. -/
+@[irreducible] noncomputable def hiddenActivation {format : FP8Format}
     (scales : Scales inputBlocks hiddenBlocks outputDim)
     (expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim)
     (gateCap upCap : ℝ)
@@ -297,7 +289,9 @@ structure Execution (format : FP8Format)
     (sourceInput : Tensor ℝ (.dim (inputBlocks * 32) .scalar)) where
   input : MXFP8Encoding format inputBlocks sourceInput
   hidden : MXFP8Encoding format hiddenBlocks
-    (hiddenActivation scales expert gateCap upCap input)
+    (hiddenActivation (inputBlocks := inputBlocks) (hiddenBlocks := hiddenBlocks)
+      (outputDim := outputDim) (format := format) (sourceInput := sourceInput)
+      scales expert gateCap upCap input)
 
 namespace Execution
 
@@ -497,7 +491,7 @@ theorem chooseTopK_isTopK (score : Fin numExperts → ℝ)
 end Route
 
 /-- Parameters for Kimi K3's Stable LatentMoE layer. -/
-structure StableLatentMoE (α : Type)
+structure StableLatentMoE (α : Type) [Storage α]
     (modelDim latentDim sharedHidden routedHidden numShared numRouted activeExperts : Nat) where
   downProject : Tensor α (.dim modelDim (.dim latentDim .scalar))
   upProject : Tensor α (.dim latentDim (.dim modelDim .scalar))
@@ -509,7 +503,7 @@ structure StableLatentMoE (α : Type)
 
 namespace StableLatentMoE
 
-variable {α : Type} [Context α]
+variable {α : Type} [Storage α] [Context α]
 variable {modelDim latentDim sharedHidden routedHidden numShared numRouted activeExperts : Nat}
 
 /-- Raw router scores are sigmoid outputs (Eq. 12). -/
@@ -528,8 +522,8 @@ theorem rawRouterScores_pos
     (x : Tensor ℝ (.dim modelDim .scalar)) (expert : Fin numRouted) :
     0 < Tensor.getScalar (moe.rawRouterScores x) expert := by
   rw [rawRouterScores, Activation.sigmoidSpec, Normalize.getScalar_mapSpec,
-    Activation.Math.sigmoidSpec]
-  exact one_div_pos.mpr (add_pos_of_pos_of_nonneg zero_lt_one (Real.exp_pos _).le)
+    Proofs.sigmoid_eq_inv_exp]
+  exact inv_pos.mpr (add_pos_of_pos_of_nonneg zero_lt_one (Real.exp_pos _).le)
 
 /-- Bias is used for top-k selection but not for the mixture weights (Eq. 13). -/
 def adjustedRouterScores
@@ -559,6 +553,7 @@ theorem selectedRouterScoreTotal_pos
         (Tensor.getScalar (moe.rawRouterScores x) (route.expert slot))) := by
   let _ : Nonempty (Fin activeExperts) := Fin.pos_iff_nonempty.mp hActive
   rw [Spec.sum_spec_vec]
+  simp only [Tensor.getScalar_dim]
   exact Finset.sum_pos
     (fun slot _ => moe.rawRouterScores_pos x (route.expert slot))
     Finset.univ_nonempty
@@ -577,7 +572,7 @@ theorem routeWeights_apply
             (Tensor.getScalar (moe.rawRouterScores x) (route.expert selected))) := by
   rw [routeWeights, Normalize.probabilities,
     if_pos (moe.selectedRouterScoreTotal_pos route x hActive)]
-  rfl
+  simp
 
 /-- Sum all full-width shared experts. -/
 def sharedOutput
@@ -587,7 +582,7 @@ def sharedOutput
     Tensor α (.dim modelDim .scalar) :=
   (List.finRange numShared).foldl
     (fun total i => total + (moe.shared i).forward gateCap upCap x)
-    (Spec.fill 0 (.dim modelDim .scalar))
+    (Tensor.full (.dim modelDim .scalar) 0)
 
 /-- Weighted aggregate of the selected latent experts, the vector `u` in Eq. 11. -/
 def routedAggregate
@@ -601,7 +596,7 @@ def routedAggregate
     (fun total slot =>
       let expertOutput := (moe.routed (route.expert slot)).forward gateCap upCap latent
       total + Tensor.mapSpec (fun value => Tensor.getScalar weights slot * value) expertOutput)
-    (Spec.fill 0 (.dim latentDim .scalar))
+    (Tensor.full (.dim latentDim .scalar) 0)
 
 /--
 Stable LatentMoE forward pass (Eq. 11): shared experts operate at model width, while the selected
@@ -694,7 +689,7 @@ noncomputable def routedAggregateMX {latentBlocks hiddenBlocks : Nat}
     (fun total slot =>
       let expertOutput := (execution.selected slot).output
       total + Tensor.mapSpec (fun value => Tensor.getScalar weights slot * value) expertOutput)
-    (Spec.fill 0 (.dim (latentBlocks * 32) .scalar))
+    (Tensor.full (.dim (latentBlocks * 32) .scalar) 0)
 
 /-- Stable LatentMoE with the precision split used by K3 deployment: shared experts, routing,
 latent projections, normalization, and the final up-projection remain high precision, while every
