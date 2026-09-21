@@ -48,7 +48,6 @@ source "$HOME/.elan/env"
 
 git clone https://github.com/Robertboy18/TorchLean-Verified-Examples.git
 cd TorchLean-Verified-Examples
-lake update
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -58,19 +57,30 @@ lake build TorchLeanGPT
 ```
 
 The last command checks the Lean model and theorem modules without requiring a
-GPU. `lakefile.lean` pins the TorchLean and LeanProfiler commits used by this
-example; `lake update` therefore resolves those commits rather than following a
-moving branch. To compile the training and cached-generation executables
+GPU. `lake-manifest.json` records the tested dependencies; ordinary builds use those revisions
+without running `lake update`.
+To compile the training and cached-generation executables
 against CUDA:
 
 ```bash
-lake -R -K cuda=true build \
+lake -R -Kcuda=true \
+  -KverifiedExamplesBuildDir=.lake/build-cuda \
+  -KtorchleanBuildDir=.lake/build-cuda build \
   train_torchlean_gpt \
   generate_torchlean_gpt \
   generate_torchlean_gpt_cached \
   check_torchlean_gpt_cache \
   benchmark_torchlean_gpt_cache
 ```
+
+For an A100-only build, add `-K cuda_arch=sm_80` to both build and run commands. This also
+works with CUDA 11, which does not accept the default `all-major` target. The example forwards
+`cuda_home` and `cuda_arch` to TorchLean and uses the same toolkit for its cached decoder.
+Pass the same build-directory options when invoking CUDA executables through `lake exe`.
+
+The current tied-model builder draws all initializers from one seed stream. Historical runs below
+used the earlier builder, so a fresh run with the same numeric seed need not reproduce their initial
+weights. Checkpoint loading supplies stored weights instead of relying on initializer identity.
 
 TorchLean's
 [installation guide](https://lean-dojo.github.io/TorchLean/installation/)
@@ -84,17 +94,15 @@ The architecture comes from TorchLean's tied-token constructor:
 def tiedArchitecture
     (cfg : nn.models.CausalTransformer.Config)
     (batch : Nat) :
-    nn.Builder (nn.IndexedModel
-      (cfg.tokens [batch]) (cfg.vocabulary [batch])
+    nn.Builder (nn.IndexedModel (cfg.tokenShape [batch]) (cfg.vocabularyShape [batch])
       (Fin cfg.vocabularySize)) :=
   nn.models.CausalTransformer.tied cfg [batch]
 ```
 
-This definition builds the complete token-to-logit model: token and position embeddings,
-pre-normalized blocks, hard causal attention, GELU feed-forward layers, and the
-final LayerNorm. The tied constructor uses one token table for embedding lookup
-and, transposed, for the vocabulary projection. Token ids are represented as
-`Fin cfg.vocabularySize`, so an out-of-range id cannot
+This builds the whole indexed language model: a token table, learned positions,
+pre-normalized blocks, hard causal attention, GELU feed-forward layers, and the final LayerNorm.
+The same token table is used for embedding lookup and, transposed, for vocabulary projection.
+Token ids are represented as `Fin vocab`, so an out-of-range id cannot
 reach the model, and they are never rounded through a floating-point representation. The dimensions
 are collected in one ordinary structure:
 
@@ -133,10 +141,6 @@ the convention implemented by
 [Hugging Face's GPT-2 model](https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/modeling_gpt2.py)
 and described in OpenAI's
 [GPT-2 report](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf).
-
-The current builder allocates initialization seeds differently from the version used for the
-recorded runs. Load the saved parameter file to reproduce a trained model; the old seed alone
-does not reconstruct its original initialization.
 
 ## Prepare the data
 
@@ -516,6 +520,8 @@ than facts about one preset's parameter count.
 | The executable selector agrees with the dialogue-record predicate | `DialogueRecords.targetRowEnabled_eq_true_iff` | Proved |
 | Every selected record target lies inside its bounded token window | `DialogueRecords.target_index_lt_record_end` | Proved |
 | Padded rows after the end of a record cannot be selected as targets | `DialogueRecords.not_target_row_of_record_end_le` | Proved |
+| The packing loop appends every input, target, and mask bit in row order | `Batching.appendRows.spec`, `Batching.appendRows_toList` | Proved for arbitrary row functions and initial arrays; used by the masked batch builder |
+| A validation scan accepts exactly when every entry passes, otherwise finding the first failure | `Validation.firstInvalid.spec`, `Validation.firstInvalid_eq_none_iff` | Proved for arbitrary Boolean checks; used by the token and mask loaders |
 | A strict-future attention entry has zero weight and zero score derivative | `causal_attention_blocks_future_forward_and_backward` | Proved for the exact hard-mask specification |
 | Zero-weight rows make no direct contribution to a weighted sum | `weighted_rows_eq_of_eq_on_support` | Proved algebraically; this theorem does not differentiate the runtime loss |
 | Incremental key/value caching agrees with full-prefix recomputation | `CachedDecode.run_correct`, `Layered.run_correct` | Proved for the abstract cache semantics |
@@ -523,6 +529,43 @@ than facts about one preset's parameter count.
 | Restoring an exact indexed training state gives the uninterrupted result | `Training.resume_eq_uninterrupted` | Proved under exact-state restoration |
 | The native CUDA cache agrees numerically with ordinary TorchLean decoding | `check_torchlean_gpt_cache` | Runtime differential check, not a refinement theorem |
 | CUDA forward, backward, and AdamW execution implement the real-valued specifications | TorchLean backend capsules | Trusted runtime boundary |
+
+### Proving the data loops with Velvet
+
+I wanted the loop proofs to describe the code the trainer actually calls.
+[Velvet](https://github.com/verse-lab/velvet) lets us put an invariant beside a mutable Lean loop
+and prove the resulting obligations with ordinary Lean tactics. It is a dependency of this
+examples repository, not of TorchLean.
+
+[`Batching.appendRows`](TorchLeanGPT/Batching.lean) is used inside
+`causalLmMaskedTokenBatchFromRecords`. After each iteration, its three arrays contain exactly the
+initial entries followed by the processed rows. The contract describes their contents, not just
+their lengths: swapping two targets would violate it even if all the shapes still matched.
+The row function remains arbitrary, and inputs and targets can have different types.
+
+[`Validation.firstInvalid`](TorchLeanGPT/Validation.lean) is shared by `readTokenShard` and
+`readTargetMask`. Its invariant records that every earlier index passed the check. If the loop
+stops, the returned index is in range, fails the check, and has no earlier failure. If it finishes,
+every index passed. This also covers empty inputs. The loaders retain their existing file formats
+and diagnostic messages.
+
+These are proofs of the pure packing and scanning functions. They do not yet connect the complete
+masked tensor builder to its mathematical specification, verify filesystem reads, or prove the
+byte decoder or CUDA kernels correct. Velvet generates proof obligations; it does not remove those
+boundaries. Its syntax frontend is kept private to the two loop modules, so other files retain
+ordinary Lean `for` and `while` syntax.
+
+Run the compiled regression checks without a GPU:
+
+```bash
+data_check_dir=$(mktemp -d)
+lake exe check_torchlean_gpt_data "$data_check_dir"
+```
+
+The checks compare masked tensors against a list-based reference at empty, padded, partial-record,
+and full-window boundaries, then exercise valid, truncated, and invalid shard files. The packing
+and scanning functions themselves have proofs, so their development sweeps are not kept as a
+permanent test suite. Fixtures are left in the printed scratch directory for inspection.
 
 First, the target at position `t` is the corpus token at position `t + 1`:
 
@@ -567,7 +610,7 @@ zero in the backward pass:
 ```lean
 theorem causal_attention_blocks_future_forward_and_backward
     {context : Nat}
-    (scores dWeights : Spec.Tensor ℝ
+    (scores dWeights : TorchLean.Tensor ℝ
       (.dim context (.dim context .scalar)))
     (i j : Fin context)
     (future : i.val < j.val) :
@@ -668,7 +711,10 @@ shards. These hashes catch ordinary accidental changes; the SHA-256 values in
 the dataset manifest provide the stronger archival identity. Checkpoints also
 record the device, backend profile, Lean version, and optimizer label. Random
 windows are derived from the seed and step number, so resuming at the recorded
-step also restores the data-stream position.
+step also restores the data-stream position. The current optimizer payload also saves the eager
+session's random-operation counter. Restoring it continues dropout with the next mask rather than
+restarting the mask sequence. Older optimizer payloads remain readable, but lack that counter and
+produce a warning; they cannot reproduce a stochastic continuation exactly.
 
 The completed 2.319B-token continuation used the earlier `resume.v1` format. Those manifests bind
 paths and training options but not content hashes or runtime identity. The loader can still read
@@ -682,10 +728,21 @@ restored exactly and that both runs use the same global step indices. Parsing a
 checkpoint and restoring its device buffers are checked by the executable; they
 are not hidden inside that theorem.
 
-The checkpoint regression ran four optimizer updates both uninterrupted and as
-two updates followed by a saved-state resume. The final parameter files were
-byte-identical. That experiment checks the current serializer and loader on one
-run; the theorem explains why exact restoration is sufficient in general.
+The Lean 4.34 regression ran three CUDA AdamW updates with dropout `0.1`, then resumed the
+step-one checkpoint and repeated the remaining two updates. Both the final parameter file and
+optimizer file were byte-identical. The test used width 8, two heads, one layer, context 32,
+batch size 1, seed 19, and the full 50,257-token vocabulary. This checks the serializer, random
+counter, and loader on a small model. It is an observed result, not a guarantee of bitwise
+determinism for every CUDA run. Atomic accumulation can change the order of floating-point
+additions; for repeatability checks, set `TORCHLEAN_CUDA_DETERMINISTIC_REDUCTIONS=1` for both
+the original run and its continuation. The pure theorem assumes the same step-indexed update
+rule in both runs.
+
+A separate Lean 4.34 smoke test initialized the full GPT-2-small preset (124,412,160 stored
+parameters, 12 layers, width 768, 12 heads, context 1,024) and ran one CUDA training update on
+TinyShakespeare with batch size 1 and seed 19. Validation loss on the selected evaluation batch
+fell from `11.010458` to `9.484279`, and the parameter checkpoint was saved. This tests the
+full-size training path, not convergence or the quality of a newly trained language model.
 
 ### Checkpoint size
 
@@ -776,9 +833,12 @@ one key/value row for every consumed state. Deeper layers store different
 states, but all layer caches advance by the same number of positions.
 
 The native implementation is a runtime boundary. Before decoding, Lean
-checks all 160 parameter positions and shapes expected by the model, validates
+checks every state position and shape expected by the configured model, validates
 the attention configuration, and checks every dimension passed to the native
-ABI. The checkpoint format is positional: it does not carry semantic parameter
+ABI. Optional dropout probabilities occupy state slots even in evaluation mode; the decoder checks
+those slots and skips them when selecting weights. Attention projections use input-by-output
+matrices, while the feed-forward projections use output-by-input matrices. All three LayerNorm
+sites use the current model's epsilon, `1e-5`. The checkpoint format is positional: it does not carry semantic parameter
 names, so a same-shaped reordering would still violate the format contract
 rather than being detected by a name check. The following command compares the
 native cache with the ordinary TorchLean forward pass on one loaded checkpoint:
@@ -802,6 +862,11 @@ checked at three prefixes:
 | 1 | 0.000018 | 0.000003 | 0.351320 | passed |
 | 4 | 0.000014 | 0.000002 | 2.112649 | passed |
 | 9 | 0.000017 | 0.000003 | 4.891603 | passed |
+
+The Lean 4.34 smoke-test checkpoint above was checked separately at prefixes of 1, 4, and 8
+tokens. Maximum absolute logit differences were `0.000003`, `0.000002`, and `0.000003`,
+respectively; greedy choices agreed and all three margin checks passed. These are new checks
+of the current model and decoder, not a rerun of the historical checkpoint in the table.
 
 The checker rejects non-finite logits, unequal output lengths, a changed greedy
 token, or a maximum absolute difference above `0.001`. It also reports whether

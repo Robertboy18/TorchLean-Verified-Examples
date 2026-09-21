@@ -23,12 +23,10 @@ graph below executes the differentiable computation for the resulting route.
 @[expose] public section
 
 namespace KimiK3
-
-open TorchLean
 namespace GraphSpec
 namespace StableLatentMoE
 
-open Spec
+open Spec TorchLean
 open TorchLean.Tensor
 open NN.GraphSpec.DAG
 
@@ -55,21 +53,7 @@ abbrev Inputs (modelDim : Nat) : List Shape :=
 def initialParams (modelDim latentDim sharedHidden routedHidden numShared numRouted : Nat) :
     TorchLean.TensorPack Float
       (Params modelDim latentDim sharedHidden routedHidden numShared numRouted) :=
-  .cons (Tensor.full (.dim modelDim (.dim latentDim .scalar)) 0) <|
-    .cons (Tensor.full (.dim latentDim (.dim modelDim .scalar)) 0) <|
-      .cons (Tensor.full (.dim latentDim .scalar) 0) <|
-        .cons (Tensor.full (.dim modelDim (.dim numRouted .scalar)) 0) <|
-          .cons (Tensor.full (.dim numRouted .scalar) 0) <|
-            .cons (Tensor.full (.dim numShared (.dim modelDim (.dim sharedHidden .scalar))) 0) <|
-              .cons (Tensor.full (.dim numShared (.dim modelDim (.dim sharedHidden .scalar))) 0) <|
-                .cons (Tensor.full (.dim numShared (.dim sharedHidden (.dim modelDim .scalar))) 0) <|
-                  .cons
-                    (Tensor.full (.dim numRouted (.dim latentDim (.dim routedHidden .scalar))) 0) <|
-                    .cons
-                      (Tensor.full (.dim numRouted (.dim latentDim (.dim routedHidden .scalar))) 0) <|
-                      .cons
-                        (Tensor.full (.dim numRouted (.dim routedHidden (.dim latentDim .scalar))) 0)
-                        .nil
+  TorchLean.TensorPack.zero
 
 /-- Pack the mathematical MoE record into the graph's expert-bank layout. -/
 def parameters {α : Type} [Storage α]
@@ -114,42 +98,16 @@ def modelGivenRoute
     NN.GraphSpec.DAG.Model
       (Params modelDim latentDim sharedHidden routedHidden numShared numRouted)
       (Inputs modelDim) (.dim modelDim .scalar) :=
-  let Γ := Params modelDim latentDim sharedHidden routedHidden numShared numRouted ++ Inputs modelDim
-  let downProject : Term Γ (.dim modelDim (.dim latentDim .scalar)) :=
-    Term.var .head
-  let upProject : Term Γ (.dim latentDim (.dim modelDim .scalar)) :=
-    Term.var (.tail .head)
-  let routedNormScale : Term Γ (.dim latentDim .scalar) :=
-    Term.var (.tail (.tail .head))
-  let routerWeight : Term Γ (.dim modelDim (.dim numRouted .scalar)) :=
-    Term.var (.tail (.tail (.tail .head)))
-  let _routerBias : Term Γ (.dim numRouted .scalar) :=
-    Term.var (.tail (.tail (.tail (.tail .head))))
-  let sharedGate : Term Γ (.dim numShared (.dim modelDim (.dim sharedHidden .scalar))) :=
-    Term.var (.tail (.tail (.tail (.tail (.tail .head)))))
-  let sharedUp : Term Γ (.dim numShared (.dim modelDim (.dim sharedHidden .scalar))) :=
-    Term.var (.tail (.tail (.tail (.tail (.tail (.tail .head))))))
-  let sharedDown : Term Γ (.dim numShared (.dim sharedHidden (.dim modelDim .scalar))) :=
-    Term.var (.tail (.tail (.tail (.tail (.tail (.tail (.tail .head)))))))
-  let routedGate : Term Γ (.dim numRouted (.dim latentDim (.dim routedHidden .scalar))) :=
-    Term.var (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail .head))))))))
-  let routedUp : Term Γ (.dim numRouted (.dim latentDim (.dim routedHidden .scalar))) :=
-    Term.var (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail .head)))))))))
-  let routedDown : Term Γ (.dim numRouted (.dim routedHidden (.dim latentDim .scalar))) :=
-    Term.var
-      (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail .head))))))))))
-  let input : Term Γ (.dim modelDim .scalar) :=
-    Term.var
-      (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail
-        (.tail .head)))))))))))
-  let gateCap : Term Γ .scalar :=
-    Term.var
-      (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail
-        (.tail (.tail .head))))))))))))
-  let upCap : Term Γ .scalar :=
-    Term.var
-      (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail (.tail
-        (.tail (.tail (.tail .head)))))))))))))
+  let Γ :=
+    Params modelDim latentDim sharedHidden routedHidden numShared numRouted ++ Inputs modelDim
+  let envTerms : Args Γ
+      (Params modelDim latentDim sharedHidden routedHidden numShared numRouted ++
+        Inputs modelDim) := by
+    simpa [Γ] using Args.vars Γ
+  let .cons downProject <| .cons upProject <| .cons routedNormScale <|
+      .cons routerWeight <| .cons _routerBias <| .cons sharedGate <| .cons sharedUp <|
+      .cons sharedDown <| .cons routedGate <| .cons routedUp <| .cons routedDown <|
+      .cons input <| .cons gateCap <| .cons upCap .nil := envTerms
   let sharedOutput := Term.sum (.dim modelDim .scalar) <|
     (List.finRange numShared).map fun expert =>
       let gateWeight := selectLeadingTerm numShared
@@ -159,12 +117,12 @@ def modelGivenRoute
       let downWeight := selectLeadingTerm numShared
         (.dim sharedHidden (.dim modelDim .scalar)) expert sharedDown
       Expert.term modelDim sharedHidden modelDim input gateWeight upWeight downWeight gateCap upCap
-  let latent := Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
-      modelDim latentDim .scalar .scalar)
+  let latent := Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar modelDim latentDim
+      (Shape.CanBroadcastTo.refl .scalar) (Shape.CanBroadcastTo.refl .scalar))
     (.cons input (.cons downProject .nil))
   let rawScores := Term.op (NN.GraphSpec.DAG.PrimOp.sigmoid (.dim numRouted .scalar))
-    (.cons (Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
-      modelDim numRouted .scalar .scalar)
+    (.cons (Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar modelDim numRouted
+      (Shape.CanBroadcastTo.refl .scalar) (Shape.CanBroadcastTo.refl .scalar))
       (.cons input (.cons routerWeight .nil))) .nil)
   let selectedTotal := Term.sum .scalar <|
     (List.finRange activeExperts).map fun slot =>
@@ -189,8 +147,8 @@ def modelGivenRoute
         (.cons weight (.cons expertOutput .nil))
   let normalized := Term.op (NN.GraphSpec.DAG.PrimOp.rmsNorm .scalar latentDim hLatent)
     (.cons routedOutput (.cons routedNormScale .nil))
-  let projected := Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
-      latentDim modelDim .scalar .scalar)
+  let projected := Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar latentDim modelDim
+      (Shape.CanBroadcastTo.refl .scalar) (Shape.CanBroadcastTo.refl .scalar))
     (.cons normalized (.cons upProject .nil))
   { initParams := initialParams modelDim latentDim sharedHidden routedHidden numShared numRouted
     body := Term.op (NN.GraphSpec.DAG.PrimOp.add (.dim modelDim .scalar))
@@ -211,16 +169,24 @@ theorem modelGivenRoute_specFwd_eq_forward
       (List.finRange activeExperts).foldl
           (fun total slot => Tensor.addSpec total
             (Spec.get (moe.rawRouterScores input) (route.expert slot)))
-          (Tensor.full .scalar 0) =
+          (Tensor.zeros .scalar) =
         Tensor.scalar (Tensor.sumSpec (Tensor.dim fun slot => Tensor.scalar
           (Tensor.getScalar (moe.rawRouterScores input) (route.expert slot)))) := by
-    change
-      (List.finRange activeExperts).foldl
-        (fun total slot => total + Spec.get (moe.rawRouterScores input) (route.expert slot))
-        (Tensor.scalar 0) = _
-    erw [Spec.foldl_add_scalar
-      (fun slot => Spec.get (moe.rawRouterScores input) (route.expert slot))
-      (List.finRange activeExperts) 0]
+    rw [show (Tensor.zeros [] : Tensor ℝ []) = Tensor.scalar 0 by
+      apply Tensor.ext_scalar
+      simp]
+    have hFold :
+        (List.finRange activeExperts).foldl
+          (fun total slot => Tensor.addSpec total
+            (Spec.get (moe.rawRouterScores input) (route.expert slot))) (Tensor.scalar 0) =
+          Tensor.scalar ((List.finRange activeExperts).foldl
+            (fun total slot => total +
+              (Spec.get (moe.rawRouterScores input) (route.expert slot)).item) 0) := by
+      convert Spec.foldl_add_scalar
+        (fun slot => Spec.get (moe.rawRouterScores input) (route.expert slot))
+        (List.finRange activeExperts) 0 using 1
+      rfl
+    rw [hFold]
     congr 1
     rw [List.finRange_foldl_add_eq_finset_sum, Spec.sum_spec_vec]
     apply Finset.sum_congr rfl
@@ -228,11 +194,12 @@ theorem modelGivenRoute_specFwd_eq_forward
     simp [Tensor.getScalar]
   simp only [KimiK3.StableLatentMoE.rawRouterScores] at selectedTotal_eq
   simp [modelGivenRoute, parameters, inputs,
-    NN.GraphSpec.DAG.Model.specFwd, Term.eval_sum, List.foldl_map,
+    NN.GraphSpec.DAG.Model.specFwd, Args.vars, Args.weakenLeft,
+    Term.weakenLeft, Term.rename, Term.eval_sum, List.foldl_map,
     eval_selectLeadingTerm, Term.eval, Term.evalArgs, Env.tget,
     TorchLean.TensorPack.append,
     NN.GraphSpec.DAG.PrimOp.add,
-    NN.GraphSpec.DAG.PrimOp.sigmoid,
+    PrimOp.broadcastVecMat, NN.GraphSpec.DAG.PrimOp.sigmoid,
     NN.GraphSpec.DAG.PrimOp.rmsNorm,
     KimiK3.StableLatentMoE.forward, KimiK3.StableLatentMoE.sharedOutput,
     KimiK3.StableLatentMoE.routedAggregate,
@@ -253,10 +220,10 @@ is the appropriate GraphSpec boundary until the DAG language carries integer-val
 results: it does not conceal top-k inside an opaque floating-point operation, and it does not permit
 an unrelated route to stand in for K3 routing.
 
-Because routing depends on both `moe` and `input`, this graph must be rebuilt if either changes enough
-to change the selected experts. Runtime implementations may instead compute and check a route before
-executing `modelGivenRoute`; the theorem below identifies the exact route that such a checker must
-produce.
+Because routing depends on both `moe` and `input`, this graph must be rebuilt if either changes
+enough to change the selected experts. Runtime implementations may instead compute and check a
+route before executing `modelGivenRoute`; the theorem below identifies the exact route that such a
+checker must produce.
 -/
 noncomputable def modelAtInput
     {modelDim latentDim sharedHidden routedHidden numShared numRouted activeExperts : Nat}

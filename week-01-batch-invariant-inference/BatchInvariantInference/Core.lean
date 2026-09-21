@@ -1,4 +1,13 @@
-/-
+module
+
+public import FloatLib.Floats.Formats.BinaryInterchange.Configured.NativeDispatch
+public import FloatLib.Floats.Formats.BinaryInterchange.Configured.Instances
+public import FloatLib.Numerics.Reduction.Tree
+public import NN.IR.Check
+public import NN.IR.Semantics
+public import NN.Spec.Layers.FlashAttention
+
+/-!
 Batch-invariant inference as a TorchLean proof development.
 
 The question behind the file is simple: when the same user request is served in
@@ -13,12 +22,7 @@ Concrete CUDA/Triton kernels sit one layer below this file: they must refine the
 semantics checked here.
 -/
 
-import NN.Floats.IEEEExec.Reductions
-import NN.IR.Check
-import NN.IR.Semantics
-import NN.Spec.Layers.FlashAttention
-import Mathlib.Data.Rat.Lemmas
-import Mathlib.Tactic.Linarith
+@[expose] public section
 
 universe u v w x
 
@@ -26,29 +30,12 @@ open TorchLean (Storage Tensor)
 
 namespace BatchInvariantInference
 
-/-- Use TorchLean's deployment-aware reduction tree as the schedule object.
+open FloatLib.Floats (ExecFloat)
+open FloatLib.Numerics (ReductionTree)
 
-Here, a `SumTree` is the mathematical record of "which pair of partial
-sums was combined first." That order is invisible over exact reals, but it is
-visible for Float32. -/
-abbrev SumTree (ι : Type u) := TorchLean.Floats.IEEE754.SumTree ι
-
-namespace SumTree
-
-def leaf {ι : Type u} (i : ι) : SumTree ι :=
-  TorchLean.Floats.IEEE754.SumTree.leaf i
-
-def node {ι : Type u} (l r : SumTree ι) : SumTree ι :=
-  TorchLean.Floats.IEEE754.SumTree.node l r
-
-/-- Evaluate a schedule with an explicit combiner and leaf interpretation. -/
-def evalWith {ι : Type u} {β : Type v}
-    (combine : β -> β -> β) (leaf : ι -> β) : SumTree ι -> β
-  | TorchLean.Floats.IEEE754.SumTree.leaf i => leaf i
-  | TorchLean.Floats.IEEE754.SumTree.node l r =>
-      combine (evalWith combine leaf l) (evalWith combine leaf r)
-
-end SumTree
+/-! FloatLib's `ReductionTree` records which pair of partial results is combined first.
+The same schedule works with any scalar type and combiner; only the concrete
+non-associativity witness below fixes IEEE binary32 arithmetic. -/
 
 /-- A batched forward pass, viewed from the selected row/request.
 
@@ -94,33 +81,28 @@ theorem batchInvariant_of_refinesForward {X : Type u} {Y : Type v}
 batch, but this semantic object only reads the selected row. -/
 def batchedReduce {ι : Type u} {β : Type v} {B : Nat}
     (combine : β -> β -> β)
-    (sched : SumTree ι)
+    (sched : ReductionTree ι)
     (rows : Fin B -> ι -> β)
     (b : Fin B) : β :=
-  sched.evalWith combine (rows b)
+  sched.eval combine (rows b)
 
 /-- If the selected row has the same leaves and the same reduction schedule,
 then the selected reduction result is independent of the surrounding batch. -/
 theorem batchedReduce_batchInvariant {ι : Type u} {β : Type v}
     {B C : Nat}
     (combine : β -> β -> β)
-    (sched : SumTree ι)
+    (sched : ReductionTree ι)
     (rows1 : Fin B -> ι -> β)
     (rows2 : Fin C -> ι -> β)
     (b : Fin B) (c : Fin C)
     (hrow : forall k, rows1 b k = rows2 c k) :
     batchedReduce combine sched rows1 b =
       batchedReduce combine sched rows2 c := by
-  unfold batchedReduce
-  induction sched with
-  | leaf k =>
-      exact hrow k
-  | node l r ihL ihR =>
-      simp [SumTree.evalWith, ihL, ihR]
+  exact congrArg (fun row => sched.eval combine row) (funext hrow)
 
 /-- A runtime policy that chooses a reduction schedule for a selected row. -/
 abbrev ScheduleSelector (ι : Type u) :=
-  (B : Nat) -> Fin B -> SumTree ι
+  (B : Nat) -> Fin B -> ReductionTree ι
 
 /-- The scheduling condition needed for request-level equality: selected rows
 from different batch contexts receive the same schedule. -/
@@ -142,7 +124,7 @@ deriving Repr, DecidableEq
 /-- A more realistic schedule selector: the runtime sees the batch context and
 the selected row, but also receives request-local metadata. -/
 abbrev ScheduleSelectorWithCtx (ι : Type u) :=
-  (B : Nat) -> Fin B -> LocalKernelCtx -> SumTree ι
+  (B : Nat) -> Fin B -> LocalKernelCtx -> ReductionTree ι
 
 /-- Request-local schedule invariance: if two selected requests have the same
 local kernel context, then changing the surrounding batch does not change the
@@ -159,7 +141,7 @@ def reduceWithScheduleSelector {ι : Type u} {β : Type v} {B : Nat}
     (choose : ScheduleSelector ι)
     (rows : Fin B -> ι -> β)
     (b : Fin B) : β :=
-  (choose B b).evalWith combine (rows b)
+  (choose B b).eval combine (rows b)
 
 /-- A selected-row reduction as a batched forward pass. The input for each
 request is its row of reduction leaves. -/
@@ -175,7 +157,7 @@ def reduceWithCtxSelector {ι : Type u} {β : Type v} {B : Nat}
     (rows : Fin B -> ι -> β)
     (ctxs : Fin B -> LocalKernelCtx)
     (b : Fin B) : β :=
-  (choose B b (ctxs b)).evalWith combine (rows b)
+  (choose B b (ctxs b)).eval combine (rows b)
 
 /-- If the schedule selector is batch-independent, the earlier selected-row
 invariance theorem still applies even though scheduling is an explicit input. -/
@@ -229,13 +211,13 @@ theorem reduce_batchInvariant_of_requestLocalScheduleInvariant
 
 /-- Two concrete parenthesizations of a three-term reduction. -/
 def leftAssoc3 {β : Type v} (combine : β -> β -> β) (a b c : β) : β :=
-  SumTree.evalWith combine id
-    (SumTree.node (SumTree.node (SumTree.leaf a) (SumTree.leaf b)) (SumTree.leaf c))
+  ReductionTree.eval combine id
+    (ReductionTree.node (ReductionTree.node (ReductionTree.leaf a) (ReductionTree.leaf b)) (ReductionTree.leaf c))
 
 /-- The other parenthesization of a three-term reduction. -/
 def rightAssoc3 {β : Type v} (combine : β -> β -> β) (a b c : β) : β :=
-  SumTree.evalWith combine id
-    (SumTree.node (SumTree.leaf a) (SumTree.node (SumTree.leaf b) (SumTree.leaf c)))
+  ReductionTree.eval combine id
+    (ReductionTree.node (ReductionTree.leaf a) (ReductionTree.node (ReductionTree.leaf b) (ReductionTree.leaf c)))
 
 /-- If the combiner is non-associative at `a,b,c`, then changing the schedule
 can change the result. This is the formal shape of the floating-point bug. -/
@@ -256,13 +238,13 @@ def row3 {β : Type v} (a b c : β) : Fin 3 -> β
   | ⟨1, _⟩ => b
   | _ => c
 
-def leftTree3 : SumTree (Fin 3) :=
-  SumTree.node (SumTree.node (SumTree.leaf (0 : Fin 3)) (SumTree.leaf (1 : Fin 3)))
-    (SumTree.leaf (2 : Fin 3))
+def leftTree3 : ReductionTree (Fin 3) :=
+  ReductionTree.node (ReductionTree.node (ReductionTree.leaf (0 : Fin 3)) (ReductionTree.leaf (1 : Fin 3)))
+    (ReductionTree.leaf (2 : Fin 3))
 
-def rightTree3 : SumTree (Fin 3) :=
-  SumTree.node (SumTree.leaf (0 : Fin 3))
-    (SumTree.node (SumTree.leaf (1 : Fin 3)) (SumTree.leaf (2 : Fin 3)))
+def rightTree3 : ReductionTree (Fin 3) :=
+  ReductionTree.node (ReductionTree.leaf (0 : Fin 3))
+    (ReductionTree.node (ReductionTree.leaf (1 : Fin 3)) (ReductionTree.leaf (2 : Fin 3)))
 
 /-- A batch-size-dependent schedule selector: batch size one gets the left tree;
 larger batch contexts get the right tree. This is the formal shape of the
@@ -272,24 +254,24 @@ def chooseByBatchSize3 : ScheduleSelector (Fin 3) :=
 
 namespace IEEE32
 
-abbrev Exec := TorchLean.Floats.IEEE754.IEEE32Exec
+abbrev Exec := ExecFloat.Binary (exponentBits := 8) (fractionBits := 23)
 
 /-- `1e20` as an executable IEEE-style binary32 value. -/
-def big : Exec := TorchLean.Floats.IEEE754.IEEE32Exec.ofBits (0x60AD78EC : UInt32)
+def big : Exec := ExecFloat.Binary.ofBits32 (0x60AD78EC : UInt32)
 
 /-- `-1e20` as an executable IEEE-style binary32 value. -/
-def negBig : Exec := TorchLean.Floats.IEEE754.IEEE32Exec.ofBits (0xE0AD78EC : UInt32)
+def negBig : Exec := ExecFloat.Binary.ofBits32 (0xE0AD78EC : UInt32)
 
 /-- `1.0` as an executable IEEE-style binary32 value. -/
-def one : Exec := TorchLean.Floats.IEEE754.IEEE32Exec.ofBits (0x3F800000 : UInt32)
+def one : Exec := ExecFloat.Binary.ofBits32 (0x3F800000 : UInt32)
 
-/-- Concrete non-associativity witness for TorchLean's executable IEEE32 model:
+/-- Concrete non-associativity witness for FloatLib's executable binary32 model:
 `(1e20 + -1e20) + 1 = 1`, while `1e20 + (-1e20 + 1) = 0`. -/
 theorem add_nonassoc_witness :
-    TorchLean.Floats.IEEE754.IEEE32Exec.add
-      (TorchLean.Floats.IEEE754.IEEE32Exec.add big negBig) one ≠
-      TorchLean.Floats.IEEE754.IEEE32Exec.add big
-        (TorchLean.Floats.IEEE754.IEEE32Exec.add negBig one) := by
+    ExecFloat.add
+      (ExecFloat.add big negBig) one ≠
+      ExecFloat.add big
+        (ExecFloat.add negBig one) := by
   decide
 
 end IEEE32
@@ -309,7 +291,7 @@ theorem batchDependentSchedule_counterexample {β : Type v}
   let ys : Fin 2 -> Fin 3 -> β := fun _ => row
   have hEq := hInv xs ys (0 : Fin 1) (0 : Fin 2) rfl
   have hright :
-      SumTree.evalWith combine (row3 a b c) rightTree3 =
+      ReductionTree.eval combine (row3 a b c) rightTree3 =
         combine a (combine b c) := by
     rfl
   simp only [reduceForwardWithScheduleSelector, reduceWithScheduleSelector,
@@ -318,16 +300,16 @@ theorem batchDependentSchedule_counterexample {β : Type v}
   rw [hright] at hEq
   exact h hEq
 
-/-- Concrete finite-precision punchline: under TorchLean's executable IEEE32
+/-- Concrete finite-precision punchline: under FloatLib's executable binary32
 addition, a batch-size-dependent schedule selector can make a selected request
 fail batch invariance. -/
 theorem IEEE32_batchDependentSchedule_counterexample :
     ¬ BatchInvariantForward
       (reduceForwardWithScheduleSelector
-        TorchLean.Floats.IEEE754.IEEE32Exec.add
+        (ExecFloat.add : IEEE32.Exec → IEEE32.Exec → IEEE32.Exec)
         chooseByBatchSize3) := by
   exact batchDependentSchedule_counterexample
-    TorchLean.Floats.IEEE754.IEEE32Exec.add
+    ExecFloat.add
     IEEE32.big IEEE32.negBig IEEE32.one
     IEEE32.add_nonassoc_witness
 
@@ -335,15 +317,15 @@ theorem IEEE32_batchDependentSchedule_counterexample :
 this object. -/
 def scheduledDot {K : Type u} {β : Type v}
     (add mul : β -> β -> β)
-    (sched : SumTree K)
+    (sched : ReductionTree K)
     (x : K -> β)
     (w : K -> β) : β :=
-  sched.evalWith add (fun k => mul (x k) (w k))
+  sched.eval add (fun k => mul (x k) (w k))
 
 /-- A selected output element of a batched matrix multiply. -/
 def batchedMatmul {K : Type u} {Out : Type v} {β : Type w} {B : Nat}
     (add mul : β -> β -> β)
-    (sched : SumTree K)
+    (sched : ReductionTree K)
     (x : Fin B -> K -> β)
     (w : Out -> K -> β)
     (b : Fin B)
@@ -355,7 +337,7 @@ are fixed, then the selected matmul output is batch-invariant. -/
 theorem matmul_batchInvariant {K : Type u} {Out : Type v} {β : Type w}
     {B C : Nat}
     (add mul : β -> β -> β)
-    (sched : SumTree K)
+    (sched : ReductionTree K)
     (x1 : Fin B -> K -> β)
     (x2 : Fin C -> K -> β)
     (w1 w2 : Out -> K -> β)
@@ -365,46 +347,37 @@ theorem matmul_batchInvariant {K : Type u} {Out : Type v} {β : Type w}
     batchedMatmul add mul sched x1 w1 i o =
       batchedMatmul add mul sched x2 w2 j o := by
   unfold batchedMatmul scheduledDot
-  induction sched with
-  | leaf k =>
-      simp [SumTree.evalWith, hrow k, hweight k]
-  | node l r ihL ihR =>
-      simp [SumTree.evalWith, ihL, ihR]
+  rw [funext hrow, funext hweight]
 
-/-- Read one row of a TorchLean tensor as a function of the feature index.
-
-The tensor owns one row-major buffer, while the reduction theorem observes only
-the selected row. `Spec.get2` reads each matrix entry directly when compiled, so
-observing the row does not build an intermediate tensor for every scalar. The
-storage instance stays explicit: the same argument applies to ordinary arrays
-and to TorchLean's packed scalar buffers. -/
-def tensorRow {α : Type} [Storage α] {B K : Nat}
-    (x : Tensor α [B, K]) (b : Fin B) : Fin K -> α :=
+/-- Read one row of a TorchLean vector batch as a function. This bridges the
+earlier function-level lemmas to TorchLean's shape-indexed tensor API. -/
+def tensorRow {α : Type} [TorchLean.Storage α] {B K : Nat}
+    (x : TorchLean.Tensor α (.dim B (.dim K .scalar))) (b : Fin B) : Fin K -> α :=
   Spec.get2 x b
 
 /-- Read one output row of a TorchLean weight matrix as a function. -/
-def tensorWeightRow {α : Type} [Storage α] {Out K : Nat}
-    (w : Tensor α [Out, K]) (o : Fin Out) : Fin K -> α :=
-  tensorRow w o
+def tensorWeightRow {α : Type} [TorchLean.Storage α] {Out K : Nat}
+    (w : TorchLean.Tensor α (.dim Out (.dim K .scalar))) (o : Fin Out) : Fin K -> α :=
+  fun k => (Spec.get (Spec.get w o) k).item
 
 /-- A selected scalar output of schedule-explicit tensor matmul. -/
-def tensorBatchedMatmul {β : Type} [Storage β] {B K Out : Nat}
+def tensorBatchedMatmul {β : Type} [TorchLean.Storage β] {B K Out : Nat}
     (add mul : β -> β -> β)
-    (sched : SumTree (Fin K))
-    (x : Tensor β [B, K])
-    (w : Tensor β [Out, K])
+    (sched : ReductionTree (Fin K))
+    (x : TorchLean.Tensor β (.dim B (.dim K .scalar)))
+    (w : TorchLean.Tensor β (.dim Out (.dim K .scalar)))
     (b : Fin B)
     (o : Fin Out) : β :=
   scheduledDot add mul sched (tensorRow x b) (tensorWeightRow w o)
 
 /-- TorchLean tensor version of selected-row matmul invariance. The selected
 input rows are equal as shape-indexed tensors, and the weight payload is shared. -/
-theorem tensorMatmul_batchInvariant {β : Type} [Storage β] {B C K Out : Nat}
+theorem tensorMatmul_batchInvariant {β : Type} [TorchLean.Storage β] {B C K Out : Nat}
     (add mul : β -> β -> β)
-    (sched : SumTree (Fin K))
-    (x1 : Tensor β [B, K])
-    (x2 : Tensor β [C, K])
-    (w : Tensor β [Out, K])
+    (sched : ReductionTree (Fin K))
+    (x1 : TorchLean.Tensor β (.dim B (.dim K .scalar)))
+    (x2 : TorchLean.Tensor β (.dim C (.dim K .scalar)))
+    (w : TorchLean.Tensor β (.dim Out (.dim K .scalar)))
     (i : Fin B) (j : Fin C) (o : Fin Out)
     (hrow : Spec.get x1 i = Spec.get x2 j) :
     tensorBatchedMatmul add mul sched x1 w i o =
@@ -423,9 +396,9 @@ or executable IEEE-style scalar models. -/
 def rmsNormRow {ι : Type u} {β : Type v}
     (add mul : β -> β -> β)
     (scaleMean rsqrt : β -> β)
-    (sched : SumTree ι)
+    (sched : ReductionTree ι)
     (x weight : ι -> β) : ι -> β :=
-  let sqsum := sched.evalWith add (fun k => mul (x k) (x k))
+  let sqsum := sched.eval add (fun k => mul (x k) (x k))
   let invRms := rsqrt (scaleMean sqsum)
   fun j => mul (mul (x j) invRms) (weight j)
 
@@ -434,7 +407,7 @@ hidden-dimension reduction schedule are fixed. -/
 theorem rmsNorm_batchInvariant {ι : Type u} {β : Type v}
     (add mul : β -> β -> β)
     (scaleMean rsqrt : β -> β)
-    (sched : SumTree ι)
+    (sched : ReductionTree ι)
     (x1 x2 weight1 weight2 : ι -> β)
     (hrow : forall k, x1 k = x2 k)
     (hweight : forall k, weight1 k = weight2 k) :
@@ -443,9 +416,9 @@ theorem rmsNorm_batchInvariant {ι : Type u} {β : Type v}
   funext j
   induction sched with
   | leaf k =>
-      simp [rmsNormRow, SumTree.evalWith, hrow, hweight]
+      simp [rmsNormRow, ReductionTree.eval, hrow, hweight]
   | node l r ihL ihR =>
-      simp [rmsNormRow, SumTree.evalWith, hrow, hweight]
+      simp [rmsNormRow, ReductionTree.eval, hrow, hweight]
 
 /-! ## Attention scheduling
 
@@ -491,7 +464,7 @@ selected request. The `canonical` field is the fixed-split-size style contract:
 for the same request-local context, different chunk plans produce the same
 logical KV reduction tree. -/
 structure KVLayoutPolicy (KV : Type u) where
-  kvTree : AttentionLocalCtx -> ChunkPlan -> SumTree KV
+  kvTree : AttentionLocalCtx -> ChunkPlan -> ReductionTree KV
   canonical :
     forall {ctx1 ctx2 : AttentionLocalCtx} (chunk1 chunk2 : ChunkPlan),
       ctx1 = ctx2 -> kvTree ctx1 chunk1 = kvTree ctx2 chunk2
@@ -506,9 +479,9 @@ structure FixedKVBlockPlan (KV : Type u) where
   rest : AttentionLocalCtx -> List KV
 
 /-- Convert a nonempty ordered block list to a right-associated reduction tree. -/
-def treeOfNonemptyList {KV : Type u} : KV -> List KV -> SumTree KV
-  | head, [] => SumTree.leaf head
-  | head, next :: rest => SumTree.node (SumTree.leaf head) (treeOfNonemptyList next rest)
+def treeOfNonemptyList {KV : Type u} : KV -> List KV -> ReductionTree KV
+  | head, [] => ReductionTree.leaf head
+  | head, next :: rest => ReductionTree.node (ReductionTree.leaf head) (treeOfNonemptyList next rest)
 
 /-- The concrete fixed-layout KV tree. The `ChunkPlan` argument is accepted
 because the serving system may provide one, but this canonical schedule ignores
@@ -516,7 +489,7 @@ it and uses only request-local layout metadata. -/
 def fixedSplitKVTree {KV : Type u}
     (plan : FixedKVBlockPlan KV)
     (ctx : AttentionLocalCtx)
-    (_chunk : ChunkPlan) : SumTree KV :=
+    (_chunk : ChunkPlan) : ReductionTree KV :=
   treeOfNonemptyList (plan.first ctx) (plan.rest ctx)
 
 /-- Fixed-split KV trees are canonical by construction: equal local contexts
@@ -551,7 +524,7 @@ theorem canonical_blocks_independent_of_chunking {KV : Type u}
 /-- The feature-dimension schedule may also depend on request-local attention
 metadata, but it must not depend on unrelated batch context. -/
 structure FeatureSchedulePolicy (Feature : Type u) where
-  featureTree : AttentionLocalCtx -> SumTree Feature
+  featureTree : AttentionLocalCtx -> ReductionTree Feature
   canonical :
     forall {ctx1 ctx2 : AttentionLocalCtx},
       ctx1 = ctx2 -> featureTree ctx1 = featureTree ctx2
@@ -567,7 +540,7 @@ structure SelectedAttentionInput
 /-- Schedule-explicit attention scores for one selected token/head. -/
 def scores {Feature : Type u} {KV : Type v} {Out : Type w} {β : Type x}
     (add mul : β -> β -> β)
-    (featureTree : SumTree Feature)
+    (featureTree : ReductionTree Feature)
     (inp : SelectedAttentionInput Feature KV Out β) : KV -> β :=
   fun kv => scheduledDot add mul featureTree inp.query (inp.key kv)
 
@@ -577,39 +550,35 @@ score vector to a KV weight function. -/
 def scheduledAttentionOut
     {Feature : Type u} {KV : Type v} {Out : Type w} {β : Type x}
     (add mul : β -> β -> β)
-    (featureTree : SumTree Feature)
-    (kvTree : SumTree KV)
+    (featureTree : ReductionTree Feature)
+    (kvTree : ReductionTree KV)
     (softmax : (KV -> β) -> KV -> β)
     (inp : SelectedAttentionInput Feature KV Out β)
     (out : Out) : β :=
   let sc := scores add mul featureTree inp
   let weight := softmax sc
-  kvTree.evalWith add (fun kv => mul (weight kv) (inp.value kv out))
+  kvTree.eval add (fun kv => mul (weight kv) (inp.value kv out))
 
 /-- Same query and keys imply the same selected-token score vector. -/
 theorem scores_eq_of_same_inputs
     {Feature : Type u} {KV : Type v} {Out : Type w} {β : Type x}
     (add mul : β -> β -> β)
-    (featureTree : SumTree Feature)
+    (featureTree : ReductionTree Feature)
     (inp1 inp2 : SelectedAttentionInput Feature KV Out β)
     (hquery : forall f, inp1.query f = inp2.query f)
     (hkey : forall kv f, inp1.key kv f = inp2.key kv f) :
     scores add mul featureTree inp1 = scores add mul featureTree inp2 := by
   funext kv
   unfold scores scheduledDot
-  induction featureTree with
-  | leaf f =>
-      simp [SumTree.evalWith, hquery f, hkey kv f]
-  | node l r ihL ihR =>
-      simp [SumTree.evalWith, ihL, ihR]
+  rw [funext hquery, funext (hkey kv)]
 
 /-- If the selected query, logical KV cache, feature schedule, and KV schedule
 are the same, then the selected attention output is the same. -/
 theorem scheduledAttentionOut_eq_of_same_inputs
     {Feature : Type u} {KV : Type v} {Out : Type w} {β : Type x}
     (add mul : β -> β -> β)
-    (featureTree : SumTree Feature)
-    (kvTree : SumTree KV)
+    (featureTree : ReductionTree Feature)
+    (kvTree : ReductionTree KV)
     (softmax : (KV -> β) -> KV -> β)
     (inp1 inp2 : SelectedAttentionInput Feature KV Out β)
     (out : Out)
@@ -622,22 +591,14 @@ theorem scheduledAttentionOut_eq_of_same_inputs
   have hscores :
       scores add mul featureTree inp1 = scores add mul featureTree inp2 :=
     scores_eq_of_same_inputs add mul featureTree inp1 inp2 hquery hkey
-  induction kvTree with
-  | leaf kv =>
-      have hweight :
-          softmax (scores add mul featureTree inp1) kv =
-            softmax (scores add mul featureTree inp2) kv := by
-        rw [hscores]
-      simp [SumTree.evalWith, hweight, hvalue kv out]
-  | node l r ihL ihR =>
-      simp [SumTree.evalWith, ihL, ihR]
+  rw [hscores, funext fun kv => funext (hvalue kv)]
 
 /-- Selected attention using a canonical KV layout and an explicit feature
 reduction schedule. -/
 def selectedAttentionWithLayout
     {Feature : Type u} {KV : Type v} {Out : Type w} {β : Type x} {B : Nat}
     (add mul : β -> β -> β)
-    (featureTree : SumTree Feature)
+    (featureTree : ReductionTree Feature)
     (layout : KVLayoutPolicy KV)
     (softmax : (KV -> β) -> KV -> β)
     (inputs : Fin B -> SelectedAttentionInput Feature KV Out β)
@@ -674,7 +635,7 @@ when the selected request-local context and logical Q/K/V payload are the same.
 theorem selectedAttention_batchInvariant_of_canonicalLayout
     {Feature : Type u} {KV : Type v} {Out : Type w} {β : Type x} {B C : Nat}
     (add mul : β -> β -> β)
-    (featureTree : SumTree Feature)
+    (featureTree : ReductionTree Feature)
     (layout : KVLayoutPolicy KV)
     (softmax : (KV -> β) -> KV -> β)
     (inputs1 : Fin B -> SelectedAttentionInput Feature KV Out β)
@@ -852,18 +813,18 @@ about an implementation, but they do not construct this equality. A verified
 analyzer or kernel semantics would still need to establish it for the concrete
 runtime output. -/
 structure NativeForwardCert
-    (α : Type) [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    (α : Type) [TorchLean.Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0} where
   cfg : Spec.FlashAttentionConfig
   ctx : Spec.AttentionContext α nQ nK dModel h1 h2
-  runtimeOut : Tensor α [nQ, dModel]
+  runtimeOut : TorchLean.Tensor α (Spec.Shape.dim nQ (Spec.Shape.dim dModel Spec.Shape.scalar))
   runtime_refines_spec :
     runtimeOut = Spec.flashAttention cfg ctx
 
 /-- A native output that refines TorchLean's FlashAttention denotation also
 refines the standard scaled-dot-product attention spec. -/
 theorem NativeForwardCert.refines_scaledDotProduct
-    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
     (cert : NativeForwardCert α (nQ := nQ) (nK := nK) (dModel := dModel)
       (h1 := h1) (h2 := h2)) :
@@ -878,7 +839,7 @@ theorem NativeForwardCert.refines_scaledDotProduct
 semantic operator. This is the bridge from the existing TorchLean FlashAttention
 spec to the runtime-refinement certificate above. -/
 theorem NativeForwardCert.refines_flashAttention
-    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
     {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
     (cert : NativeForwardCert α (nQ := nQ) (nK := nK) (dModel := dModel)
       (h1 := h1) (h2 := h2)) :
@@ -1345,7 +1306,7 @@ with an explicit payload, chooses a token from the denotational result, and
 updates the request-local state. This is the bridge from the abstract DVR
 serving theorem to TorchLean's actual op-tagged graph semantics. -/
 structure IRDecoderConfig
-    (α : Type) [Storage α] [Context α]
+    (α : Type) [TorchLean.Storage α] [Context α]
     (State Token : Type) where
   graph : NN.IR.Graph
   payload : NN.IR.Payload α
@@ -1364,7 +1325,7 @@ structure IRDecoderConfig
         (tok, update st tok)
 
 def toReferenceDecoder
-    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token : Type}
     (cfg : IRDecoderConfig α State Token) :
     ReferenceDecoder State Token where
@@ -1374,7 +1335,7 @@ def toReferenceDecoder
 match the canonical `NN.IR.Graph.denote`-based reference decoder. Executable
 certificate checkers should target this predicate. -/
 def IRVerifyWindowSound
-    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token : Type}
     (cfg : IRDecoderConfig α State Token)
     (st : State) (accepted : List Token) (st' : State) : Prop :=
@@ -1387,7 +1348,7 @@ semantics. For any legal DVR trace whose commits are sound with respect to
 `NN.IR.Graph.denote`, the user-visible tokens are a prefix of the canonical
 TorchLean-IR decoder. -/
 theorem ServeDVR_refines_TorchLeanIRDecode
-    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (cfg : IRDecoderConfig α State Token)
     (initialRef : State)
@@ -1411,7 +1372,7 @@ theorem ServeDVR_refines_TorchLeanIRDecode
 decoder produce the same committed tokens whenever they commit the same number
 of tokens. -/
 theorem TorchLeanIR_user_observable_determinism_of_same_commit_length
-    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (cfg : IRDecoderConfig α State Token)
     (initialRef : State)
@@ -1468,7 +1429,7 @@ postprocessing, or a margin-certified argmax policy. What is fixed here is the
 important semantic target: the reference step must be exactly
 `NN.IR.Graph.denote` followed by token choice and request-local update. -/
 structure CausalTransformerIRPackage
-    (α : Type) [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    (α : Type) [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     (State Token Fast : Type) where
   dims : TransformerDims
   cfg : IRDecoderConfig α State Token
@@ -1480,21 +1441,21 @@ structure CausalTransformerIRPackage
 /-- The common concrete specialization: a decoder package whose request state
 has prompt tokens, generated tokens, a request-local KV cache, and a position. -/
 abbrev ConcreteCausalTransformerPackage
-    (α : Type) [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    (α : Type) [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     (Token KV Fast : Type) :=
   CausalTransformerIRPackage α (CausalRequestState Token KV) Token Fast
 
 namespace CausalTransformerIRPackage
 
 def refDecoder
-    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (pkg : CausalTransformerIRPackage α State Token Fast) :
     ReferenceDecoder State Token :=
   toReferenceDecoder (cfg := pkg.cfg)
 
 def initialServer
-    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (pkg : CausalTransformerIRPackage α State Token Fast) :
     ServerState State Token Fast :=
@@ -1504,7 +1465,7 @@ def initialServer
     candidates := ([] : List Token) }
 
 theorem initial_invariant
-    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (pkg : CausalTransformerIRPackage α State Token Fast) :
     DVRInvariant (pkg.refDecoder) pkg.initialRef pkg.initialServer :=
@@ -1515,7 +1476,7 @@ instance only has to fill the package fields and ensure each committed window is
 checked against `pkg.refDecoder`; every legal decode/verify/rollback trace then
 releases exactly a prefix of the canonical TorchLean-IR decoder. -/
 theorem serve_refines_reference
-    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (pkg : CausalTransformerIRPackage α State Token Fast)
     {sN : ServerState State Token Fast}
@@ -1529,7 +1490,7 @@ theorem serve_refines_reference
 observationally equal whenever they commit the same number of verified tokens.
 The fast-path state, speculative candidates, and batching schedule may differ. -/
 theorem observable_determinism_of_same_commit_length
-    {α : Type} [Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
+    {α : Type} [TorchLean.Storage α] [Context α] [DecidableEq _root_.Spec.Shape]
     {State Token Fast : Type}
     (pkg : CausalTransformerIRPackage α State Token Fast)
     {sNa sNb : ServerState State Token Fast}

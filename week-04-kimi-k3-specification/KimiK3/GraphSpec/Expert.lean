@@ -14,19 +14,16 @@ public import NN.Proofs.Tensor.Basic.Algebra
 # Executable SiTU expert graph
 
 This module expresses a SiTU-GLU expert in TorchLean's typed GraphSpec DAG. It is assembled from
-ordinary
-linear, elementwise, `tanh`, and `sigmoid` primitives. No opaque K3 operation is allowed to call
-`Expert.forward` behind the graph interface.
+ordinary linear, elementwise, `tanh`, and `sigmoid` primitives. No opaque K3 operation is allowed
+to call `Expert.forward` behind the graph interface.
 -/
 
 @[expose] public section
 
 namespace KimiK3
-
-open TorchLean
 namespace GraphSpec
 
-open Spec
+open Spec TorchLean
 open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
@@ -50,9 +47,7 @@ The semantic theorem below quantifies over arbitrary expert weights.
 -/
 def initialParams (inputDim hiddenDim outputDim : Nat) :
     TorchLean.TensorPack Float (Params inputDim hiddenDim outputDim) :=
-  .cons (Tensor.full (.dim inputDim (.dim hiddenDim .scalar)) 0) <|
-    .cons (Tensor.full (.dim inputDim (.dim hiddenDim .scalar)) 0) <|
-      .cons (Tensor.full (.dim hiddenDim (.dim outputDim .scalar)) 0) .nil
+  TorchLean.TensorPack.zero
 
 /-- Build the typed DAG term for one SiTU expert from explicit input and parameter terms.
 
@@ -65,22 +60,22 @@ def term {Γ : List Shape} (inputDim hiddenDim outputDim : Nat)
     (gateWeight upWeight : Term Γ (.dim inputDim (.dim hiddenDim .scalar)))
     (downWeight : Term Γ (.dim hiddenDim (.dim outputDim .scalar)))
     (gateCap upCap : Term Γ .scalar) : Term Γ (.dim outputDim .scalar) :=
-  let gate := Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
-      inputDim hiddenDim .scalar .scalar)
+  let gate := Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar inputDim hiddenDim
+      (Shape.CanBroadcastTo.refl .scalar) (Shape.CanBroadcastTo.refl .scalar))
     (.cons input (.cons gateWeight .nil))
-  let up := Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
-      inputDim hiddenDim .scalar .scalar)
+  let up := Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar inputDim hiddenDim
+      (Shape.CanBroadcastTo.refl .scalar) (Shape.CanBroadcastTo.refl .scalar))
     (.cons input (.cons upWeight .nil))
-  let cappedGate := Term.op (PrimOp.softCap hiddenDim) (.cons gateCap (.cons gate .nil))
+  let cappedGate := GraphSpec.softCapTerm [hiddenDim] gateCap gate
   let sigmoidGate := Term.op (NN.GraphSpec.DAG.PrimOp.sigmoid (.dim hiddenDim .scalar))
     (.cons gate .nil)
   let gated := Term.op (NN.GraphSpec.DAG.PrimOp.mul (.dim hiddenDim .scalar))
     (.cons cappedGate (.cons sigmoidGate .nil))
-  let cappedUp := Term.op (PrimOp.softCap hiddenDim) (.cons upCap (.cons up .nil))
+  let cappedUp := GraphSpec.softCapTerm [hiddenDim] upCap up
   let hidden := Term.op (NN.GraphSpec.DAG.PrimOp.mul (.dim hiddenDim .scalar))
     (.cons gated (.cons cappedUp .nil))
-  Term.op (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
-      hiddenDim outputDim .scalar .scalar)
+  Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar hiddenDim outputDim
+      (Shape.CanBroadcastTo.refl .scalar) (Shape.CanBroadcastTo.refl .scalar))
     (.cons hidden (.cons downWeight .nil))
 
 /-- Evaluation of the compositional expert term is the SiTU expert equation on its subterms. -/
@@ -99,10 +94,9 @@ def term {Γ : List Shape} (inputDim hiddenDim outputDim : Nat)
           (vecMatMulSpec (Term.eval env input) (Term.eval env gateWeight))
           (vecMatMulSpec (Term.eval env input) (Term.eval env upWeight)))
         (Term.eval env downWeight) := by
-  simp only [term, Term.eval, Term.evalArgs, broadcastVecMat_scalar_specFwd,
-    PrimOp.softCap, NN.GraphSpec.DAG.PrimOp.sigmoid, NN.GraphSpec.DAG.PrimOp.mul,
-    one_div]
-  rw [SiTU.expanded_eq_vector]
+  simp [term, Term.eval, Term.evalArgs,
+    PrimOp.broadcastVecMat, NN.GraphSpec.DAG.PrimOp.sigmoid,
+    NN.GraphSpec.DAG.PrimOp.mul, one_div, SiTU.expanded_eq_vector]
 
 /-- Typed GraphSpec representation of one SiTU-GLU expert. -/
 def model (inputDim hiddenDim outputDim : Nat) :
@@ -110,22 +104,15 @@ def model (inputDim hiddenDim outputDim : Nat) :
       (Params inputDim hiddenDim outputDim)
       (Inputs inputDim)
       (.dim outputDim .scalar) :=
-  let Γ : List Shape :=
-    Params inputDim hiddenDim outputDim ++ Inputs inputDim
-  let gateWeight : Term Γ (.dim inputDim (.dim hiddenDim .scalar)) :=
-    Term.var (Γ := Γ) .head
-  let upWeight : Term Γ (.dim inputDim (.dim hiddenDim .scalar)) :=
-    Term.var (Γ := Γ) (.tail .head)
-  let downWeight : Term Γ (.dim hiddenDim (.dim outputDim .scalar)) :=
-    Term.var (Γ := Γ) (.tail (.tail .head))
-  let input : Term Γ (.dim inputDim .scalar) :=
-    Term.var (Γ := Γ) (.tail (.tail (.tail .head)))
-  let gateCap : Term Γ .scalar :=
-    Term.var (Γ := Γ) (.tail (.tail (.tail (.tail .head))))
-  let upCap : Term Γ .scalar :=
-    Term.var (Γ := Γ) (.tail (.tail (.tail (.tail (.tail .head)))))
   { initParams := initialParams inputDim hiddenDim outputDim
-    body := term inputDim hiddenDim outputDim input gateWeight upWeight downWeight gateCap upCap }
+    body := by
+      let Γ := Params inputDim hiddenDim outputDim ++ Inputs inputDim
+      let envTerms : Args Γ
+          (Params inputDim hiddenDim outputDim ++ Inputs inputDim) := by
+        simpa [Γ] using Args.vars Γ
+      let .cons gateWeight <| .cons upWeight <| .cons downWeight <| .cons input <|
+          .cons gateCap <| .cons upCap .nil := envTerms
+      exact term inputDim hiddenDim outputDim input gateWeight upWeight downWeight gateCap upCap }
 
 /-- Convert the theorem-oriented expert record to GraphSpec's parameter ABI. -/
 def parameters {α : Type} [Storage α] {inputDim hiddenDim outputDim : Nat}
@@ -147,7 +134,8 @@ theorem specFwd_eq_forward {inputDim hiddenDim outputDim : Nat}
         (parameters expert) (inputs input gateCap upCap) =
       expert.forward gateCap upCap input := by
   simp [model, parameters, inputs, NN.GraphSpec.DAG.Model.specFwd,
-    TorchLean.TensorPack.append, Term.eval, Env.tget,
+    TorchLean.TensorPack.append, Args.vars, Args.weakenLeft,
+    Term.weakenLeft, Term.rename, Term.eval, Env.tget,
     KimiK3.Expert.forward, Params, Inputs]
 
 end Expert

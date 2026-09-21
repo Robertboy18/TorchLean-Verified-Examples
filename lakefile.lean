@@ -6,11 +6,17 @@ open System
 /-- Forward native-backend options to the TorchLean dependency. -/
 private def torchLeanOptions : NameMap String :=
   let opts : NameMap String := {}
+  let opts := match get_config? torchleanBuildDir with
+    | some value => opts.insert `torchleanBuildDir value
+    | none => opts
   let opts := match get_config? cuda with
     | some value => opts.insert `cuda value
     | none => opts
   let opts := match get_config? cuda_home with
     | some value => opts.insert `cuda_home value
+    | none => opts
+  let opts := match get_config? cuda_arch with
+    | some value => opts.insert `cuda_arch value
     | none => opts
   let opts := match get_config? libtorch with
     | some value => opts.insert `libtorch value
@@ -48,7 +54,7 @@ private def cudaEnabled : Bool :=
 private def buildCachedDecoder (pkg : Package) : FetchM (Job FilePath) := do
   let lean ← getLeanInstall
   let some torchLean ← findPackageByName? `TorchLean
-    | error "The cached decoder requires the TorchLean package."
+    | error "the cached decoder requires the TorchLean dependency"
   let includeArgs := #[
     "-I", lean.includeDir.toString,
     "-I", (torchLean.dir / "csrc/cuda/common").toString
@@ -56,6 +62,7 @@ private def buildCachedDecoder (pkg : Package) : FetchM (Job FilePath) := do
   let libFile := pkg.buildDir / nameToStaticLib "torchlean_gpt_cached_decode"
   if cudaEnabled then
     let cudaHome := (get_config? cuda_home).getD "/usr/local/cuda"
+    let cudaArch := (get_config? cuda_arch).getD "all-major"
     let source ← inputFile
       (pkg.dir /
         "week-03-gpt-training/csrc/cached_decode/torchlean_gpt_cached_decode.cu") false
@@ -63,8 +70,9 @@ private def buildCachedDecoder (pkg : Package) : FetchM (Job FilePath) := do
     let object ← buildO objectFile source
       (includeArgs ++ #[
         "-I", s!"{cudaHome}/include",
-        "-c", "--std=c++17", "-O3", "-Xcompiler", "-fPIC"
-      ]) #[] "nvcc"
+        "-c", "--std=c++17", "-O3", "-Xcompiler", "-fPIC",
+        s!"--gpu-architecture={cudaArch}"
+      ]) #[] s!"{cudaHome}/bin/nvcc"
     buildStaticLib libFile #[object]
   else
     let source ← inputFile
@@ -132,6 +140,10 @@ lean_exe train_torchlean_gpt where
   srcDir := "week-03-gpt-training"
   root := `TorchLeanGPT.Train
 
+lean_exe check_torchlean_gpt_data where
+  srcDir := "week-03-gpt-training"
+  root := `TorchLeanGPT.DataCheck
+
 lean_exe generate_torchlean_gpt where
   srcDir := "week-03-gpt-training"
   root := `TorchLeanGPT.Generate
@@ -149,9 +161,10 @@ lean_exe benchmark_torchlean_gpt_cache where
   root := `TorchLeanGPT.CachedDecode.Benchmark
 
 require TorchLean from git
-  "https://github.com/lean-dojo/TorchLean.git" @
-    "4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1" with torchLeanOptions
+  "https://github.com/lean-dojo/TorchLean.git" @ "main" with torchLeanOptions
+
+require velvet from git "https://github.com/verse-lab/velvet.git" @ "main"
 
 require LeanProfiler from git
-  "https://github.com/Robertboy18/LeanProfiler.git" @
-    "1008fc1dd7c416d0d225383f75ee5e581ad55712"
+  "https://github.com/lean-dojo/LeanProfiler.git" @
+    "271b0b4cfa7de8c29b92ae34cf7ca8c79ac989a2"

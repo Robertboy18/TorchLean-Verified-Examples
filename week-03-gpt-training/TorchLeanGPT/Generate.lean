@@ -89,7 +89,7 @@ partial def loop
   go []
 
 /-- Load the model and checkpoint, then run one response or enter the interactive loop. -/
-def run (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
+def run (opts : Runtime.Config) (args : List String) : IO Unit := do
   let config ← Chat.Config.parse exeName opts.seed args
   let cfg := config.model.toTorchLean
   if cfg.sequenceLength = 0 then
@@ -102,9 +102,9 @@ def run (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
     letI : NeZero cfg.vocabularySize := ⟨hVocab⟩
     do
       _root_.TorchLean.rand.manualSeed config.seed
-      let model := nn.build (← rand.nextSeedGlobal) (buildModel cfg 1 opts)
+      let model := nn.build config.seed (buildModel cfg 1 opts)
       let actualParameterCount :=
-        model.stateShapes.foldl
+        (model.stateShapes).foldl
           (fun total shape => total + Shape.size shape) 0
       let tokenizer ← LeanProfiler.span "tokenizer.load"
         (text.GPT2BPE.load config.tokenizerVocab config.tokenizerMerges
@@ -112,7 +112,7 @@ def run (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
         (metadata := { phase := some "data", activity := some "tokenizer" })
       let evalDef := nn.models.CausalTransformer.objective cfg model (mode := .eval)
       let runtimeModule ← LeanProfiler.span "model.initialize"
-        (TorchLean.Module.instantiate evalDef opts (α := Float))
+        (Module.instantiate evalDef opts (α := Float))
         (metadata :=
           { phase := some "initialization"
             activity := some "parameters"
@@ -122,8 +122,7 @@ def run (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
       LeanProfiler.span "checkpoint.load"
         (Checkpoint.load runtimeModule config.checkpoint)
         (metadata := { phase := some "checkpoint", activity := some "load" })
-      let predict ← predictorWithParameters cfg 1 model opts
-        (Module.Objective.Internal.runtime runtimeModule).trainer.state
+      let predict ← runtimeModule.indexedPredictor model
       IO.println s!"loaded {actualParameterCount} parameters on {opts.deviceName}"
       match config.message? with
       | some message =>

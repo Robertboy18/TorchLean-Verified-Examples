@@ -13,8 +13,9 @@ public import NN.Spec.Core.Shape
 # Kimi K3 architecture configuration
 
 This file records the dimensions and layer schedule of Kimi K3 independently of any runtime
-backend.  The configuration follows Section 2 and Table 1 of the Kimi K3 technical report, with
-the more precise vocabulary and projection dimensions taken from the released model config.
+backend. The configuration follows the architecture overview and Table 1 of the Kimi K3 technical
+report (pp. 3 and 11), with the more precise vocabulary and projection dimensions taken from the
+released model config. The hybrid 3:1 KDA/MLA schedule is described in Section 2.1 (p. 4).
 
 There are two closely related public configurations:
 
@@ -24,7 +25,8 @@ There are two closely related public configurations:
 
 References:
 
-* Kimi Team, "Kimi K3: Open Frontier Intelligence", 2026, Section 2 and Table 1:
+* Kimi Team, "Kimi K3: Open Frontier Intelligence", 2026, Section 2, pp. 3--10, and Table 1,
+  p. 11:
   https://arxiv.org/abs/2607.24653
 * Released configuration:
   https://huggingface.co/moonshotai/Kimi-K3/blob/main/config.json
@@ -131,7 +133,9 @@ structure VisionConfig where
 
 /-- Complete architecture configuration. -/
 structure Config where
+  /-- Language-backbone dimensions and schedule. -/
   text : TextConfig
+  /-- Vision-encoder and multimodal-projector dimensions. -/
   vision : VisionConfig
   deriving Repr, DecidableEq
 
@@ -183,6 +187,28 @@ Layers are represented by zero-based `Fin` indices.  The report numbers layers f
 def attentionKindAt (cfg : TextConfig) (layer : Fin cfg.numLayers) : AttentionKind :=
   let paperIndex := layer.val + 1
   if paperIndex = cfg.numLayers || paperIndex % 4 = 0 then .mla else .kda
+
+/-- A layer uses MLA exactly at a fourth layer or at the final layer. -/
+theorem attentionKindAt_eq_mla_iff (cfg : TextConfig) (layer : Fin cfg.numLayers) :
+    cfg.attentionKindAt layer = .mla ↔
+      layer.val + 1 = cfg.numLayers ∨ (layer.val + 1) % 4 = 0 := by
+  by_cases hLast : layer.val + 1 = cfg.numLayers
+  · simp [attentionKindAt, hLast]
+  · by_cases hFourth : (layer.val + 1) % 4 = 0
+    · simp [attentionKindAt, hLast, hFourth]
+    · simp [attentionKindAt, hLast, hFourth]
+
+/-- Every nonfinal fourth layer is an MLA layer. -/
+theorem attentionKindAt_of_mod_four_eq_zero (cfg : TextConfig) (layer : Fin cfg.numLayers)
+    (hFourth : (layer.val + 1) % 4 = 0) : cfg.attentionKindAt layer = .mla := by
+  exact (attentionKindAt_eq_mla_iff cfg layer).2 (Or.inr hFourth)
+
+/-- The final layer is MLA whenever the configured backbone is nonempty. -/
+theorem attentionKindAt_last (cfg : TextConfig) (hLayers : 0 < cfg.numLayers) :
+    cfg.attentionKindAt ⟨cfg.numLayers - 1, Nat.sub_lt hLayers Nat.zero_lt_one⟩ = .mla := by
+  apply (attentionKindAt_eq_mla_iff cfg _).2
+  left
+  exact Nat.sub_add_cancel hLayers
 
 /-- Count layers of one attention kind in a finite configuration. -/
 def countAttentionKind (cfg : TextConfig) (kind : AttentionKind) : Nat :=

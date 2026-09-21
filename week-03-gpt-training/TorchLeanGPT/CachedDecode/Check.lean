@@ -140,8 +140,8 @@ def fullPrefixScores
   let input := Run.tokenBatchTensor cfg 1 padded
   let logits ← predict input
   let first : Fin 1 := ⟨0, by decide⟩
-  pure <| Tensor.to (text.batchLogitScoresAt logits first
-    (Fin.ofNat cfg.sequenceLength (tokens.length - 1))) (Array Float)
+  pure <| (text.batchLogitScoresAt logits first
+    (Fin.ofNat cfg.sequenceLength (tokens.length - 1))).to (Array Float)
 
 /-- Prefix lengths that exercise the cache at the beginning and at the complete prompt. -/
 def checkLengths (promptLength : Nat) : List Nat :=
@@ -178,7 +178,7 @@ def checkPrefixes
         s!"{exeName}: cached logits changed the greedy token at prefix {length}"
 
 /-- Load one checkpoint and compare both execution paths without copying its parameters. -/
-def run (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
+def run (opts : Runtime.Config) (args : List String) : IO Unit := do
   let config ← Chat.Config.parse exeName opts.seed args
   let cfg := config.model.toTorchLean
   if !opts.usesCuda then
@@ -194,15 +194,14 @@ def run (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
     letI : NeZero cfg.sequenceLength := ⟨hSeq⟩
     do
       _root_.TorchLean.rand.manualSeed config.seed
-      let model := nn.build (← rand.nextSeedGlobal) (buildModel cfg 1 opts)
+      let model := nn.build config.seed (buildModel cfg 1 opts)
       let tokenizer ←
         text.GPT2BPE.load config.tokenizerVocab config.tokenizerMerges
           (progress := true) (label := exeName)
       let evalDef := nn.models.CausalTransformer.objective cfg model (mode := .eval)
-      let runtimeModule ← TorchLean.Module.instantiate evalDef opts (α := Float)
+      let runtimeModule ← Module.instantiate evalDef opts (α := Float)
       Checkpoint.load runtimeModule config.checkpoint
-      let predict ← predictorWithParameters cfg 1 model opts
-        (Module.Objective.Internal.runtime runtimeModule).trainer.state
+      let predict ← runtimeModule.indexedPredictor model
       let decoder ← Runtime.Decoder.initialize cfg
         (Module.Objective.Internal.runtime runtimeModule).trainer.state
       let message := config.message?.getD "What is two plus two?"

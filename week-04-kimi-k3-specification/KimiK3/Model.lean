@@ -7,7 +7,6 @@ Authors: TorchLean Team
 module
 
 public import KimiK3.FeedForward
-public import KimiK3.Sequence
 public import KimiK3.Vision
 
 /-!
@@ -18,17 +17,18 @@ by the backbone: AttnRes retrieves the input to a sequence mixer, the sequence m
 or Gated MLA, a second AttnRes retrieval feeds the dense/Stable-LatentMoE channel mixer, and the
 result is recorded into the current depth block.  A final AttnRes query aggregates the retained
 block representations before the vocabulary projection. Sparse layers compute their top-k routes
-from their own adjusted router scores. Exact score ties are resolved by expert index, as specified in
-`Route.chooseTopK`.
+from their own adjusted router scores. Exact score ties are resolved by expert index, as specified
+in `Route.chooseTopK`.
+
+Reference: Kimi Team, "Kimi K3: Open Frontier Intelligence", 2026, Figure 2, p. 3, and
+Sections 2.1--2.4, pp. 4--10, https://arxiv.org/abs/2607.24653.
 -/
 
 @[expose] public section
 
 namespace KimiK3
 
-open TorchLean
-
-open Spec
+open Spec TorchLean
 open Tensor
 
 /-- Either recurrent KDA or global Gated MLA at one backbone layer. -/
@@ -62,7 +62,7 @@ def initialState (mixer : SequenceMixer α cfg decayRank) : mixer.CausalState :=
   match mixer with
   | .kda _ _ =>
       let headState : KDALayer.State α cfg.numHeads cfg.kdaHeadDim cfg.kdaValueDim :=
-        Tensor.full (.dim cfg.numHeads (.dim cfg.kdaHeadDim (.dim cfg.kdaValueDim .scalar))) 0
+        Tensor.zeros [cfg.numHeads, cfg.kdaHeadDim, cfg.kdaValueDim]
       (headState, [])
   | .mla _ => []
 
@@ -79,6 +79,11 @@ def forward (mixer : SequenceMixer α cfg decayRank)
     (tokens : List (Tensor α (.dim cfg.hiddenDim .scalar))) :
     List (Tensor α (.dim cfg.hiddenDim .scalar)) :=
   (CausalScan.run mixer.step mixer.initialState tokens).2
+
+/-- An empty sequence produces no mixed representations. -/
+@[simp] theorem forward_nil (mixer : SequenceMixer α cfg decayRank) :
+    mixer.forward [] = [] := by
+  simp [forward]
 
 /-- Both sequence mixers return one representation per input token. -/
 theorem forward_length (mixer : SequenceMixer α cfg decayRank)
@@ -128,11 +133,17 @@ end ChannelMixer
 
 /-- One K3 backbone layer, including separate AttnRes queries for its two submodules. -/
 structure BackboneLayer (α : Type) [Storage α] (cfg : TextConfig) (decayRank : Nat) where
+  /-- Learned depth query for the sequence mixer input. -/
   sequenceQuery : Tensor α (.dim cfg.hiddenDim .scalar)
+  /-- RMSNorm scale applied before sequence mixing. -/
   sequenceNormScale : Tensor α (.dim cfg.hiddenDim .scalar)
+  /-- KDA or MLA parameters selected by this layer's schedule position. -/
   sequence : SequenceMixer α cfg decayRank
+  /-- Learned depth query for the channel mixer input. -/
   channelQuery : Tensor α (.dim cfg.hiddenDim .scalar)
+  /-- RMSNorm scale applied before channel mixing. -/
   channelNormScale : Tensor α (.dim cfg.hiddenDim .scalar)
+  /-- Dense FFN or routed Stable LatentMoE parameters. -/
   channel : ChannelMixer α cfg
 
 namespace BackboneLayer
@@ -145,73 +156,57 @@ def initialDepthState (embedding : Tensor α (.dim cfg.hiddenDim .scalar)) :
     AttnRes.BlockState α cfg.hiddenDim :=
   { embedding
     completedBlocks := []
-    partialBlock := Tensor.full (.dim cfg.hiddenDim .scalar) 0
+    partialBlock := Tensor.zeros [cfg.hiddenDim]
     partialSize := 0 }
 
-/-- Retrieve one input per token from the current depth state. -/
-def retrieveAll (states : List (AttnRes.BlockState α cfg.hiddenDim))
-    (query : Tensor α (.dim cfg.hiddenDim .scalar)) :
-    List (Tensor α (.dim cfg.hiddenDim .scalar)) :=
-  states.map (fun state => state.retrieve query)
-
-/-- Retrieve channel inputs after including the sequence output from the same decoder layer. -/
-def retrieveAfterSequenceAll (states : List (AttnRes.BlockState α cfg.hiddenDim))
-    (sequenceOutputs : List (Tensor α (.dim cfg.hiddenDim .scalar)))
-    (query : Tensor α (.dim cfg.hiddenDim .scalar)) :
-    List (Tensor α (.dim cfg.hiddenDim .scalar)) :=
-  List.zipWith (fun state output => state.retrieveAfterSequence output query) states sequenceOutputs
-
-/-- Commit both submodule outputs while advancing each token's block state once. -/
-def finishAll (states : List (AttnRes.BlockState α cfg.hiddenDim))
-    (sequenceOutputs channelOutputs : List (Tensor α (.dim cfg.hiddenDim .scalar))) :
-    List (AttnRes.BlockState α cfg.hiddenDim) :=
-  List.zipWith
-    (fun state outputs => state.finishLayer cfg.attnResBlockSize outputs.1 outputs.2)
-    states (List.zip sequenceOutputs channelOutputs)
+/-- The initial depth state is valid for every positive AttnRes block size. -/
+theorem initialDepthState_wf (embedding : Tensor α (.dim cfg.hiddenDim .scalar))
+    (hBlockSize : 0 < cfg.attnResBlockSize) :
+    (initialDepthState embedding).WF cfg.attnResBlockSize := by
+  exact hBlockSize
 
 /-- Apply one backbone layer to all tokenwise depth states. -/
 noncomputable def forward (layer : BackboneLayer ℝ cfg decayRank)
     (hActive : cfg.activeExperts ≤ cfg.numRoutedExperts)
     (states : List (AttnRes.BlockState ℝ cfg.hiddenDim)) :
     List (AttnRes.BlockState ℝ cfg.hiddenDim) :=
-  let sequenceInput := retrieveAll states layer.sequenceQuery
+  let sequenceInput := states.map (fun state => state.retrieve layer.sequenceQuery)
   let normalizedSequenceInput := sequenceInput.map
     (fun token => RMSNorm.scale token layer.sequenceNormScale)
   let sequenceOutput := layer.sequence.forward normalizedSequenceInput
-  let channelInput := retrieveAfterSequenceAll states sequenceOutput layer.channelQuery
-  let channelOutput := channelInput.mapIdx (fun _ token =>
+  let channelInput := List.zipWith
+    (fun state output => state.retrieveAfterSequence output layer.channelQuery) states
+    sequenceOutput
+  let channelOutput := channelInput.map (fun token =>
     layer.channel.forward hActive (RMSNorm.scale token layer.channelNormScale))
-  finishAll states sequenceOutput channelOutput
+  List.zipWith
+    (fun state outputs =>
+      state.finishLayer cfg.attnResBlockSize outputs.1 outputs.2)
+    states (List.zip sequenceOutput channelOutput)
 
 /-- A layer preserves the number of tokenwise depth states. -/
 theorem forward_length (layer : BackboneLayer ℝ cfg decayRank)
     (hActive : cfg.activeExperts ≤ cfg.numRoutedExperts)
     (states : List (AttnRes.BlockState ℝ cfg.hiddenDim)) :
     (layer.forward hActive states).length = states.length := by
-  let sequenceInput := retrieveAll states layer.sequenceQuery
+  let sequenceInput := states.map (fun state => state.retrieve layer.sequenceQuery)
   let normalizedSequenceInput := sequenceInput.map
     (fun token => RMSNorm.scale token layer.sequenceNormScale)
   let sequenceOutput := layer.sequence.forward normalizedSequenceInput
-  let channelInput := retrieveAfterSequenceAll states sequenceOutput layer.channelQuery
-  let channelOutput := channelInput.mapIdx (fun _ token =>
+  let channelInput := List.zipWith
+    (fun state output => state.retrieveAfterSequence output layer.channelQuery) states
+    sequenceOutput
+  let channelOutput := channelInput.map (fun token =>
     layer.channel.forward hActive (RMSNorm.scale token layer.channelNormScale))
   have hSequence : sequenceOutput.length = states.length := by
     rw [layer.sequence.forward_length]
-    simp [normalizedSequenceInput, sequenceInput, retrieveAll]
+    simp [normalizedSequenceInput, sequenceInput]
   have hChannelInput : channelInput.length = states.length := by
-    simp [channelInput, retrieveAfterSequenceAll, hSequence]
+    simp [channelInput, hSequence]
   have hChannel : channelOutput.length = states.length := by
     simp [channelOutput, hChannelInput]
-  change (finishAll states sequenceOutput channelOutput).length = states.length
-  simp [finishAll, hSequence, hChannel]
-
-/-- Apply one backbone layer to a single tokenwise depth state. -/
-noncomputable def forwardOne (layer : BackboneLayer ℝ cfg decayRank)
-    (hActive : cfg.activeExperts ≤ cfg.numRoutedExperts)
-    (state : AttnRes.BlockState ℝ cfg.hiddenDim) : AttnRes.BlockState ℝ cfg.hiddenDim := by
-  let outputs := layer.forward hActive [state]
-  have hLength : outputs.length = 1 := layer.forward_length hActive [state]
-  exact outputs.get ⟨0, by omega⟩
+  change (List.zipWith _ states (List.zip sequenceOutput channelOutput)).length = states.length
+  simp [hSequence, hChannel]
 
 /-- Advance one backbone layer at a single autoregressive token while preserving the sequence
 mixer's causal state. This is the primitive used by the EAGLE draft and streaming decoders. -/
@@ -229,6 +224,16 @@ noncomputable def forwardToken (layer : BackboneLayer ℝ cfg decayRank)
   (sequenceResult.1,
     depthState.finishLayer cfg.attnResBlockSize sequenceResult.2 channelOutput)
 
+/-- A one-token backbone step preserves the AttnRes block-position invariant. -/
+theorem forwardToken_depth_wf (layer : BackboneLayer ℝ cfg decayRank)
+    (hActive : cfg.activeExperts ≤ cfg.numRoutedExperts)
+    (sequenceState : layer.sequence.CausalState)
+    (depthState : AttnRes.BlockState ℝ cfg.hiddenDim)
+    (hDepth : depthState.WF cfg.attnResBlockSize) :
+    (layer.forwardToken hActive sequenceState depthState).2.WF cfg.attnResBlockSize := by
+  simp only [forwardToken]
+  exact depthState.finishLayer_wf cfg.attnResBlockSize _ _ hDepth
+
 end BackboneLayer
 
 /-- The complete language-backbone parameter bundle.
@@ -238,14 +243,23 @@ there is no separately supplied proof that expert routing is possible, and a cal
 arbitrary sequence of KDA, MLA, dense, and sparse layers to a K3 configuration.
 -/
 structure LanguageModel (α : Type) [Storage α] (cfg : TextConfig) (decayRank : Nat) where
+  /-- Shared vocabulary embedding table. -/
   tokenEmbedding : Tensor α (.dim cfg.vocabSize (.dim cfg.hiddenDim .scalar))
+  /-- Shape-indexed parameters for every configured backbone layer. -/
   layer : Fin cfg.numLayers → BackboneLayer α cfg decayRank
+  /-- Final learned query over AttnRes block summaries. -/
   finalQuery : Tensor α (.dim cfg.hiddenDim .scalar)
+  /-- RMSNorm scale applied after final depth retrieval. -/
   finalNormScale : Tensor α (.dim cfg.hiddenDim .scalar)
+  /-- Projection from hidden width to vocabulary logits. -/
   vocabularyHead : Tensor α (.dim cfg.hiddenDim (.dim cfg.vocabSize .scalar))
+  /-- Nonemptiness required by typed vocabulary operations. -/
   vocabSize_pos : 0 < cfg.vocabSize
+  /-- Routing capacity required by every sparse channel mixer. -/
   activeExperts_le : cfg.activeExperts ≤ cfg.numRoutedExperts
+  /-- Stored sequence mixers agree with the configured KDA/MLA schedule. -/
   sequenceSchedule : ∀ index, (layer index).sequence.kind = cfg.attentionKindAt index
+  /-- Stored channel mixers agree with the configured dense-prefix schedule. -/
   channelSchedule :
     ∀ index, (layer index).channel.isDense = decide (index.val < cfg.firstDenseLayers)
 
@@ -272,6 +286,14 @@ def embedText {sequenceLength : Nat} (model : LanguageModel α cfg decayRank)
     Tensor α (.dim sequenceLength (.dim cfg.hiddenDim .scalar)) :=
   Tensor.dim fun position => Spec.get model.tokenEmbedding (tokens position)
 
+omit [Context α] in
+/-- Text embedding is a row lookup in the shared vocabulary table. -/
+@[simp] theorem get_embedText {sequenceLength : Nat} (model : LanguageModel α cfg decayRank)
+    (tokens : Fin sequenceLength → Fin cfg.vocabSize) (position : Fin sequenceLength) :
+    Spec.get (model.embedText tokens) position =
+      Spec.get model.tokenEmbedding (tokens position) := by
+  simp [embedText, Spec.get]
+
 /-- Resolve a mixed text/visual sequence into language-width embeddings. The slot list is the
 formal counterpart of expanding a serialized media placeholder into the visual tokens produced by
 MoonViT. -/
@@ -284,6 +306,29 @@ def embedMultimodal {sequenceLength visualTokens : Nat}
     match slots position with
     | .text token => Spec.get model.tokenEmbedding token
     | .visual token => Spec.get visual token
+
+omit [Context α] in
+/-- A text slot is resolved from the vocabulary embedding table. -/
+theorem get_embedMultimodal_text {sequenceLength visualTokens : Nat}
+    (model : LanguageModel α cfg decayRank)
+    (visual : Tensor α (.dim visualTokens (.dim cfg.hiddenDim .scalar)))
+    (slots : Fin sequenceLength → InputSlot cfg.vocabSize visualTokens)
+    (position : Fin sequenceLength) (token : Fin cfg.vocabSize)
+    (hSlot : slots position = .text token) :
+    Spec.get (model.embedMultimodal visual slots) position =
+      Spec.get model.tokenEmbedding token := by
+  simp [embedMultimodal, hSlot]
+
+omit [Context α] in
+/-- A visual slot is resolved from MoonViT's projected token sequence. -/
+theorem get_embedMultimodal_visual {sequenceLength visualTokens : Nat}
+    (model : LanguageModel α cfg decayRank)
+    (visual : Tensor α (.dim visualTokens (.dim cfg.hiddenDim .scalar)))
+    (slots : Fin sequenceLength → InputSlot cfg.vocabSize visualTokens)
+    (position : Fin sequenceLength) (token : Fin visualTokens)
+    (hSlot : slots position = .visual token) :
+    Spec.get (model.embedMultimodal visual slots) position = Spec.get visual token := by
+  simp [embedMultimodal, hSlot]
 
 /-- Run MoonViT and splice its projected tokens into a mixed language-model sequence. -/
 noncomputable def embedVisionText {visionCfg : VisionConfig}
@@ -320,7 +365,8 @@ noncomputable def forwardDepthStates {sequenceLength : Nat}
   have hFoldGeneral : ∀ (indices : List (Fin cfg.numLayers))
       (states : List (AttnRes.BlockState ℝ cfg.hiddenDim)),
       (indices.foldl (fun states index =>
-        (model.layer index).forward model.activeExperts_le states) states).length = states.length := by
+        (model.layer index).forward model.activeExperts_le states) states).length =
+        states.length := by
     intro indices
     induction indices with
     | nil => simp

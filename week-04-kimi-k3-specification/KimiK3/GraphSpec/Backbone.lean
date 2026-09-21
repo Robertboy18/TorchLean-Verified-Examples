@@ -7,7 +7,6 @@ Authors: Robert Joseph George
 module
 
 public import KimiK3.GraphSpec.AttnRes
-public import KimiK3.GraphSpec.Expert
 public import KimiK3.GraphSpec.KDA
 public import KimiK3.GraphSpec.MLA
 public import KimiK3.GraphSpec.MoE
@@ -21,19 +20,18 @@ layer.  This file starts that composition at the causal-token boundary.  A packe
 queried by AttnRes, normalized, passed through a sequence mixer, queried again for the channel
 mixer, and finally accumulated into the current AttnRes block.
 
-Top-k routing remains a discrete boundary.  Sparse graphs are parameterized by a `Route` together
-with its mathematical `IsTopK` contract; all arithmetic after that decision remains an ordinary
-TorchLean graph and therefore retains the usual forward and backward interpretation.
+Top-k routing remains a discrete boundary. Sparse graphs are parameterized by a `Route`; the
+composed language-model theorem separately assumes that every staged route equals the deterministic
+route computed from the corresponding hidden input. All arithmetic after that decision remains an
+ordinary TorchLean graph.
 -/
 
 @[expose] public section
 
 namespace KimiK3
-
-open TorchLean
 namespace GraphSpec
 
-open Spec
+open Spec TorchLean
 open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
@@ -172,9 +170,7 @@ def finishPartialTerm {Γ : List Shape} (modelDim : Nat)
       sequenceSources partialPresent (Term.eval env completed) (Term.eval env partialState) := by
   cases partialPresent
   · rfl
-  · change Tensor.concatAxisSpec .scalar (Term.eval env completed)
-      (Tensor.reshapeSpec (Term.eval env partialState) (by simp [Shape.size])) = _
-    rfl
+  · rfl
 
 @[simp] theorem eval_channelSourcesTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
     (completedCount modelDim : Nat)
@@ -184,10 +180,6 @@ def finishPartialTerm {Γ : List Shape} (modelDim : Nat)
         (channelSourcesTerm completedCount modelDim completed partialState sequenceOutput) =
       channelSources (Term.eval env completed) (Term.eval env partialState)
         (Term.eval env sequenceOutput) := by
-  change
-    Tensor.concatAxisSpec .scalar (Term.eval env completed)
-      (Tensor.reshapeSpec (Term.eval env partialState + Term.eval env sequenceOutput)
-        (by simp [Shape.size])) = _
   rfl
 
 theorem eval_sequenceInputTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
@@ -248,10 +240,10 @@ abbrev DepthInputs (completedCount modelDim : Nat) : List Shape :=
 
 /-- Zero queries and unit normalization scales for a freshly initialized depth controller. -/
 def initialDepthParams (modelDim : Nat) : TorchLean.TensorPack Float (DepthParams modelDim) :=
-  .cons (Tensor.full (.dim modelDim .scalar) 0) <|
-    .cons (Tensor.full (.dim modelDim .scalar) 1) <|
-      .cons (Tensor.full (.dim modelDim .scalar) 0) <|
-        .cons (Tensor.full (.dim modelDim .scalar) 1) .nil
+  .cons (Tensor.zeros (.dim modelDim .scalar)) <|
+    .cons (Tensor.ones (.dim modelDim .scalar)) <|
+      .cons (Tensor.zeros (.dim modelDim .scalar)) <|
+        .cons (Tensor.ones (.dim modelDim .scalar)) .nil
 
 /-- Extract a layer's learned depth queries and normalization scales in graph order. -/
 def depthParameters {α : Type} [Storage α] {cfg : TextConfig} {decayRank : Nat}
@@ -437,7 +429,8 @@ theorem model_specFwd_eq_specStep
       cfg.shortConvWidth decayRank cfg.denseHiddenDim partialPresent hCompleted hModel hHeads hKey
       hValue hWidth).specFwd
         (parameters layer kda expert)
-        (inputs completed partialState previousWindow previousState logFloor epsilon gateCap upCap) =
+        (inputs completed partialState previousWindow previousState logFloor epsilon gateCap
+          upCap) =
       specStep partialPresent hCompleted hModel hWidth kda expert layer.sequenceQuery
         layer.sequenceNormScale layer.channelQuery layer.channelNormScale completed partialState
         previousWindow previousState logFloor gateCap upCap := by
@@ -681,7 +674,8 @@ theorem model_specFwd_eq_specStep
       cfg.numSharedExperts cfg.numRoutedExperts cfg.activeExperts route partialPresent hCompleted
       hModel hHeads hKey hValue hWidth hLatent).specFwd
         (parameters layer kda moe)
-        (inputs completed partialState previousWindow previousState logFloor epsilon gateCap upCap) =
+        (inputs completed partialState previousWindow previousState logFloor epsilon gateCap
+          upCap) =
       specStep partialPresent hCompleted hModel hWidth kda moe route layer.sequenceQuery
         layer.sequenceNormScale layer.channelQuery layer.channelNormScale completed partialState
         previousWindow previousState logFloor gateCap upCap := by
@@ -909,7 +903,8 @@ theorem model_specFwd_eq_specStep
       cfg.kvLatentDim cfg.qkNopeHeadDim cfg.qkReservedHeadDim cfg.valueHeadDim
       cfg.denseHiddenDim partialPresent hCompleted hModel hQueryLatent hKVLatent).specFwd
         (parameters backbone mla expert)
-        (inputs completed partialState pastLatentCache pastSharedKeyCache scoreScale gateCap upCap) =
+        (inputs completed partialState pastLatentCache pastSharedKeyCache scoreScale gateCap
+          upCap) =
       specStep partialPresent hCompleted hModel mla expert
         backbone.sequenceQuery backbone.sequenceNormScale backbone.channelQuery
         backbone.channelNormScale completed partialState pastLatentCache pastSharedKeyCache
@@ -1152,7 +1147,8 @@ theorem model_specFwd_eq_specStep
       cfg.routedLatentDim cfg.routedExpertHiddenDim cfg.numSharedExperts cfg.numRoutedExperts
       cfg.activeExperts route partialPresent hCompleted hModel hQueryLatent hKVLatent
       hLatent).specFwd (parameters backbone mla moe)
-        (inputs completed partialState pastLatentCache pastSharedKeyCache scoreScale gateCap upCap) =
+        (inputs completed partialState pastLatentCache pastSharedKeyCache scoreScale gateCap
+          upCap) =
       specStep partialPresent hCompleted hModel mla moe route
         backbone.sequenceQuery backbone.sequenceNormScale backbone.channelQuery
         backbone.channelNormScale completed partialState pastLatentCache pastSharedKeyCache

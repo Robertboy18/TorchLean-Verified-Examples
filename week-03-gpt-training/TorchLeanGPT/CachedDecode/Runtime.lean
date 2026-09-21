@@ -12,8 +12,8 @@ public import TorchLeanGPT.CachedDecode.Native
 # Checkpoint-compatible cached decoder
 
 This module reads the live CUDA parameter buffers owned by a TorchLean GPT module. It checks every
-parameter position and shape before constructing a decoder, multiplies directly against the
-stored projection matrices, and then evaluates one token at a time.
+parameter position and shape before constructing a decoder, selects multiplication according to
+each weight's stored layout, and then evaluates one token at a time.
 
 The decoder is deliberately tied to the tied-token model assembled around
 `TorchLeanGPT.buildModel`: pre-normalized blocks, bias-free Q/K/V projections, a biased attention
@@ -113,14 +113,26 @@ def expectedLayout
       (stem ++ ".attention.wk", ([width, width] : Shape)),
       (stem ++ ".attention.wv", ([width, width] : Shape)),
       (stem ++ ".attention.wo", ([width, width] : Shape)),
-      (stem ++ ".attention.bo", ([width] : Shape)),
+      (stem ++ ".attention.bo", ([width] : Shape))
+    ]
+    if cfg.attentionDropout?.isSome then
+      result := result.push (stem ++ ".attention.dropout", [])
+    if cfg.dropout?.isSome then
+      result := result.push (stem ++ ".attention_residual.dropout", [])
+    result := result ++ #[
       (stem ++ ".norm2.gamma", ([width] : Shape)),
       (stem ++ ".norm2.beta", ([width] : Shape)),
       (stem ++ ".ffn.w1", ([cfg.feedForwardWidth, width] : Shape)),
-      (stem ++ ".ffn.b1", ([cfg.feedForwardWidth] : Shape)),
+      (stem ++ ".ffn.b1", ([cfg.feedForwardWidth] : Shape))
+    ]
+    if cfg.feedForwardDropout?.isSome then
+      result := result.push (stem ++ ".ffn.hidden_dropout", [])
+    result := result ++ #[
       (stem ++ ".ffn.w2", ([width, cfg.feedForwardWidth] : Shape)),
       (stem ++ ".ffn.b2", ([width] : Shape))
     ]
+    if cfg.dropout?.isSome then
+      result := result.push (stem ++ ".ffn.residual_dropout", [])
   result := result ++ #[
     ("final_norm.gamma", ([width] : Shape)),
     ("final_norm.beta", ([width] : Shape))
@@ -201,12 +213,10 @@ def validateModelConfig (cfg : nn.models.CausalTransformer.Config) : IO Unit := 
   if cfg.sequenceLength = 0 || cfg.vocabularySize = 0 || cfg.headCount = 0 ||
       cfg.headWidth = 0 || cfg.layerCount = 0 || cfg.feedForwardWidth = 0 then
     throw <| IO.userError "cached decoder: all model dimensions must be positive"
-  if cfg.modelWidth != cfg.headCount * cfg.headWidth then
-    throw <| IO.userError "cached decoder: inconsistent attention width"
-  if !cfg.normalizeFirst then
-    throw <| IO.userError "cached decoder: this executable expects pre-normalized blocks"
   if cfg.attentionInputBias then
     throw <| IO.userError "cached decoder: this executable expects bias-free Q/K/V projections"
+  if !cfg.normalizeFirst then
+    throw <| IO.userError "cached decoder: this executable expects pre-normalized blocks"
   if !cfg.attentionOutputBias then
     throw <| IO.userError "cached decoder: this executable expects attention output biases"
   match cfg.activation with
@@ -227,6 +237,13 @@ def Decoder.initialize
   validateModelConfig cfg
   let parameters ← collectParameterBuffers parameterList
   validateLayout cfg parameters
+  -- Dropout probabilities remain in the model state even in evaluation mode. Resolve named
+  -- weights against the complete layout rather than treating every state entry as a weight.
+  let layout := expectedLayout cfg
+  let getBuffer (name : String) : IO Buffer := do
+    match layout.findIdx? (fun entry => entry.1 == name) with
+    | some index => bufferAt parameters index
+    | none => throw <| IO.userError s!"cached decoder: missing layout entry {name}"
 
   let widthU32 ← natToUInt32 "model width" cfg.modelWidth
   let hiddenU32 ← natToUInt32 "feed-forward width" cfg.feedForwardWidth
@@ -236,34 +253,31 @@ def Decoder.initialize
   let headDimU32 ← natToUInt32 "attention head width" cfg.headWidth
   let layersU32 ← natToUInt32 "layer count" cfg.layerCount
 
-  let tokenEmbedding ← bufferAt parameters 0
-  let positionEmbedding ← bufferAt parameters 1
+  let tokenEmbedding ← getBuffer "token_embedding"
+  let positionEmbedding ← getBuffer "position_embedding"
   let tokenOutputWeight := tokenEmbedding
 
   let mut layers := #[]
   for layerIndex in [0:cfg.layerCount] do
-    let base := 2 + 13 * layerIndex
-    let storedInputWeight ← bufferAt parameters (base + 9)
-    let storedOutputWeight ← bufferAt parameters (base + 11)
+    let stem := s!"blocks.{layerIndex}"
     let layer : Layer :=
-      { norm1Gamma := ← bufferAt parameters base
-        norm1Beta := ← bufferAt parameters (base + 1)
-        queryWeight := ← bufferAt parameters (base + 2)
-        keyWeight := ← bufferAt parameters (base + 3)
-        valueWeight := ← bufferAt parameters (base + 4)
-        outputWeight := ← bufferAt parameters (base + 5)
-        outputBias := ← bufferAt parameters (base + 6)
-        norm2Gamma := ← bufferAt parameters (base + 7)
-        norm2Beta := ← bufferAt parameters (base + 8)
-        ffnInputWeight := storedInputWeight
-        ffnInputBias := ← bufferAt parameters (base + 10)
-        ffnOutputWeight := storedOutputWeight
-        ffnOutputBias := ← bufferAt parameters (base + 12) }
+      { norm1Gamma := ← getBuffer (stem ++ ".norm1.gamma")
+        norm1Beta := ← getBuffer (stem ++ ".norm1.beta")
+        queryWeight := ← getBuffer (stem ++ ".attention.wq")
+        keyWeight := ← getBuffer (stem ++ ".attention.wk")
+        valueWeight := ← getBuffer (stem ++ ".attention.wv")
+        outputWeight := ← getBuffer (stem ++ ".attention.wo")
+        outputBias := ← getBuffer (stem ++ ".attention.bo")
+        norm2Gamma := ← getBuffer (stem ++ ".norm2.gamma")
+        norm2Beta := ← getBuffer (stem ++ ".norm2.beta")
+        ffnInputWeight := ← getBuffer (stem ++ ".ffn.w1")
+        ffnInputBias := ← getBuffer (stem ++ ".ffn.b1")
+        ffnOutputWeight := ← getBuffer (stem ++ ".ffn.w2")
+        ffnOutputBias := ← getBuffer (stem ++ ".ffn.b2") }
     layers := layers.push layer
 
-  let finalBase := 2 + 13 * cfg.layerCount
-  let finalNormGamma ← bufferAt parameters finalBase
-  let finalNormBeta ← bufferAt parameters (finalBase + 1)
+  let finalNormGamma ← getBuffer "final_norm.gamma"
+  let finalNormBeta ← getBuffer "final_norm.beta"
   let nativeCache ← Native.create layersU32 headsU32 contextU32 headDimU32
   let nextPosition ← IO.mkRef 0
   let closed ← IO.mkRef false
@@ -356,6 +370,7 @@ def Decoder.push
             s!"cached decoder: missing layer {layerIndex} during execution"
     let norm1 ← Native.layerNorm hidden layer.norm1Gamma layer.norm1Beta
       decoder.widthU32 (Context.ofRat (TorchLeanGPT.normalizationEpsilon true) : Float)
+    -- Attention weights are input-by-output; affine feed-forward weights are output-by-input.
     let query := decoder.attentionProjection norm1 layer.queryWeight
     let key := decoder.attentionProjection norm1 layer.keyWeight
     let value := decoder.attentionProjection norm1 layer.valueWeight
@@ -364,7 +379,8 @@ def Decoder.push
       (← natToUInt32 "cache position" position)
     releaseBuffers [norm1, query, key, value]
 
-    let projected0 := decoder.attentionProjection attended layer.outputWeight
+    let projected0 :=
+      decoder.attentionProjection attended layer.outputWeight
     let projected := Buffer.releaseThen attended projected0
     let biased0 := Buffer.add projected layer.outputBias
     let biased := Buffer.releaseThen projected biased0

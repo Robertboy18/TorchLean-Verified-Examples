@@ -14,6 +14,7 @@ public import NN.Spec.Layers.Loss
 public import NN.Proofs.Tensor.Basic.Algebra
 public import NN.Tensor
 public import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+public import Mathlib.Geometry.Convex.ConvexSpace.Defs
 public import Mathlib.Data.EReal.Basic
 
 /-!
@@ -23,7 +24,7 @@ This module records the mathematical parts of the K3 training recipe that can be
 published equations without reproducing Moonshot's private data or distributed system:
 
 * Per-Head Muon as independent orthogonalization contracts for attention-head blocks;
-* masked next-token pretraining and its derivative with respect to the model logits;
+* masked next-token pretraining and the report's closed-form logit-gradient formula;
 * the clipped MOPD reward from Eq. 15;
 * OCP microscaling formats used by routed-expert weights and activations;
 * EAGLE-3 feature fusion, training-time testing, and lossless speculative acceptance.
@@ -31,17 +32,16 @@ published equations without reproducing Moonshot's private data or distributed s
 This does not turn empirical claims in the report into theorems.  Dataset quality, scaling
 efficiency, benchmark scores, and distributed-system throughput remain measured properties.
 
-Reference: Kimi Team, "Kimi K3: Open Frontier Intelligence", 2026, Sections 2.5, 3.3--3.4,
-and 4.1, https://arxiv.org/abs/2607.24653.
+Reference: Kimi Team, "Kimi K3: Open Frontier Intelligence", 2026, Section 2.5, p. 10;
+Sections 3.3--3.4, pp. 11--12; and Section 4.1, pp. 12--14, Eqs. 15--16,
+https://arxiv.org/abs/2607.24653.
 -/
 
 @[expose] public section
 
 namespace KimiK3
 
-open TorchLean
-
-open Spec
+open Spec TorchLean
 open Tensor
 open scoped BigOperators
 
@@ -79,54 +79,37 @@ def merge {α : Type} [Storage α] {heads rows columns : Nat}
 theorem merge_split {α : Type} [Storage α] {heads rows columns : Nat}
     (momentum : MatrixTensor α rows (heads * columns)) :
     merge (split momentum) = momentum := by
-  apply (Tensor.dimEquiv rows _).injective
-  funext row
-  apply Tensor.ext_vector
-  intro column
-  change get2 (merge (split momentum)) row column = get2 momentum row column
-  simp only [merge, split, get2_dim]
-  change get2 momentum row (finProdFinEquiv (finProdFinEquiv.symm column)) = _
-  rw [Equiv.apply_symm_apply]
+  apply TorchLean.Tensor.Internal.Rep.ext
+  rintro ⟨row, column, ⟨⟩⟩
+  have h : get2 (merge (split momentum)) row column = get2 momentum row column := by
+    simp only [merge, split, Spec.get2_dim, Prod.mk.eta, Equiv.apply_symm_apply]
+  simpa only [Spec.get2_eq_apply] using h
 
 /-- Reassembling and splitting an indexed head family returns the same family. -/
 theorem split_merge {α : Type} [Storage α] {heads rows columns : Nat}
     (blocks : HeadMatrices α heads rows columns) :
     split (merge blocks) = blocks := by
   funext head
-  apply (Tensor.dimEquiv rows _).injective
-  funext row
-  apply Tensor.ext_vector
-  intro column
-  change get2 (split (merge blocks) head) row column = get2 (blocks head) row column
-  simp only [merge, split, get2_dim]
-  rw [Equiv.symm_apply_apply]
+  apply TorchLean.Tensor.Internal.Rep.ext
+  rintro ⟨row, column, ⟨⟩⟩
+  have h : get2 (split (merge blocks) head) row column = get2 (blocks head) row column := by
+    simp only [merge, split, Spec.get2_dim, Equiv.symm_apply_apply]
+  simpa only [Spec.get2_eq_apply] using h
 
 /-- Orthogonalize every output-head block independently and restore the projection layout. -/
-def orthogonalize {α : Type} [Storage α] [Context α] {heads rows columns : Nat}
+def orthogonalize {α : Type} [Storage α] {heads rows columns : Nat}
     (orthogonalizer : Orthogonalizer α (.dim rows (.dim columns .scalar)))
     (momentum : MatrixTensor α rows (heads * columns)) :
     MatrixTensor α rows (heads * columns) :=
   merge fun head => orthogonalizer.apply (split momentum head)
 
 /-- Splitting a Per-Head Muon direction recovers the independently orthogonalized head blocks. -/
-theorem split_orthogonalize {α : Type} [Storage α] [Context α] {heads rows columns : Nat}
+theorem split_orthogonalize {α : Type} [Storage α] {heads rows columns : Nat}
     (orthogonalizer : Orthogonalizer α (.dim rows (.dim columns .scalar)))
     (momentum : MatrixTensor α rows (heads * columns)) :
     split (orthogonalize orthogonalizer momentum) =
       fun head => orthogonalizer.apply (split momentum head) := by
   exact split_merge _
-
-/-- Exact Per-Head Muon applies the matrix orthogonality contract separately to every head. -/
-def HasExactDirections {α : Type} [Storage α] [Context α] {heads rows columns : Nat}
-    (orthogonalizer : Orthogonalizer α (.dim rows (.dim columns .scalar)))
-    (momentum : HeadMatrices α heads rows columns) : Prop :=
-  ∀ head, HasExactColumnGram (orthogonalizer.apply (momentum head))
-
-/-- Approximate Per-Head Muon carries one Gram-residual bound per head. -/
-def HasApproxDirections {α : Type} [Storage α] [Context α] {heads rows columns : Nat} (epsilon : α)
-    (orthogonalizer : Orthogonalizer α (.dim rows (.dim columns .scalar)))
-    (momentum : HeadMatrices α heads rows columns) : Prop :=
-  ∀ head, HasApproxColumnGram epsilon (orthogonalizer.apply (momentum head))
 
 /-- An exact Muon backend certifies every head block of the reassembled projection update. -/
 theorem orthogonalize_hasExactColumnGram {α : Type} [Storage α] [Context α]
@@ -175,12 +158,15 @@ noncomputable def nextTokenLoss {sequenceLength vocabSize : Nat}
   (∑ position ∈ supervised, tokenLoss (Spec.get logits position) (targets position)) /
     supervised.card
 
-/-- Gradient of the mean next-token objective with respect to its logits.
+/-- Closed-form logit-gradient formula used for the masked next-token objective.
 
 Rows omitted from `supervised` have zero gradient. A supervised row uses the standard
 `softmax(logits) - oneHot(target)` derivative, scaled by the number of supervised positions.
+
+This declaration records the formula. The development does not yet prove an analytic derivative or
+VJP theorem relating it to `nextTokenLoss`.
 -/
-noncomputable def logitGradient {sequenceLength vocabSize : Nat}
+noncomputable def logitGradientFormula {sequenceLength vocabSize : Nat}
     (logits : Tensor ℝ (.dim sequenceLength (.dim vocabSize .scalar)))
     (targets : Fin sequenceLength → Fin vocabSize)
     (supervised : Finset (Fin sequenceLength)) (_hSupervised : supervised.Nonempty) :
@@ -192,33 +178,33 @@ noncomputable def logitGradient {sequenceLength vocabSize : Nat}
           (TorchLean.Tensor.oneHot vocabSize (targets position)))
         (1 / supervised.card)
     else
-      Tensor.full (.dim vocabSize .scalar) 0
+      Tensor.zeros (.dim vocabSize .scalar)
 
-/-- On every supervised position, the declared gradient is exactly TorchLean's stable
+/-- On every supervised position, the formula uses TorchLean's stable
 cross-entropy-on-logits derivative, with the outer mean reduction applied. -/
-theorem logitGradient_at_supervised {sequenceLength vocabSize : Nat}
+theorem logitGradientFormula_at_supervised {sequenceLength vocabSize : Nat}
     (logits : Tensor ℝ (.dim sequenceLength (.dim vocabSize .scalar)))
     (targets : Fin sequenceLength → Fin vocabSize)
     (supervised : Finset (Fin sequenceLength)) (hSupervised : supervised.Nonempty)
     (position : Fin sequenceLength) (hPosition : position ∈ supervised) :
-    Spec.get (logitGradient logits targets supervised hSupervised) position =
+    Spec.get (logitGradientFormula logits targets supervised hSupervised) position =
       scaleSpec
         (crossEntropyLogitsDerivSpec 0 (Spec.get logits position)
           (TorchLean.Tensor.oneHot vocabSize (targets position)))
         (1 / supervised.card) := by
-  simp only [logitGradient, Spec.get_dim]
-  rw [if_pos hPosition]
+  simp only [logitGradientFormula, Spec.get_dim]
+  rw [ite_eq_left hPosition]
 
-/-- A masked position contributes no gradient to the shared backbone or vocabulary head. -/
-theorem logitGradient_at_masked {sequenceLength vocabSize : Nat}
+/-- The declared formula returns zero at every masked position. -/
+theorem logitGradientFormula_at_masked {sequenceLength vocabSize : Nat}
     (logits : Tensor ℝ (.dim sequenceLength (.dim vocabSize .scalar)))
     (targets : Fin sequenceLength → Fin vocabSize)
     (supervised : Finset (Fin sequenceLength)) (hSupervised : supervised.Nonempty)
     (position : Fin sequenceLength) (hPosition : position ∉ supervised) :
-    Spec.get (logitGradient logits targets supervised hSupervised) position =
-      Tensor.full (.dim vocabSize .scalar) 0 := by
-  simp only [logitGradient, Spec.get_dim]
-  rw [if_neg hPosition]
+    Spec.get (logitGradientFormula logits targets supervised hSupervised) position =
+      Tensor.zeros (.dim vocabSize .scalar) := by
+  simp only [logitGradientFormula, Spec.get_dim]
+  rw [ite_eq_right hPosition]
 
 end Pretraining
 
@@ -238,16 +224,12 @@ end LanguageModel
 
 namespace MOPD
 
-/-- A probability that may safely appear inside the logarithmic MOPD reward.
+/-- A strictly positive probability that may safely appear inside the logarithmic MOPD reward.
 
 The teacher and student probabilities in Eq. 15 come from softmax distributions and are therefore
-strictly positive.  Keeping that fact in the type prevents Lean's totalized real logarithm from
-silently assigning a value to an impossible zero- or negative-probability input.
+strictly positive. This is mathlib's standard interval subtype rather than a parallel record.
 -/
-structure StrictProbability where
-  value : ℝ
-  positive : 0 < value
-  atMostOne : value ≤ 1
+abbrev StrictProbability := Set.Ioc (0 : ℝ) 1
 
 /-- Symmetric clipping to `[-bound, bound]`. -/
 noncomputable def clip (bound value : ℝ) : ℝ := max (-bound) (min bound value)
@@ -255,7 +237,12 @@ noncomputable def clip (bound value : ℝ) : ℝ := max (-bound) (min bound valu
 /-- Per-token teacher/student reward from Eq. 15, before the stop-gradient annotation. -/
 noncomputable def reward (maxReward : ℝ)
     (teacherProbability studentProbability : StrictProbability) : ℝ :=
-  clip maxReward (Real.log (teacherProbability.value / studentProbability.value))
+  clip maxReward (Real.log ((teacherProbability : ℝ) / studentProbability))
+
+/-- Clipping does not change a value already inside the requested symmetric interval. -/
+theorem clip_eq_self {bound value : ℝ} (hlower : -bound ≤ value) (hupper : value ≤ bound) :
+    clip bound value = value := by
+  rw [clip, min_eq_right hupper, max_eq_right hlower]
 
 /-- Clipping enforces the report's reward interval for every log-ratio. -/
 theorem reward_mem_interval {maxReward : ℝ} (h : 0 ≤ maxReward)
@@ -266,6 +253,15 @@ theorem reward_mem_interval {maxReward : ℝ} (h : 0 ≤ maxReward)
   · exact le_max_left _ _
   · exact max_le (by linarith) (min_le_left _ _)
 
+/-- A teacher and student assigning the same probability receive zero MOPD reward. -/
+@[simp]
+theorem reward_self {maxReward : ℝ} (hMaxReward : 0 ≤ maxReward)
+    (probability : StrictProbability) :
+    reward maxReward probability probability = 0 := by
+  have hne : (probability : ℝ) ≠ 0 := ne_of_gt probability.property.1
+  rw [reward, div_self hne, Real.log_one]
+  exact clip_eq_self (neg_nonpos.mpr hMaxReward) hMaxReward
+
 end MOPD
 
 
@@ -275,8 +271,11 @@ namespace Draft
 
 /-- Low-, middle-, and high-depth target-model features used by the draft layer. -/
 structure FeatureTriplet (α : Type) [Storage α] (hiddenDim : Nat) where
+  /-- Feature retained from the first target-model block. -/
   low : Tensor α (.dim hiddenDim .scalar)
+  /-- Feature retained from the fourth target-model block. -/
   middle : Tensor α (.dim hiddenDim .scalar)
+  /-- Feature retained from the final target-model block. -/
   high : Tensor α (.dim hiddenDim .scalar)
 
 namespace FeatureTriplet
@@ -308,38 +307,23 @@ noncomputable def eagleFeaturesAt {cfg : TextConfig} {decayRank sequenceLength :
 
 end LanguageModel
 
-/-- Bias-free feature-fusion projection `W_E3`, represented as one matrix per source depth. -/
-structure FeatureFusion (α : Type) [Storage α] (hiddenDim : Nat) where
-  weight : Fin 3 → Tensor α (.dim hiddenDim (.dim hiddenDim .scalar))
+/-- Bias-free feature-fusion weights `W_E3`, one matrix per source depth. -/
+abbrev FeatureFusion (α : Type) [Storage α] (hiddenDim : Nat) :=
+  Fin 3 → Tensor α (.dim hiddenDim (.dim hiddenDim .scalar))
 
 namespace FeatureFusion
 
 variable {hiddenDim : Nat}
 
-/-- Every entry of a constant square matrix is its fill value. -/
-@[simp]
-private theorem get2_fill (value : ℝ) (row column : Fin hiddenDim) :
-    get2 (Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) value) row column = value := by
-  simp
-
 /-- Multiplying a real vector by an all-zero square matrix gives the zero vector. -/
 @[simp]
 private theorem vecMatMul_fill_zero (values : Tensor ℝ (.dim hiddenDim .scalar)) :
-    vecMatMulSpec values (Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) 0) =
-      Tensor.full (.dim hiddenDim .scalar) 0 := by
-  let result := vecMatMulSpec values
-    (Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) 0)
-  let zero : Tensor ℝ (.dim hiddenDim .scalar) := Tensor.full (.dim hiddenDim .scalar) 0
-  have coordinates : Tensor.getScalar result = Tensor.getScalar zero := by
-    funext column
-    dsimp [result]
-    rw [getScalar_vec_mat_mul_spec]
-    calc
-      (∑ row : Fin hiddenDim, Tensor.getScalar values row *
-          get2 (Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) 0) row column) = 0 := by
-            simp only [get2_fill, mul_zero, Finset.sum_const_zero]
-      _ = Tensor.getScalar zero column := by simp [zero]
-  exact Tensor.ext_vector (fun column => congrFun coordinates column)
+    vecMatMulSpec values (Tensor.zeros (.dim hiddenDim (.dim hiddenDim .scalar))) =
+      Tensor.zeros (.dim hiddenDim .scalar) := by
+  apply Tensor.ext_vector
+  intro column
+  rw [getScalar_vec_mat_mul_spec]
+  simp
 
 /-- Entries of the spec identity matrix are the Kronecker delta. -/
 @[simp]
@@ -370,16 +354,16 @@ def forward (fusion : FeatureFusion α hiddenDim) (features : FeatureTriplet α 
     Tensor α (.dim hiddenDim .scalar) :=
   addSpec
     (addSpec
-      (vecMatMulSpec features.low (fusion.weight 0))
-      (vecMatMulSpec features.middle (fusion.weight 1)))
-    (vecMatMulSpec features.high (fusion.weight 2))
+      (vecMatMulSpec features.low (fusion 0))
+      (vecMatMulSpec features.middle (fusion 1)))
+    (vecMatMulSpec features.high (fusion 2))
 
 /-- The report's `[0 0 I]` initialization returns the high-level feature exactly. -/
 theorem initial_fusion_eq_high (features : FeatureTriplet ℝ hiddenDim)
     (fusion : FeatureFusion ℝ hiddenDim)
-    (hLow : fusion.weight 0 = Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) 0)
-    (hMiddle : fusion.weight 1 = Tensor.full (.dim hiddenDim (.dim hiddenDim .scalar)) 0)
-    (hHigh : fusion.weight 2 = identityTensorSpec hiddenDim) :
+    (hLow : fusion 0 = Tensor.zeros (.dim hiddenDim (.dim hiddenDim .scalar)))
+    (hMiddle : fusion 1 = Tensor.zeros (.dim hiddenDim (.dim hiddenDim .scalar)))
+    (hHigh : fusion 2 = identityTensorSpec hiddenDim) :
     fusion.forward features = features.high := by
   rw [forward, hLow, hMiddle, hHigh]
   rw [vecMatMul_fill_zero, vecMatMul_fill_zero, vecMatMul_identity]
@@ -391,13 +375,21 @@ end FeatureFusion
 applied to the concatenation of the current token embedding and fused target feature. The decoder
 layer has the same KDA-or-MLA and channel-mixer structure as a backbone layer. -/
 structure Model (cfg : TextConfig) (decayRank : Nat) where
+  /-- Three-source feature-fusion projection. -/
   featureFusion : FeatureFusion ℝ cfg.hiddenDim
+  /-- Token embedding table shared with the draft input path. -/
   tokenEmbedding : Tensor ℝ (.dim cfg.vocabSize (.dim cfg.hiddenDim .scalar))
+  /-- Projection applied to the current token embedding. -/
   tokenInputWeight : Tensor ℝ (.dim cfg.hiddenDim (.dim cfg.hiddenDim .scalar))
+  /-- Projection applied to the fused target-model feature. -/
   featureInputWeight : Tensor ℝ (.dim cfg.hiddenDim (.dim cfg.hiddenDim .scalar))
+  /-- Single causal decoder layer used by the draft model. -/
   decoderLayer : BackboneLayer ℝ cfg decayRank
+  /-- Query used to read the draft layer's final residual state. -/
   finalQuery : Tensor ℝ (.dim cfg.hiddenDim .scalar)
+  /-- RMS-normalization scale before the vocabulary projection. -/
   finalNormScale : Tensor ℝ (.dim cfg.hiddenDim .scalar)
+  /-- Projection from hidden states to draft-token logits. -/
   vocabularyHead : Tensor ℝ (.dim cfg.hiddenDim (.dim cfg.vocabSize .scalar))
   vocabSize_pos : 0 < cfg.vocabSize
   activeExperts_le : cfg.activeExperts ≤ cfg.numRoutedExperts
@@ -456,7 +448,8 @@ noncomputable def stepLogits (model : Model cfg decayRank) (state : model.Causal
   let result := model.stepHidden state token features
   (result.1, vecMatMulSpec result.2 model.vocabularyHead)
 
-/-- Advance one continuation position using the preceding draft hidden state as the feature input. -/
+/-- Advance one continuation position using the preceding draft hidden state as the feature
+input. -/
 noncomputable def stepLogitsFromFeature (model : Model cfg decayRank) (state : model.CausalState)
     (token : Fin cfg.vocabSize) (feature : Tensor ℝ (.dim cfg.hiddenDim .scalar)) :
     model.CausalState ×
@@ -475,11 +468,11 @@ feature fusion leaves that feature input exactly unchanged. This is the formal c
 that justifies initializing the draft head from the MTP layer. -/
 theorem input_at_eagle_initialization (model : Model cfg decayRank)
     (token : Fin cfg.vocabSize) (features : FeatureTriplet ℝ cfg.hiddenDim)
-    (hLow : model.featureFusion.weight 0 =
-      Tensor.full (.dim cfg.hiddenDim (.dim cfg.hiddenDim .scalar)) 0)
-    (hMiddle : model.featureFusion.weight 1 =
-      Tensor.full (.dim cfg.hiddenDim (.dim cfg.hiddenDim .scalar)) 0)
-    (hHigh : model.featureFusion.weight 2 = identityTensorSpec cfg.hiddenDim) :
+    (hLow : model.featureFusion 0 =
+      Tensor.zeros (.dim cfg.hiddenDim (.dim cfg.hiddenDim .scalar)))
+    (hMiddle : model.featureFusion 1 =
+      Tensor.zeros (.dim cfg.hiddenDim (.dim cfg.hiddenDim .scalar)))
+    (hHigh : model.featureFusion 2 = identityTensorSpec cfg.hiddenDim) :
     model.input token features =
       vecMatMulSpec (Spec.get model.tokenEmbedding token) model.tokenInputWeight +
         vecMatMulSpec features.high model.featureInputWeight := by
@@ -488,11 +481,8 @@ theorem input_at_eagle_initialization (model : Model cfg decayRank)
 
 end Model
 
-/-- A probability mass function over a finite vocabulary. -/
-structure Distribution (vocabSize : Nat) where
-  probability : Fin vocabSize → ℝ
-  nonnegative : ∀ token, 0 ≤ probability token
-  sumsToOne : ∑ token, probability token = 1
+/-- A probability vector over the finite vocabulary, represented by mathlib's standard simplex. -/
+abbrev Distribution (vocabSize : Nat) := Convexity.StdSimplex ℝ (Fin vocabSize)
 
 namespace Distribution
 
@@ -505,13 +495,13 @@ noncomputable def ofLogits {vocabSize : Nat} (hVocab : 0 < vocabSize)
   | zero => omega
   | succ n =>
       let probabilities := Activation.softmaxVecSpec logits
-      exact
-        { probability := TorchLean.Tensor.getScalar probabilities
-          nonnegative := fun token =>
-            le_of_lt (Proofs.softmax_vec_spec_pos logits token)
-          sumsToOne := by
-            simpa [probabilities, Spec.sum_spec_vec] using
-              Proofs.sum_spec_softmax_vec_spec logits }
+      exact {
+        weights := Finsupp.equivFunOnFinite.symm (Tensor.getScalar probabilities)
+        nonneg := fun token => by
+          simpa using le_of_lt (Proofs.softmax_vec_spec_pos logits token)
+        total := by
+          simpa [Finsupp.sum_fintype, probabilities, Spec.sum_spec_vec] using
+            Proofs.sum_spec_softmax_vec_spec logits }
 
 end Distribution
 
@@ -554,12 +544,22 @@ end Model
 /-- Lossless speculative-sampling acceptance rate `Σ_x min(p(x), q(x))`. -/
 noncomputable def acceptanceRate {vocabSize : Nat}
     (target draft : Distribution vocabSize) : ℝ :=
-  ∑ token, min (target.probability token) (draft.probability token)
+  ∑ token, min (target.weights token) (draft.weights token)
 
 /-- Total-variation distance between target and draft next-token distributions. -/
 noncomputable def totalVariation {vocabSize : Nat}
     (target draft : Distribution vocabSize) : ℝ :=
-  (1 / 2 : ℝ) * ∑ token, |target.probability token - draft.probability token|
+  (1 / 2 : ℝ) * ∑ token, |target.weights token - draft.weights token|
+
+/-- Swapping target and draft does not change speculative acceptance. -/
+theorem acceptanceRate_comm {vocabSize : Nat} (target draft : Distribution vocabSize) :
+    acceptanceRate target draft = acceptanceRate draft target := by
+  simp only [acceptanceRate, min_comm]
+
+/-- Total variation is nonnegative. -/
+theorem totalVariation_nonneg {vocabSize : Nat} (target draft : Distribution vocabSize) :
+    0 ≤ totalVariation target draft :=
+  mul_nonneg (by norm_num) (Finset.sum_nonneg fun _ _ => abs_nonneg _)
 
 /-- The acceptance rate is always a probability. -/
 theorem acceptanceRate_mem_unitInterval {vocabSize : Nat}
@@ -567,12 +567,12 @@ theorem acceptanceRate_mem_unitInterval {vocabSize : Nat}
     0 ≤ acceptanceRate target draft ∧ acceptanceRate target draft ≤ 1 := by
   constructor
   · exact Finset.sum_nonneg (fun token _ =>
-      le_min (target.nonnegative token) (draft.nonnegative token))
+      le_min (target.nonneg token) (draft.nonneg token))
   · calc
       acceptanceRate target draft
-          ≤ ∑ token, target.probability token :=
+          ≤ ∑ token, target.weights token :=
             Finset.sum_le_sum (fun token _ => min_le_left _ _)
-      _ = 1 := target.sumsToOne
+      _ = 1 := target.total_of_fintype
 
 /-- Lossless speculative acceptance is exactly one minus total-variation distance. This identifies
 the paper's likelihood objective with a standard statistical distance, rather than merely bounding
@@ -580,23 +580,51 @@ it between zero and one. -/
 theorem acceptanceRate_eq_one_sub_totalVariation {vocabSize : Nat}
     (target draft : Distribution vocabSize) :
     acceptanceRate target draft = 1 - totalVariation target draft := by
+  have htarget : ∑ token, target.weights token = 1 := by
+    exact target.total_of_fintype
+  have hdraft : ∑ token, draft.weights token = 1 := by
+    exact draft.total_of_fintype
   have hpointwise : ∀ token : Fin vocabSize,
-      min (target.probability token) (draft.probability token) =
-        (target.probability token + draft.probability token -
-          |target.probability token - draft.probability token|) / 2 := by
+      min (target.weights token) (draft.weights token) =
+        (target.weights token + draft.weights token - |target.weights token - draft.weights token|) / 2 := by
     intro token
-    by_cases h : target.probability token ≤ draft.probability token
+    by_cases h : target.weights token ≤ draft.weights token
     · rw [min_eq_left h, abs_of_nonpos (sub_nonpos.mpr h)]
       ring_nf
-    · have h' : draft.probability token ≤ target.probability token := le_of_not_ge h
+    · have h' : draft.weights token ≤ target.weights token := le_of_not_ge h
       rw [min_eq_right h', abs_of_nonneg (sub_nonneg.mpr h')]
       ring_nf
   rw [acceptanceRate, totalVariation]
   simp_rw [hpointwise]
   rw [← Finset.sum_div]
   rw [Finset.sum_sub_distrib, Finset.sum_add_distrib,
-    target.sumsToOne, draft.sumsToOne]
+    htarget, hdraft]
   ring_nf
+
+/-- Speculative acceptance is perfect exactly when the draft and target distributions agree. -/
+theorem acceptanceRate_eq_one_iff {vocabSize : Nat}
+    (target draft : Distribution vocabSize) :
+    acceptanceRate target draft = 1 ↔ target = draft := by
+  constructor
+  · intro hAcceptance
+    have hIdentity := acceptanceRate_eq_one_sub_totalVariation target draft
+    rw [hAcceptance] at hIdentity
+    have hVariation : totalVariation target draft = 0 := by linarith
+    have hSum : ∑ token, |target.weights token - draft.weights token| = 0 := by
+      rw [totalVariation] at hVariation
+      linarith
+    apply Convexity.StdSimplex.ext
+    apply Finsupp.ext
+    intro token
+    have hCoordinate :
+        |target.weights token - draft.weights token| = 0 :=
+      (Finset.sum_eq_zero_iff_of_nonneg fun _ _ => abs_nonneg _).mp hSum token
+        (Finset.mem_univ token)
+    exact sub_eq_zero.mp (abs_eq_zero.mp hCoordinate)
+  · rintro rfl
+    rw [acceptanceRate]
+    simp only [min_self]
+    exact target.total_of_fintype
 
 /-- Probability mass left after rejecting the part shared by target and draft distributions. -/
 noncomputable def residualMass {vocabSize : Nat}
@@ -606,17 +634,17 @@ noncomputable def residualMass {vocabSize : Nat}
 /-- Unnormalized correction mass for one token after speculative rejection. -/
 noncomputable def residualNumerator {vocabSize : Nat}
     (target draft : Distribution vocabSize) (token : Fin vocabSize) : ℝ :=
-  max 0 (target.probability token - draft.probability token)
+  max 0 (target.weights token - draft.weights token)
 
 /-- The positive part of `target - draft` is exactly the target mass not covered by acceptance. -/
 theorem residualNumerator_eq_sub_min {vocabSize : Nat}
     (target draft : Distribution vocabSize) (token : Fin vocabSize) :
     residualNumerator target draft token =
-      target.probability token - min (target.probability token) (draft.probability token) := by
+      target.weights token - min (target.weights token) (draft.weights token) := by
   unfold residualNumerator
-  by_cases h : target.probability token ≤ draft.probability token
+  by_cases h : target.weights token ≤ draft.weights token
   · rw [min_eq_left h, max_eq_left (sub_nonpos.mpr h), sub_self]
-  · have h' : draft.probability token ≤ target.probability token := le_of_not_ge h
+  · have h' : draft.weights token ≤ target.weights token := le_of_not_ge h
     rw [min_eq_right h', max_eq_right]
     exact sub_nonneg.mpr h'
 
@@ -624,8 +652,10 @@ theorem residualNumerator_eq_sub_min {vocabSize : Nat}
 theorem sum_residualNumerator {vocabSize : Nat}
     (target draft : Distribution vocabSize) :
     ∑ token, residualNumerator target draft token = residualMass target draft := by
+  have htarget : ∑ token, target.weights token = 1 := by
+    exact target.total_of_fintype
   simp_rw [residualNumerator_eq_sub_min]
-  rw [Finset.sum_sub_distrib, target.sumsToOne]
+  rw [Finset.sum_sub_distrib, htarget]
   rfl
 
 /-- Distribution sampled after rejection when target and draft are not identical in total
@@ -635,32 +665,33 @@ noncomputable def correctionDistribution {vocabSize : Nat}
     (hReject : acceptanceRate target draft < 1) : Distribution vocabSize := by
   have hMass : 0 < residualMass target draft := by
     simpa [residualMass] using sub_pos.mpr hReject
-  exact
-    { probability := fun token =>
-        residualNumerator target draft token / residualMass target draft
-      nonnegative := fun token =>
-        div_nonneg (le_max_left 0 _) hMass.le
-      sumsToOne := by
-        rw [← Finset.sum_div, sum_residualNumerator]
-        exact div_self (ne_of_gt hMass) }
+  exact {
+    weights := Finsupp.equivFunOnFinite.symm
+      (fun token => residualNumerator target draft token / residualMass target draft)
+    nonneg := fun token => by
+      simpa [residualNumerator] using
+        div_nonneg (le_max_left 0 (target.weights token - draft.weights token)) hMass.le
+    total := by
+      simpa [Finsupp.sum_fintype, ← Finset.sum_div, sum_residualNumerator] using
+        div_self (ne_of_gt hMass) }
 
 /-- One-token speculative sampling is lossless. For every token, the mass accepted from the draft
 plus the mass drawn from the rejection correction is exactly the target-model mass. -/
 theorem accepted_add_corrected_eq_target {vocabSize : Nat}
     (target draft : Distribution vocabSize)
     (hReject : acceptanceRate target draft < 1) (token : Fin vocabSize) :
-    min (target.probability token) (draft.probability token) +
+    min (target.weights token) (draft.weights token) +
         residualMass target draft *
-          (correctionDistribution target draft hReject).probability token =
-      target.probability token := by
+          (correctionDistribution target draft hReject).weights token =
+      target.weights token := by
   have hMass : residualMass target draft ≠ 0 := by
     apply ne_of_gt
     simpa [residualMass] using sub_pos.mpr hReject
   rw [correctionDistribution]
-  change min (target.probability token) (draft.probability token) +
+  change min (target.weights token) (draft.weights token) +
       residualMass target draft *
         (residualNumerator target draft token / residualMass target draft) =
-    target.probability token
+    target.weights token
   rw [mul_div_cancel₀ _ hMass]
   rw [residualNumerator_eq_sub_min]
   ring
@@ -677,9 +708,9 @@ noncomputable def initialTrainingTimeTestState (model : Model cfg decayRank)
     (features : FeatureTriplet ℝ cfg.hiddenDim) : model.TrainingTimeTestState :=
   (model.initialState, model.featureFusion.forward features)
 
-/-- One EAGLE-3 training-time-test transition. The transition consumes the current token and feature,
-then stores its own hidden output as the feature for the next transition. No fresh target-model
-feature is requested after initialization. -/
+/-- One EAGLE-3 training-time-test transition. The transition consumes the current token and
+feature, then stores its own hidden output as the feature for the next transition. No fresh
+target-model feature is requested after initialization. -/
 noncomputable def trainingTimeTestStep (model : Model cfg decayRank) :
     model.TrainingTimeTestState → Fin cfg.vocabSize →
       model.TrainingTimeTestState × Distribution cfg.vocabSize :=

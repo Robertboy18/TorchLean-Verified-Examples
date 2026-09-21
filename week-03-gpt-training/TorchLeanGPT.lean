@@ -8,6 +8,8 @@ module
 public import TorchLeanGPT.Model
 public import TorchLeanGPT.CausalTraining
 public import TorchLeanGPT.DialogueRecords
+public import TorchLeanGPT.Batching
+public import TorchLeanGPT.Validation
 public import TorchLeanGPT.CachedDecode.Correctness
 public import TorchLeanGPT.CachedDecode.Layered
 public import TorchLeanGPT.CachedDecode.Runtime

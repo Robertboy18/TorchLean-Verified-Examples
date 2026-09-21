@@ -28,8 +28,8 @@ The Lean development proves the promise in stages:
 
 - A batched forward pass contract: selected output depends on selected request
   state, not unrelated rows.
-- Reductions with explicit schedules, using TorchLean's `SumTree` machinery.
-- A concrete `IEEE32Exec` counterexample showing why batch-dependent reduction
+- Reductions with explicit schedules, using FloatLib's `ReductionTree` directly.
+- A concrete binary32 counterexample showing why batch-dependent reduction
   schedules can change Float32 results.
 - Batch invariance theorems for explicit reductions, RMSNorm, matmul,
   TorchLean tensor matmul, and abstract attention schedules.
@@ -77,7 +77,7 @@ the main proof file.
 
 ## Build
 
-The repository has one shared Lean 4.33 Lake project at the repo root, so run
+The repository has one shared Lean 4.34 Lake project at the repo root, so run
 these commands from the repository root. `lake-manifest.json` pins the exact
 TorchLean revision used by the checked build.
 

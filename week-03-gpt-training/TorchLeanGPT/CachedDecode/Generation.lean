@@ -82,15 +82,15 @@ def generateIds
     | 0 => pure suffix
     | remaining + 1 =>
         let recent := (recentTokens ids options.repeatWindow).toArray
+        let recentTensor : Tensor Nat [recent.size] := Tensor.ofFn fun i => recent[i]
         let scoreTensor : Tensor Float [decoder.config.vocabularySize] ←
-          if hSize : scores.size = decoder.config.vocabularySize then
-            pure (hSize ▸ Tensor.from scores)
+          if h : scores.size = decoder.config.vocabularySize then
+            pure <| Tensor.from (⟨scores, h⟩ : Vector Float decoder.config.vocabularySize)
           else
-            throw <| IO.userError <|
-              s!"cached generation: expected {decoder.config.vocabularySize} logits, " ++
-                s!"got {scores.size}"
+            throw <| IO.userError
+              s!"cached generation: expected {decoder.config.vocabularySize} logits, got {scores.size}"
         let token ← Chat.orThrow "cached generation" <|
-          text.chooseNextToken scoreTensor options counter (Tensor.from recent)
+          text.chooseNextToken scoreTensor options counter recentTensor
         if token.val = stopToken then
           pure suffix
         else

@@ -19,13 +19,29 @@ folder; the READMEs name the remaining runtime and hardware assumptions beside t
 | 01 | [Batch-invariant inference](week-01-batch-invariant-inference/) | Makes reduction schedules explicit, exhibits a binary32 counterexample, proves batch-invariance and margin-stability results, and checks a small CUDA reduction certificate. |
 | 02 | [Verifiable transformers](week-02-verifiable-transformer-checkpoint/) | Rechecks a finite sparsemax-transformer claim from exported evidence, replays the checkpoint in Lean `Float`, and checks a separate TorchLean causal-GPT run on all 256 prompts. |
 | 03 | [GPT-2 Small in Lean](week-03-gpt-training/) | Trains a 124.4M-parameter GPT for 2.319B scheduled tokens on one A100, reruns instruction tuning with dialogue-bounded sampling, accelerates generation with a checked cache model, and proves causal, dialogue-window, numerical, and resume properties. The SFT objective improves, but the resulting checkpoint is not a reliable assistant. |
-| 04 | [Kimi K3 specification](week-04-kimi-k3-specification/) | Gives parameterized Lean definitions for the language, vision, training, and speculative-decoding algorithms in the Kimi K3 report, with proofs about chunking, cache compression, routing, and draft acceptance. |
+| 04 | [Kimi K3 specification](week-04-kimi-k3-specification/) | Writes K3's architecture as shape-indexed tensor functions and typed TorchLean graphs, then proves the packed one-token language graph and the vision components have the stated semantics. The public-state bridge, full multimodal graph, released weights, kernels, training runs, and empirical claims remain outside those proofs. |
 
 The longer essays for [Week 1](https://www.robertj1.com/ai4science/batch-invariant-inference/),
 [Week 2](https://www.robertj1.com/ai4science/verifiable-transformer-checkpoint/), and
-[Week 3](https://www.robertj1.com/ai4science/training-gpt2-in-lean/) give the experiments more room.
+[Week 3](https://www.robertj1.com/ai4science/training-gpt2-in-lean/) give the experiments more room;
+Week 4 includes an [annotated report and formalization](week-04-kimi-k3-specification/site/) in the
+repository.
 The weekly folders remain the source for exact theorem statements, generated evidence, measured
 artifacts, and reproduction commands.
+
+## Where Velvet fits
+
+[Velvet](https://github.com/verse-lab/velvet) is used in Week 3 to verify mutable loops in the
+actual data path: packing aligned training rows and finding the first invalid token or mask byte.
+The [Week 3 explanation](week-03-gpt-training/#proving-the-data-loops-with-velvet) links the
+contracts, proofs, and executable checks.
+
+The other developments do not need an imperative rewrite just to use the same tool. Week 1's
+reduction and certificate arguments, Week 2's finite checkpoint checks, and Week 4's tensor and
+graph equalities already have direct proofs. The cache and resume theorems likewise remain small
+recursive arguments. Velvet would become useful there when verifying an actual mutable
+implementation against those specifications; wrapping native calls alone would not prove them
+correct. The dependency stays in this repository, outside the main TorchLean library.
 
 ## Build the Lean developments
 
@@ -60,9 +76,8 @@ lake -R -Kcuda=true \
   benchmark_torchlean_gpt_cache
 ```
 
-The project uses Lean 4.33.0. Both the Lake dependency declaration and `lake-manifest.json` pin
-TorchLean to the revision used by the checked build. The CUDA command keeps its native objects
-in separate build directories; pass the same options when running a CUDA executable through
-`lake exe`. The
+The project targets Lean 4.34. `lake-manifest.json` pins the tested dependencies; a fresh checkout
+builds those revisions without running `lake update`. Use the same CUDA build-directory options
+when running an executable through `lake exe`. The
 [TorchLean installation guide](https://lean-dojo.github.io/TorchLean/installation/) covers Elan,
 CPU-only builds, CUDA discovery, and supported platforms.

@@ -6,10 +6,11 @@ Authors: Robert Joseph George
 
 module
 
+public import NN.Spec.Core.Sequence
 public import NN.Spec.Core.Context.Real
-public import NN.Spec.Layers.Normalization
+public import NN.Spec.Core.Tensor.Numerics
 public import NN.Spec.Core.TensorReductionShape
-import Mathlib.Tactic.Positivity
+public import NN.Spec.Layers.Normalization
 
 /-!
 # Shared Kimi K3 operations
@@ -23,9 +24,7 @@ specification rather than carrying locally equivalent copies.
 
 namespace KimiK3
 
-open TorchLean
-
-open Spec
+open Spec TorchLean
 open Tensor
 
 namespace RMSNorm
@@ -33,7 +32,7 @@ namespace RMSNorm
 /-- Scale-only RMS normalization when the vector width is known to be positive. -/
 def scalePositive {α : Type} [Storage α] [Context α] {n : Nat} (h : 0 < n)
     (x gamma : Tensor α [n])
-    (epsilon : α := TorchLean.normalizationEpsilon) : Tensor α [n] :=
+    (epsilon : α := normalizationEpsilon) : Tensor α [n] :=
   let rows : Tensor α [1, n] := .dim fun _ => x
   Spec.get (Spec.rmsNorm rows gamma (by positivity) h epsilon)
     ⟨0, by positivity⟩
@@ -50,7 +49,7 @@ the row again. The empty-vector branch returns the unique tensor of that shape.
 -/
 def scale {α : Type} [Storage α] [Context α] {n : Nat}
     (x gamma : Tensor α (.dim n .scalar))
-    (epsilon : α := TorchLean.normalizationEpsilon) :
+    (epsilon : α := normalizationEpsilon) :
     Tensor α (.dim n .scalar) :=
   match n with
   | 0 => x
@@ -63,49 +62,66 @@ theorem scale_eq_scalePositive {α : Type} [Storage α] [Context α] {n : Nat} (
   | zero => omega
   | succ n => rfl
 
+/-- Apply the shared vector RMSNorm independently to every matrix row. -/
+def rows {α : Type} [Storage α] [Context α] {rowCount width : Nat}
+    (hWidth : 0 < width) (input : Tensor α [rowCount, width])
+    (gamma : Tensor α [width]) : Tensor α [rowCount, width] :=
+  Tensor.mapLeading [rowCount] (scalePositive hWidth · gamma) input
+
+/-- Row-wise RMS normalization agrees with vector normalization at every row. -/
+@[simp] theorem get_rows {α : Type} [Storage α] [Context α] {rowCount width : Nat}
+    (hWidth : 0 < width) (input : Tensor α [rowCount, width])
+    (gamma : Tensor α [width]) (row : Fin rowCount) :
+    Spec.get (rows hWidth input gamma) row = scalePositive hWidth (Spec.get input row) gamma := by
+  simp [rows, Tensor.mapLeading, Spec.get]
+
 /-- RMS normalization without a learned scale.
 
 AttnRes uses this form to normalize keys before computing attention over depth.
 -/
 def unit {α : Type} [Storage α] [Context α] {n : Nat}
     (x : Tensor α (.dim n .scalar))
-    (epsilon : α := TorchLean.normalizationEpsilon) :
+    (epsilon : α := normalizationEpsilon) :
     Tensor α (.dim n .scalar) :=
-  scale x (Tensor.full (.dim n .scalar) 1) epsilon
+  scale x (Tensor.ones [n]) epsilon
 
 end RMSNorm
 
 namespace Normalize
 
-/-- Elementwise specification maps commute with vector indexing. -/
-@[simp] theorem getScalar_mapSpec {α : Type} [Storage α] [Context α] {n : Nat}
-    (f : α → α) (vector : Tensor α [n]) (index : Fin n) :
-    Tensor.getScalar (Tensor.mapSpec f vector) index = f (Tensor.getScalar vector index) := by
-  exact Tensor.getScalar_mapSpec f vector index
-
-/-- Additive L2 regularizer used by KDA's query and key normalization.
-
-This is `10⁻⁶`, independently of the `10⁻⁵` stabilizer used by RMS normalization. Keeping the
-constant with the KDA normalization convention makes both the tensor specification and its graph
-lowering use the same denominator.
--/
+/-- KDA's additive L2 regularizer is `10⁻⁶`, distinct from RMSNorm's `10⁻⁵` stabilizer. -/
 def l2Epsilon {α : Type} [Context α] : α :=
   1 / 1000000
 
-/-- Normalize nonnegative weights, using the uniform distribution when their sum is zero. -/
-def probabilities {α : Type} [Storage α] [Context α] {n : Nat}
-    (weights : Tensor α [n]) : Tensor α [n] :=
-  let total := Tensor.sumSpec weights
-  if total > 0 then
-    Tensor.mapSpec (fun weight => weight / total) weights
-  else
-    Tensor.full [n] ((1 : α) / ((n : Nat) : α))
+/-- Elementwise specification maps commute with vector indexing. -/
+@[simp] theorem getScalar_mapSpec {α : Type} [Storage α] {n : Nat}
+    (f : α → α) (vector : Tensor α [n]) (index : Fin n) :
+    Tensor.getScalar (Tensor.mapSpec f vector) index = f (Tensor.getScalar vector index) := by
+  change Tensor.getScalar (Tensor.map f vector) index = f (Tensor.getScalar vector index)
+  exact Tensor.getScalar_map f vector index
 
-/-- L2-normalize a vector with an additive term under the square root. -/
-def regularizedL2 {α : Type} [Storage α] [Context α] {n : Nat}
-    (vector : Tensor α [n]) (regularizer : α) : Tensor α [n] :=
-  let norm := MathFunctions.sqrt (Tensor.sumSpec (Tensor.squareSpec vector) + regularizer)
-  Tensor.mapSpec (fun value => value / norm) vector
+/-- Positive total mass selects ordinary normalization. -/
+theorem normalizeByPositiveSumSpec_of_sum_pos {α : Type} [Storage α] [Context α] {n : Nat}
+    (weights : Tensor α [n]) (hTotal : 0 < Tensor.sumSpec weights) :
+    Spec.normalizeByPositiveSumSpec weights =
+      Tensor.mapSpec (fun weight => weight / Tensor.sumSpec weights) weights := by
+  unfold Spec.normalizeByPositiveSumSpec
+  simp only [hTotal, ite_eq_left]
+  apply Tensor.ext_vector
+  intro index
+  rw [getScalar_mapSpec]
+  cases hEntry : Spec.get weights index
+  simp [Tensor.getScalar, hEntry]
+
+/-- Nonpositive total mass selects the uniform fallback. -/
+theorem normalizeByPositiveSumSpec_of_sum_nonpos {α : Type} [Storage α] [Context α] {n : Nat}
+    (weights : Tensor α [n]) (hTotal : ¬ 0 < Tensor.sumSpec weights) :
+    Spec.normalizeByPositiveSumSpec weights =
+      Tensor.full [n] ((1 : α) / ((n : Nat) : α)) := by
+  unfold Spec.normalizeByPositiveSumSpec
+  apply Tensor.ext_vector
+  intro index
+  simp [hTotal, Tensor.getScalar_eq_apply, Tensor.dim, Tensor.scalar]
 
 end Normalize
 

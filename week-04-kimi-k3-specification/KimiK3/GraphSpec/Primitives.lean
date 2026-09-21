@@ -11,56 +11,73 @@ public import NN.GraphSpec.DAG
 public import NN.GraphSpec.DAG.Model
 
 /-!
-# Graph primitives used by Kimi K3
+# Kimi K3 graph compositions
 
 TorchLean's DAG language already supplies the architecture-independent matrix, elementwise,
-reshape, and activation operations used below. This module contains only the capped activation
-that is specific to K3's SiTU expert. Its mathematical and executable meanings are both expressed
-with ordinary TorchLean operations; it does not call an expert implementation as an opaque step.
+reshape, and activation operations used below. The SiTU cap is therefore a term builder made from
+ordinary TorchLean nodes, not a new opaque primitive. The other declarations bridge K3's reference
+semantics to existing GraphSpec operations.
 -/
 
 @[expose] public section
 
 namespace KimiK3
-
-open TorchLean
 namespace GraphSpec
-namespace PrimOp
 
-open Spec
+open Spec TorchLean
 open TorchLean.Tensor
 open NN.GraphSpec.DAG
-open Runtime.Autograd.Torch
 
-/-- Smoothly cap every coordinate of a vector by a scalar graph input.
+/-- Broadcasting a scalar through every leading axis is the constant tensor of that shape. -/
+@[simp] private theorem broadcast_scalarTo_eq_full {α : Type} [Storage α]
+    (shape : Shape) (value : Tensor α []) :
+    Tensor.broadcastTo (Shape.CanBroadcastTo.scalarTo shape) value =
+      Tensor.full shape value.item := by
+  induction shape with
+  | scalar =>
+      apply Tensor.ext_scalar
+      simp
+  | dim count rest ih =>
+      rw [Tensor.broadcastTo_expand (by simp [Shape.rank])]
+      simp_rw [ih]
+      apply TorchLean.Tensor.Internal.Rep.ext
+      rintro ⟨index, coordinate⟩
+      simp [Tensor.dim, Tensor.full]
 
-The executable program uses reciprocal, scalar broadcasting, multiplication, and `tanh` to
-compute `cap * tanh(x / cap)`. Keeping the cap as an input records the scalar convention in the
-graph ABI rather than freezing a paper-specific value into the operation.
+/-- Smoothly cap every coordinate of a tensor by a scalar graph input.
+
+The returned term contains reciprocal, scalar-broadcast, multiplication, and `tanh` nodes computing
+`cap * tanh(x / cap)`. Keeping the cap as an input records the numerical convention in the graph
+ABI without hiding the calculation behind a K3-specific operation.
 -/
-def softCap (n : Nat) : PrimOp [.scalar, .dim n .scalar] (.dim n .scalar) :=
-  { name := "softCap"
-    specFwd := fun {_α} _storage _context xs =>
-      match xs with
-      | .cons cap (.cons input .nil) =>
-          Tensor.mulSpec
-            (Activation.tanhSpec
-              (Tensor.mulSpec input (Tensor.full (.dim n .scalar) (1 / cap.item))))
-            (Tensor.full (.dim n .scalar) cap.item)
-    program := fun {α} _ _ =>
-      fun {m} _ _ => fun cap input =>
-        (do
-          let inverse ← Runtime.Autograd.Model.inv (m := m) (α := α) cap
-          let inverseVector ← Runtime.Autograd.Model.broadcastTo (m := m) (α := α)
-            (Shape.CanBroadcastTo.scalarTo (.dim n .scalar)) inverse
-          let scaled ← Runtime.Autograd.Model.mul (m := m) (α := α) input inverseVector
-          let cappedUnit ← Runtime.Autograd.Model.tanh (m := m) (α := α) scaled
-          let capVector ← Runtime.Autograd.Model.broadcastTo (m := m) (α := α)
-            (Shape.CanBroadcastTo.scalarTo (.dim n .scalar)) cap
-          Runtime.Autograd.Model.mul (m := m) (α := α) cappedUnit capVector :
-          m (Runtime.Autograd.Model.RefTy (m := m) (α := α) (.dim n .scalar))) }
+def softCapTerm {Γ : List Shape} (shape : Shape)
+    (cap : Term Γ .scalar) (input : Term Γ shape) : Term Γ shape :=
+  let inverse := Term.op (NN.GraphSpec.DAG.PrimOp.inv .scalar) (.cons cap .nil)
+  let inverseTensor := Term.op
+    (NN.GraphSpec.DAG.PrimOp.broadcast (Shape.CanBroadcastTo.scalarTo shape))
+    (.cons inverse .nil)
+  let scaled := Term.op (NN.GraphSpec.DAG.PrimOp.mul shape)
+    (.cons input (.cons inverseTensor .nil))
+  let cappedUnit := Term.op (NN.GraphSpec.DAG.PrimOp.tanh shape) (.cons scaled .nil)
+  let capTensor := Term.op
+    (NN.GraphSpec.DAG.PrimOp.broadcast (Shape.CanBroadcastTo.scalarTo shape))
+    (.cons cap .nil)
+  Term.op (NN.GraphSpec.DAG.PrimOp.mul shape)
+    (.cons cappedUnit (.cons capTensor .nil))
 
-end PrimOp
+/-- Evaluating `softCapTerm` gives the coordinatewise cap `cap * tanh (input / cap)`. -/
+@[simp] theorem eval_softCapTerm {α : Type} [Storage α] [Context α] {Γ : List Shape}
+    (env : TorchLean.TensorPack α Γ) (shape : Shape)
+    (cap : Term Γ .scalar) (input : Term Γ shape) :
+    Term.eval env (softCapTerm shape cap input) =
+      Tensor.mulSpec
+        (Activation.tanhSpec
+          (Tensor.mulSpec (Term.eval env input)
+            (Tensor.full shape (1 / (Term.eval env cap).item))))
+        (Tensor.full shape (Term.eval env cap).item) := by
+  simp [softCapTerm, Term.eval, Term.evalArgs,
+    NN.GraphSpec.DAG.PrimOp.inv, NN.GraphSpec.DAG.PrimOp.broadcast,
+    NN.GraphSpec.DAG.PrimOp.mul, NN.GraphSpec.DAG.PrimOp.tanh]
 
 /-- With no batch axes, the broadcast primitive is the ordinary vector-matrix product. -/
 @[simp] theorem broadcastVecMat_scalar_specFwd {α : Type} [Storage α] [Context α]
@@ -75,7 +92,7 @@ end PrimOp
 /-- The K3 vector adapter and TorchLean's DAG vector primitive use the same RMSNorm semantics. -/
 @[simp] theorem rmsNormVectorSemantics_eq_scale {α : Type} [Storage α] [Context α] {width : Nat}
     (hWidth : 0 < width)
-    (input gamma : _root_.TorchLean.Tensor α (.dim width .scalar)) :
+    (input gamma : TorchLean.Tensor α (.dim width .scalar)) :
     NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSemantics hWidth input gamma =
       KimiK3.RMSNorm.scale input gamma := by
   rw [RMSNorm.scale_eq_scalePositive hWidth]
@@ -84,22 +101,22 @@ end PrimOp
 /-- Generalized RMS normalization specializes to the K3 vector adapter with no leading axes. -/
 theorem rmsNormSemantics_scalar_eq_scale {α : Type} [Storage α] [Context α] {width : Nat}
     (hWidth : 0 < width)
-    (input gamma : _root_.TorchLean.Tensor α (.dim width .scalar)) :
+    (input gamma : TorchLean.Tensor α (.dim width .scalar)) :
     NN.GraphSpec.DAG.PrimOp.rmsNormSemantics .scalar hWidth gamma input =
       KimiK3.RMSNorm.scale input gamma := by
   exact rmsNormVectorSemantics_eq_scale hWidth input gamma
 
 /-- Generalized axis concatenation reduces to ordinary leading-axis concatenation at axis zero. -/
-private theorem concatAxisSpec_zero {α : Type} [Storage α] [Context α] {left right : Nat}
+private theorem concatAxisSpec_zero {α : Type} [Storage α] {left right : Nat}
     {rest : _root_.Spec.Shape}
-    (a : _root_.TorchLean.Tensor α (.dim left rest))
-    (b : _root_.TorchLean.Tensor α (.dim right rest)) :
+    (a : TorchLean.Tensor α (.dim left rest))
+    (b : TorchLean.Tensor α (.dim right rest)) :
     NN.GraphSpec.DAG.PrimOp.concatAxisSpec (.dim left rest) 0 left right a b =
-      _root_.TorchLean.Tensor.concatAxisSpec .scalar a b := by
+      TorchLean.Tensor.concatAxisSpec .scalar a b := by
   rfl
 
-/-- Concatenate two graph terms along their first axis through the generalized axis primitive. -/
-def concatAxisZeroTerm {Γ : List _root_.Spec.Shape}
+/-- Concatenate two graph terms along their leading axis. -/
+def concatLeadingTerm {Γ : List _root_.Spec.Shape}
     (left right : Nat) (rest : _root_.Spec.Shape)
     (a : NN.GraphSpec.DAG.Term Γ (.dim left rest))
     (b : NN.GraphSpec.DAG.Term Γ (.dim right rest)) :
@@ -110,20 +127,21 @@ def concatAxisZeroTerm {Γ : List _root_.Spec.Shape}
       (.cons a (.cons b .nil)))
     (by rfl)
 
-/-- Evaluation of first-axis term concatenation is the canonical tensor concatenation. -/
-@[simp] theorem eval_concatAxisZeroTerm {Γ : List _root_.Spec.Shape}
-    (env : TorchLean.TensorPack ℝ Γ) (left right : Nat) (rest : _root_.Spec.Shape)
+/-- Evaluation of leading-axis term concatenation is the canonical tensor concatenation. -/
+@[simp] theorem eval_concatLeadingTerm {α : Type} [Storage α] [Context α]
+    {Γ : List _root_.Spec.Shape} (env : TorchLean.TensorPack α Γ)
+    (left right : Nat) (rest : _root_.Spec.Shape)
     (a : NN.GraphSpec.DAG.Term Γ (.dim left rest))
     (b : NN.GraphSpec.DAG.Term Γ (.dim right rest)) :
-    NN.GraphSpec.DAG.Term.eval env (concatAxisZeroTerm left right rest a b) =
-      _root_.TorchLean.Tensor.concatAxisSpec .scalar
+    NN.GraphSpec.DAG.Term.eval env (concatLeadingTerm left right rest a b) =
+      TorchLean.Tensor.concatAxisSpec .scalar
         (NN.GraphSpec.DAG.Term.eval env a) (NN.GraphSpec.DAG.Term.eval env b) := by
-  unfold concatAxisZeroTerm
+  unfold concatLeadingTerm
   rw [NN.GraphSpec.DAG.Term.eval_cast]
   rw [NN.GraphSpec.DAG.Term.eval_op]
   simp only [NN.GraphSpec.DAG.Term.evalArgs,
     NN.GraphSpec.DAG.PrimOp.concatAxis_specFwd]
-  exact concatAxisSpec_zero (α := ℝ) _ _
+  exact concatAxisSpec_zero (α := α) _ _
 
 end GraphSpec
 end KimiK3

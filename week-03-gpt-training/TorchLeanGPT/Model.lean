@@ -111,40 +111,21 @@ def toTorchLean (cfg : ModelConfig) : nn.models.CausalTransformer.Config :=
 
 end ModelConfig
 
-/-- Token-id input used by the vectorized minibatch path. -/
-abbrev tokenShape (cfg : nn.models.CausalTransformer.Config) (batch : Nat) : Shape :=
-  cfg.tokens [batch]
-
-/-- Vocabulary logits for every batch row and context position. -/
-abbrev logitShape (cfg : nn.models.CausalTransformer.Config) (batch : Nat) : Shape :=
-  cfg.vocabulary [batch]
-
-/--
-LayerNorm epsilon used by the original Week 3 runtime on each backend.
-
-The old CPU primitive used `1e-5`; CUDA and the native cached decoder used `1e-6`. Keep that
-distinction when loading existing checkpoints: changing epsilon changes the forward map even when
-every parameter bit is unchanged. CPU/CUDA comparisons therefore also include this numerical
-difference, while CUDA full-prefix and cached decoding use the same epsilon.
--/
+/-- Preserve the normalization used by the original Week 3 checkpoints on each backend. -/
 def normalizationEpsilon (usesCuda : Bool) : Rat :=
   if usesCuda then 1e-6 else 1e-5
 
 /--
-Build the complete tied-token language model from one seed stream.
+Build the complete tied-weight language model through TorchLean's public API.
 
-The token table belongs to the indexed model, so training and prediction use the same state order
-and the same table for input lookup and output projection.
-
-TorchLean's causal-Transformer config currently fixes LayerNorm to its library default. Week 3
-keeps each backend's original epsilon by replacing that one operation's epsilon at the
-model-program boundary. All other operations, state, initialization, and validation come from the
-standard tied constructor. Forward execution and differentiation use the selected formula in both
-eager and typed-graph execution.
+The same model owns token lookup, the hidden Transformer, and vocabulary projection. Its builder
+initializes the embedding table and body from one seed stream; training and generation therefore
+share one parameter layout. The operation adapter preserves the original checkpoints' LayerNorm
+epsilon until the constructor exposes that setting; all other operations use the library defaults.
 -/
 def buildModel (cfg : nn.models.CausalTransformer.Config) (batch : Nat)
-    (runtime : TorchLean.Runtime.Config) :
-    nn.Builder (nn.IndexedModel (tokenShape cfg batch) (logitShape cfg batch)
+    (runtime : Runtime.Config) :
+    nn.Builder (nn.IndexedModel (cfg.tokenShape [batch]) (cfg.vocabularyShape [batch])
       (Fin cfg.vocabularySize)) := do
   let model ← nn.models.CausalTransformer.tied cfg [batch]
   pure <| nn.IndexedModel.Internal.create model.stateShapes model.initialState
@@ -162,89 +143,59 @@ def buildModel (cfg : nn.models.CausalTransformer.Config) (batch : Nat)
     (validateInput := nn.IndexedModel.Internal.validateInput model)
 
 /--
-Tied-token causal-language-model loss with one floating-point weight per prediction row.
+Next-token cross entropy with one weight per prediction row.
 
-Token ids and targets remain discrete `Fin cfg.vocabularySize` tensors. Only the row weights use
-floating point. The loader normalizes active weights to sum to one, giving the mean cross entropy
-of the selected target tokens without including prompt tokens in the objective.
+Tokens and targets remain discrete `Fin cfg.vocabularySize` tensors. Row weights use the model
+scalar type; the data loader normalizes the active weights to sum to one and gives padding and
+prompt-only positions weight zero. Both ordinary training and instruction tuning use the same
+indexed model, initialization plan, and parameter order.
 -/
 def weightedObjective
-    (cfg : nn.models.CausalTransformer.Config) (batch : Nat)
-    (model : nn.IndexedModel (tokenShape cfg batch) (logitShape cfg batch)
+    (cfg : nn.models.CausalTransformer.Config) [NeZero cfg.vocabularySize]
+    (batch : Nat)
+    (model : nn.IndexedModel (cfg.tokenShape [batch]) (cfg.vocabularyShape [batch])
       (Fin cfg.vocabularySize))
     (mode : nn.Mode := .train) :
-    Module.ObjectiveDefinition (Fin cfg.vocabularySize) model.stateShapes
-      [tokenShape cfg batch] [tokenShape cfg batch, tokenShape cfg batch] :=
+    Module.ObjectiveDefinition (Fin cfg.vocabularySize)
+      model.stateShapes [cfg.tokenShape [batch]] [cfg.tokenShape [batch], cfg.tokenShape [batch]] :=
   { initState := nn.State.Internal.toTensorPack model.initialState
     runtimeInit := nn.IndexedModel.Internal.initializationPlan model
     requiresGrad := model.requiresGrad
     validate := model.validate
     validateDataInputs := fun
-      | .cons tokens (.cons _targets .nil) =>
-          nn.IndexedModel.Internal.validateInput model tokens
+      | .cons tokens (.cons _targets .nil) => nn.IndexedModel.Internal.validateInput model tokens
     loss := fun {α} => by
       intro _ _
       exact fun {m} _ _ =>
         _root_.Runtime.Autograd.Torch.CurriedRef.curry
-          (Ref := TorchLean.Runtime.ValueRef (m := m) (α := α))
-          (ss := model.stateShapes ++ [tokenShape cfg batch])
+          (Ref := Runtime.ValueRef (m := m) (α := α))
+          (ss := model.stateShapes ++ [cfg.tokenShape [batch]])
           (β := _root_.Runtime.Autograd.Torch.CurriedRef
             (fun s => _root_.Runtime.Autograd.Torch.DataRef
               (m := m) (α := α) (Fin cfg.vocabularySize) s)
-            [tokenShape cfg batch, tokenShape cfg batch]
-            (m (TorchLean.Runtime.ValueRef (m := m) (α := α) [])))
-          (fun args => fun tokens => fun targets => (do
-            let (params, rowWeights) :=
-              _root_.Runtime.Autograd.Torch.RefList.splitLast
-                (Ref := TorchLean.Runtime.ValueRef (m := m) (α := α))
-                (ss := model.stateShapes) (τ := tokenShape cfg batch) args
+            [cfg.tokenShape [batch], cfg.tokenShape [batch]]
+            (m (Runtime.ValueRef (m := m) (α := α) [])))
+          (fun arguments => fun tokens => fun targets => (do
+            let (state, rowWeights) := _root_.Runtime.Autograd.Torch.RefList.splitLast
+              (Ref := Runtime.ValueRef (m := m) (α := α))
+              (ss := model.stateShapes) (τ := cfg.tokenShape [batch]) arguments
             let forward := _root_.Runtime.Autograd.Torch.CurriedRef.uncurry
-              (Ref := TorchLean.Runtime.ValueRef (m := m) (α := α))
+              (Ref := Runtime.ValueRef (m := m) (α := α))
               (ss := model.stateShapes)
               (β := _root_.Runtime.Autograd.Torch.CurriedRef
                 (fun s => _root_.Runtime.Autograd.Torch.DataRef
                   (m := m) (α := α) (Fin cfg.vocabularySize) s)
-                [tokenShape cfg batch]
-                (m (TorchLean.Runtime.ValueRef (m := m) (α := α) (logitShape cfg batch))))
-              (nn.IndexedModel.Internal.program model mode (α := α)) params
+                [cfg.tokenShape [batch]]
+                (m (Runtime.ValueRef (m := m) (α := α) (cfg.vocabularyShape [batch]))))
+              (nn.IndexedModel.Internal.program model mode (α := α) (m := m)) state
             let logits ← forward tokens
-            let logitsIndexed : TorchLean.Runtime.ValueRef (m := m) (α := α)
-                ((tokenShape cfg batch).concat [cfg.vocabularySize]) := by
-              simpa [logitShape, tokenShape, nn.models.CausalTransformer.Config.vocabulary,
-                nn.models.CausalTransformer.Config.tokens, Shape.appendDim_eq_concat,
-                Shape.concat_assoc] using logits
-            TorchLean.Loss.crossEntropyWeighted (m := m) (α := α)
-              (leading := tokenShape cfg batch) (trailing := [])
-              (classes := cfg.vocabularySize) (tokenShape cfg batch).rank rfl
-              logitsIndexed targets rowWeights :
-              m (TorchLean.Runtime.ValueRef (m := m) (α := α) []))) }
-
-/--
-Reuse the live model parameters for evaluation-mode next-token prediction.
-
-Keeping parameter handles here lets CUDA inference read device-resident training weights without
-copying the entire model to the host. The runtime evaluator also shares subsequent parameter
-updates; it does not take an immutable snapshot.
--/
-def predictorWithParameters
-    (cfg : nn.models.CausalTransformer.Config) (batch : Nat)
-    (model : nn.IndexedModel (tokenShape cfg batch) (logitShape cfg batch)
-      (Fin cfg.vocabularySize))
-    (runtime : TorchLean.Runtime.Config)
-    (parameters : _root_.Runtime.Autograd.Torch.ParamList Float model.stateShapes) :
-    IO (Tensor (Fin cfg.vocabularySize) (tokenShape cfg batch) →
-      IO (Tensor Float (logitShape cfg batch))) := do
-  let program : _root_.Runtime.Autograd.Model.ProgramWithDataInputs
-      Float (Fin cfg.vocabularySize) (model.stateShapes ++ [])
-      [tokenShape cfg batch] (logitShape cfg batch) :=
-    fun {m} _ _ => by
-      simpa only [List.append_nil] using
-        nn.IndexedModel.Internal.program model .eval (α := Float) (m := m)
-  let evaluator ← _root_.Runtime.Autograd.Model.Module.Evaluator.withState
-    (program := program) runtime parameters
-    (validateDataInputs := fun
-      | .cons tokens .nil => nn.IndexedModel.Internal.validateInput model tokens)
-  pure fun tokens =>
-    _root_.Runtime.Autograd.Model.Module.Evaluator.run evaluator .nil (.cons tokens .nil)
+            let logitsIndexed : Runtime.ValueRef (m := m) (α := α)
+                ((cfg.tokenShape [batch]).concat [cfg.vocabularySize]) := by
+              simpa [nn.models.CausalTransformer.Config.vocabularyShape,
+                nn.models.CausalTransformer.Config.tokenShape] using logits
+            Loss.crossEntropyWeighted (m := m) (α := α)
+              (leading := cfg.tokenShape [batch]) (trailing := [])
+              (classes := cfg.vocabularySize) (cfg.tokenShape [batch]).rank rfl
+              logitsIndexed targets rowWeights : m (Runtime.ValueRef (m := m) (α := α) []))) }
 
 end TorchLeanGPT

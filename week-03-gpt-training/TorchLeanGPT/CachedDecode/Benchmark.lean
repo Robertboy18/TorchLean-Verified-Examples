@@ -44,14 +44,14 @@ def milliseconds (nanos : Nat) : Float :=
   Float.ofNat nanos / 1.0e6
 
 /-- Load one checkpoint, then time both autoregressive evaluators. -/
-def run (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
+def run (opts : Runtime.Config) (args : List String) : IO Unit := do
   let config ← Chat.Config.parse exeName opts.seed args
   if config.generate = 0 then
     throw <| IO.userError s!"{exeName}: --generate must be positive"
   let cfg := config.model.toTorchLean
   if !opts.usesCuda then
     throw <| IO.userError s!"{exeName}: the incremental cache currently requires --device cuda"
-  else if cfg.sequenceLength = 0 then
+  else if hSeq : cfg.sequenceLength = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero context after validation"
   else if cfg.modelWidth = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero model width after validation"
@@ -59,17 +59,17 @@ def run (opts : TorchLean.Runtime.Config) (args : List String) : IO Unit := do
     throw <| IO.userError s!"{exeName}: impossible zero vocabulary after validation"
   else
     letI : NeZero cfg.vocabularySize := ⟨hVocab⟩
+    letI : NeZero cfg.sequenceLength := ⟨hSeq⟩
     do
       _root_.TorchLean.rand.manualSeed config.seed
-      let model := nn.build (← rand.nextSeedGlobal) (buildModel cfg 1 opts)
+      let model := nn.build config.seed (buildModel cfg 1 opts)
       let tokenizer ←
         text.GPT2BPE.load config.tokenizerVocab config.tokenizerMerges
           (progress := true) (label := exeName)
       let evalDef := nn.models.CausalTransformer.objective cfg model (mode := .eval)
-      let runtimeModule ← TorchLean.Module.instantiate evalDef opts (α := Float)
+      let runtimeModule ← Module.instantiate evalDef opts (α := Float)
       Checkpoint.load runtimeModule config.checkpoint
-      let predict ← predictorWithParameters cfg 1 model opts
-        (Module.Objective.Internal.runtime runtimeModule).trainer.state
+      let predict ← runtimeModule.indexedPredictor model
       let decoder ← Runtime.Decoder.initialize cfg
         (Module.Objective.Internal.runtime runtimeModule).trainer.state
       let message := config.message?.getD "Hello!"

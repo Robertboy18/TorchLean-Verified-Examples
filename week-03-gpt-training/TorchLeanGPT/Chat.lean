@@ -44,12 +44,7 @@ def orThrow {α : Type} (command : String) (result : Except String α) : IO α :
   | .ok value => pure value
   | .error message => throw <| IO.userError s!"{command}: {message}"
 
-/--
-Parse the options shared by both generation executables.
-
-The runtime parser has already consumed `--seed`; use its selected value for model initialization
-and sampling as well.
--/
+/-- Parse the options shared by both generation executables. -/
 def Config.parse (command : String) (seed : Nat) (args : List String) : IO Config := do
   let (presetName, args) ← orThrow command <|
     CLI.takeFlagValue args "preset" "quick"
@@ -133,22 +128,13 @@ def encodeDialoguePrompt
       ["Assistant: "]
 
 /--
-Find the end-of-text marker in the vocabulary loaded by the executable.
-
-The marker names a special vocabulary entry. Encoding its spelling as ordinary text runs the BPE
-pre-tokenizer, which can split the punctuation and letters into several tokens. Instead, inspect
-the text represented by each individual token and select the exact marker. This also supports
-tokenizers whose end-of-text id differs from the usual GPT-2 id of 50256.
-
-Some byte-level tokens contain only part of a UTF-8 character and cannot be decoded on their own.
-Those entries cannot be this ASCII marker, so they can be skipped during the search.
+Look up the end-of-text marker directly in the loaded vocabulary. Encoding its spelling as
+ordinary text would split it into several tokens rather than select the special vocabulary entry.
 -/
 def endOfTextToken (tokenizer : text.GPT2BPE.Tokenizer) : Except String Nat := do
-  for token in [:tokenizer.vocabularySize] do
-    match text.GPT2BPE.decode tokenizer #[token] with
-    | .ok "<|endoftext|>" => return token
-    | _ => pure ()
-  throw "GPT-2 tokenizer vocabulary does not contain <|endoftext|>"
+  match tokenizer.tokenId? "<|endoftext|>" with
+  | some token => pure token
+  | none => throw "GPT-2 vocabulary has no <|endoftext|> token"
 
 /-- Keep the tokens strictly before the first occurrence of `stopToken`. -/
 def beforeToken (stopToken : Nat) : List Nat → List Nat

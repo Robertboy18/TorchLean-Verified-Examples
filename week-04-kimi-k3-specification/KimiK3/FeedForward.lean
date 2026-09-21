@@ -8,38 +8,34 @@ module
 
 public import KimiK3.Common
 public import KimiK3.Microscaling
-public import NN.Spec.Core.TensorReductionShape
 public import NN.Spec.Layers.Activation
 public import Mathlib.Analysis.SpecialFunctions.Sigmoid
 import NN.Proofs.Gradients.Activation
 
 /-!
-# Stable LatentMoE and Quantile Balancing
+# Stable LatentMoE feed-forward semantics
 
-This module formalizes the channel-mixing path in Sections 2.3 and Appendices B--D of the Kimi K3
-technical report. A `Route` records a top-k choice together with the fact that no expert was selected
-twice. For real-valued model semantics, `Route.chooseTopK` computes that choice from the adjusted
-router scores and breaks exact ties by expert index. The lower-level evaluator remains available for
-relating another sorting implementation to the same route contract.
+This module formalizes the channel-mixing path in Section 2.3 (pp. 6--8) and Appendix B of the
+Kimi K3 technical report. A `Route` reuses `Function.Embedding` to represent a fixed-cardinality
+selection without duplicate experts. For real-valued model semantics, `Route.chooseTopK` computes
+that selection from adjusted router scores and breaks exact ties by expert index.
 
 The main equations represented here are:
 
-* SiTU-GLU with independently capped gate and up branches (Appendix B);
+* SiTU-GLU with independently capped gate and up branches (Eq. 12 and Appendix B);
 * latent down-projection, routed expert aggregation, RMS normalization, and up-projection (Eq. 11);
-* sigmoid router scores, bias-adjusted top-k selection, and unbiased routing weights (Eq. 12--13);
-* the balanced-assignment objective and its alternating coordinate objectives (Eq. 20--26).
+* sigmoid router scores, bias-adjusted top-k selection, and unbiased routing weights (Eq. 13).
 
-Reference: Kimi Team, "Kimi K3: Open Frontier Intelligence", 2026, Sections 2.3 and Appendices
-B--D, https://arxiv.org/abs/2607.24653.
+Reference: Kimi Team, "Kimi K3: Open Frontier Intelligence", 2026, Section 2.3, pp. 6--8,
+Eqs. 11--13, and Appendix B, p. 43,
+https://arxiv.org/abs/2607.24653.
 -/
 
 @[expose] public section
 
 namespace KimiK3
 
-open TorchLean
-
-open Spec
+open Spec TorchLean
 open Tensor
 
 namespace SiTU
@@ -63,7 +59,7 @@ def vector {α : Type} [Storage α] [Context α] {n : Nat} (gateCap upCap : α)
 
 /-- The generic TorchLean sigmoid agrees with Mathlib's real sigmoid. -/
 private theorem sigmoidSpec_real (x : ℝ) : Activation.Math.sigmoidSpec x = Real.sigmoid x := by
-  simpa [Real.sigmoid, one_div] using Proofs.sigmoid_eq_inv_exp x
+  simpa [Real.sigmoid] using Proofs.sigmoid_eq_inv_exp x
 
 /-- The generic `MathFunctions` projection is definitionally real `tanh` at scalar type `ℝ`. -/
 private theorem tanh_real (x : ℝ) : MathFunctions.tanh x = Real.tanh x := by
@@ -111,25 +107,28 @@ theorem expanded_eq_vector {n : Nat} (gateCap upCap : ℝ)
     Tensor.mulSpec
       (Tensor.mulSpec
         (Tensor.mulSpec
-          (Activation.tanhSpec (Tensor.mulSpec gate (Tensor.full (.dim n .scalar) gateCap⁻¹)))
-          (Tensor.full (.dim n .scalar) gateCap))
+          (Activation.tanhSpec (Tensor.mulSpec gate (Tensor.full [n] gateCap⁻¹)))
+          (Tensor.full [n] gateCap))
         (Activation.sigmoidSpec gate))
       (Tensor.mulSpec
-        (Activation.tanhSpec (Tensor.mulSpec up (Tensor.full (.dim n .scalar) upCap⁻¹)))
-        (Tensor.full (.dim n .scalar) upCap)) =
+        (Activation.tanhSpec (Tensor.mulSpec up (Tensor.full [n] upCap⁻¹)))
+        (Tensor.full [n] upCap)) =
       vector gateCap upCap gate up := by
   apply Tensor.ext_vector
   intro index
   simp [Tensor.mulSpec, Activation.tanhSpec, Activation.sigmoidSpec,
-    vector, scalar, softCap, Activation.Math.tanhSpec, div_eq_mul_inv]
+    Activation.Math.tanhSpec, vector, scalar, softCap, div_eq_mul_inv]
   ring
 
 end SiTU
 
 /-- A SiTU-GLU feed-forward expert with explicit input, hidden, and output widths. -/
 structure Expert (α : Type) [Storage α] (inputDim hiddenDim outputDim : Nat) where
+  /-- Projection from the input into the SiTU gate branch. -/
   gateWeight : Tensor α (.dim inputDim (.dim hiddenDim .scalar))
+  /-- Projection from the input into the SiTU up branch. -/
   upWeight : Tensor α (.dim inputDim (.dim hiddenDim .scalar))
+  /-- Projection from the gated hidden activation to the output. -/
   downWeight : Tensor α (.dim hiddenDim (.dim outputDim .scalar))
 
 namespace Expert
@@ -156,8 +155,11 @@ into complete OCP blocks. K3's latent width `3584` and routed hidden width `3072
 `112 * 32` and `96 * 32`.
 -/
 structure MXFP4Expert (inputBlocks hiddenBlocks outputDim : Nat) where
+  /-- MXFP4-packed gate projection. -/
   gateWeight : Microscaling.MXFP4Matrix inputBlocks (hiddenBlocks * 32)
+  /-- MXFP4-packed up projection. -/
   upWeight : Microscaling.MXFP4Matrix inputBlocks (hiddenBlocks * 32)
+  /-- MXFP4-packed down projection. -/
   downWeight : Microscaling.MXFP4Matrix hiddenBlocks outputDim
 
 namespace MXFP4Expert
@@ -182,8 +184,11 @@ noncomputable def forward (expert : MXFP4Expert inputBlocks hiddenBlocks outputD
 
 /-- The E8M0 scales used when packing the three matrices of an expert. -/
 structure Scales (inputBlocks hiddenBlocks outputDim : Nat) where
+  /-- Block scale for each gate-projection output and input block. -/
   gate : Fin (hiddenBlocks * 32) → Fin inputBlocks → E8M0
+  /-- Block scale for each up-projection output and input block. -/
   up : Fin (hiddenBlocks * 32) → Fin inputBlocks → E8M0
+  /-- Block scale for each down-projection output and hidden block. -/
   down : Fin outputDim → Fin hiddenBlocks → E8M0
 
 /-- Pack a real-valued expert into MXFP4 using explicitly supplied block scales. -/
@@ -195,26 +200,13 @@ noncomputable def quantize
   upWeight := quantizeMXFP4Matrix scales.up expert.upWeight
   downWeight := quantizeMXFP4Matrix scales.down expert.downWeight
 
-/-- The selected scales cover every source weight. This is the hypothesis under which the E2M1
-rounding theorem applies without saturation. -/
-structure ScalesCover
-    (scales : Scales inputBlocks hiddenBlocks outputDim)
-    (expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim) : Prop where
-  gate : ∀ output inputBlock offset,
-    |get2 expert.gateWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
-      6 * scaleValue (scales.gate output inputBlock)
-  up : ∀ output inputBlock offset,
-    |get2 expert.upWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
-      6 * scaleValue (scales.up output inputBlock)
-  down : ∀ output hiddenBlock offset,
-    |get2 expert.downWeight (finProdFinEquiv (hiddenBlock, offset)) output| ≤
-      6 * scaleValue (scales.down output hiddenBlock)
-
 /-- Error of the quantized gate projection at one hidden coordinate. -/
 theorem gateProjection_error_le
     (scales : Scales inputBlocks hiddenBlocks outputDim)
     (expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim)
-    (hCover : ScalesCover scales expert)
+    (hCover : ∀ output inputBlock offset,
+      |get2 expert.gateWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
+        6 * scaleValue (scales.gate output inputBlock))
     (input : Tensor ℝ (.dim (inputBlocks * 32) .scalar))
     (output : Fin (hiddenBlocks * 32)) :
     |Tensor.getScalar (vecMatMulSpec input (quantize scales expert).decode.gateWeight) output -
@@ -223,13 +215,15 @@ theorem gateProjection_error_le
         |Tensor.getScalar input index| *
           scaleValue (scales.gate output (finProdFinEquiv.symm index).1) := by
   exact vecMatMul_quantizeMXFP4Matrix_error_le scales.gate expert.gateWeight
-    hCover.gate input output
+    hCover input output
 
 /-- Error of the quantized up projection at one hidden coordinate. -/
 theorem upProjection_error_le
     (scales : Scales inputBlocks hiddenBlocks outputDim)
     (expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim)
-    (hCover : ScalesCover scales expert)
+    (hCover : ∀ output inputBlock offset,
+      |get2 expert.upWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
+        6 * scaleValue (scales.up output inputBlock))
     (input : Tensor ℝ (.dim (inputBlocks * 32) .scalar))
     (output : Fin (hiddenBlocks * 32)) :
     |Tensor.getScalar (vecMatMulSpec input (quantize scales expert).decode.upWeight) output -
@@ -238,7 +232,7 @@ theorem upProjection_error_le
         |Tensor.getScalar input index| *
           scaleValue (scales.up output (finProdFinEquiv.symm index).1) := by
   exact vecMatMul_quantizeMXFP4Matrix_error_le scales.up expert.upWeight
-    hCover.up input output
+    hCover input output
 
 /-- Error of the quantized down projection at one output coordinate. The input here is the
 post-SiTU activation, so the theorem is also the contract needed for the second routed-expert
@@ -246,7 +240,9 @@ matrix multiplication. -/
 theorem downProjection_error_le
     (scales : Scales inputBlocks hiddenBlocks outputDim)
     (expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim)
-    (hCover : ScalesCover scales expert)
+    (hCover : ∀ output hiddenBlock offset,
+      |get2 expert.downWeight (finProdFinEquiv (hiddenBlock, offset)) output| ≤
+        6 * scaleValue (scales.down output hiddenBlock))
     (hidden : Tensor ℝ (.dim (hiddenBlocks * 32) .scalar))
     (output : Fin outputDim) :
     |Tensor.getScalar (vecMatMulSpec hidden (quantize scales expert).decode.downWeight) output -
@@ -255,16 +251,15 @@ theorem downProjection_error_le
         |Tensor.getScalar hidden index| *
           scaleValue (scales.down output (finProdFinEquiv.symm index).1) := by
   exact vecMatMul_quantizeMXFP4Matrix_error_le scales.down expert.downWeight
-    hCover.down hidden output
+    hCover hidden output
 
 /-- Hidden SiTU activation produced when the first two expert matrices use MXFP8 inputs and MXFP4
 weights. The result is still real-valued; an MXFP8 encoder must certify the representation supplied
 to the final down projection.
 
-The source stays as a named expression when Lean checks dependent encoding witnesses. Its defining
-formula can be unfolded explicitly in proofs, without normalizing packed buffers during witness
-construction. -/
-@[irreducible] noncomputable def hiddenActivation {format : FP8Format}
+The local irreducibility attribute below keeps this expression folded when constructing dependent
+encoding witnesses, without changing its reducibility for callers. -/
+noncomputable def hiddenActivation {format : FP8Format}
     (scales : Scales inputBlocks hiddenBlocks outputDim)
     (expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim)
     (gateCap upCap : ℝ)
@@ -275,6 +270,9 @@ construction. -/
   let gate := vecMatMulSpec input.decode packed.decode.gateWeight
   let up := vecMatMulSpec input.decode packed.decode.upWeight
   SiTU.vector gateCap upCap gate up
+
+-- Certificate types refer to this activation without evaluating its quantized matrix products.
+attribute [local irreducible] hiddenActivation
 
 /-- A complete microscaled execution witness for one routed expert.
 
@@ -287,10 +285,11 @@ structure Execution (format : FP8Format)
     (expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim)
     (gateCap upCap : ℝ)
     (sourceInput : Tensor ℝ (.dim (inputBlocks * 32) .scalar)) where
+  /-- Certified MXFP8 encoding consumed by the gate and up projections. -/
   input : MXFP8Encoding format inputBlocks sourceInput
+  /-- Certified MXFP8 encoding of the SiTU activation consumed by the down projection. -/
   hidden : MXFP8Encoding format hiddenBlocks
-    (hiddenActivation (inputBlocks := inputBlocks) (hiddenBlocks := hiddenBlocks)
-      (outputDim := outputDim) (format := format) (sourceInput := sourceInput)
+    (hiddenActivation (format := format) (sourceInput := sourceInput)
       scales expert gateCap upCap input)
 
 namespace Execution
@@ -310,7 +309,9 @@ the real down projection of the pre-encoding hidden activation. -/
 theorem output_error_le {format : FP8Format}
     {scales : Scales inputBlocks hiddenBlocks outputDim}
     {expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim}
-    (hCover : ScalesCover scales expert)
+    (hCover : ∀ output hiddenBlock offset,
+      |get2 expert.downWeight (finProdFinEquiv (hiddenBlock, offset)) output| ≤
+        6 * scaleValue (scales.down output hiddenBlock))
     {gateCap upCap : ℝ}
     {sourceInput : Tensor ℝ (.dim (inputBlocks * 32) .scalar)}
     (execution : Execution format scales expert gateCap upCap sourceInput)
@@ -325,23 +326,22 @@ theorem output_error_le {format : FP8Format}
           |Tensor.getScalar (hiddenActivation scales expert gateCap upCap execution.input) index| *
             scaleValue (scales.down coordinate (finProdFinEquiv.symm index).1)) := by
   exact vecMatMul_mxfp8_mxfp4_error_le execution.hidden scales.down expert.downWeight
-    hCover.down coordinate
+    hCover coordinate
 
 end Execution
 
 end MXFP4Expert
 
-/--
-A fixed-cardinality expert route.  The injectivity field rules out selecting the same expert twice.
-It also makes an impossible `activeExperts > numExperts` route uninhabited without a runtime check.
--/
-structure Route (numExperts activeExperts : Nat) where
-  expert : Fin activeExperts → Fin numExperts
-  injective : Function.Injective expert
+/-- A route is an embedding of active slots into experts, so no expert can be selected twice. -/
+abbrev Route (numExperts activeExperts : Nat) := Fin activeExperts ↪ Fin numExperts
 
 namespace Route
 
 variable {numExperts activeExperts : Nat}
+
+/-- Expert selected for a route slot. -/
+abbrev expert (route : Route numExperts activeExperts) : Fin activeExperts → Fin numExperts :=
+  route
 
 /-- A selected expert has a score at least as large as every unselected expert. -/
 def IsTopK (route : Route numExperts activeExperts) (score : Fin numExperts → ℝ) : Prop :=
@@ -359,6 +359,9 @@ theorem isTopK_add_common_iff (route : Route numExperts activeExperts)
   · have := h selected candidate hCandidate
     linarith
 
+namespace Internal
+
+/-- Descending score order with the lower expert index breaking ties. -/
 def betterEq (score : Fin numExperts → ℝ)
     (left right : Fin numExperts) : Prop :=
   score right < score left ∨ (score left = score right ∧ left.val ≤ right.val)
@@ -429,22 +432,26 @@ theorem orderedExperts_mem (score : Fin numExperts → ℝ) (expert : Fin numExp
   exact (List.mergeSort_perm (List.finRange numExperts) _).mem_iff.mpr
     (List.mem_finRange expert)
 
+end Internal
+
 /-- Choose exactly `activeExperts` experts by adjusted score. The inequality makes impossible
 routes unrepresentable, while index tie-breaking makes the mathematical result deterministic. -/
 noncomputable def chooseTopK (score : Fin numExperts → ℝ)
     (hActive : activeExperts ≤ numExperts) : Route numExperts activeExperts := by
-  let ordered := orderedExperts score
+  let ordered := Internal.orderedExperts score
   let selected := ordered.take activeExperts
   have hLength : selected.length = activeExperts := by
-    simp only [selected, List.length_take, ordered, orderedExperts_length]
+    simp only [selected, List.length_take, ordered, Internal.orderedExperts_length]
     exact Nat.min_eq_left hActive
-  have hNodup : selected.Nodup := (orderedExperts_nodup score).take
+  have hNodup : selected.Nodup := (Internal.orderedExperts_nodup score).take
   refine
-    { expert := fun slot => selected.get (Fin.cast hLength.symm slot)
-      injective := ?_ }
+    { toFun := fun slot => selected.get (Fin.cast hLength.symm slot)
+      inj' := ?_ }
   intro left right hEqual
   apply Fin.cast_inj hLength.symm |>.mp
   exact hNodup.get_inj_iff.mp hEqual
+
+namespace Internal
 
 theorem chooseTopK_expert_mem_take (score : Fin numExperts → ℝ)
     (hActive : activeExperts ≤ numExperts) (slot : Fin activeExperts) :
@@ -471,34 +478,44 @@ theorem mem_drop_of_not_selected (score : Fin numExperts → ℝ)
     simpa [slot] using hIndex
   · exact hDrop
 
+end Internal
+
 /-- The deterministic selector satisfies the mathematical top-k contract. -/
 theorem chooseTopK_isTopK (score : Fin numExperts → ℝ)
     (hActive : activeExperts ≤ numExperts) :
     (chooseTopK score hActive).IsTopK score := by
   intro selectedSlot candidate hCandidate
-  let ordered := orderedExperts score
-  have hPairwise : ordered.Pairwise (betterEq score) := orderedExperts_pairwise score
+  let ordered := Internal.orderedExperts score
+  have hPairwise : ordered.Pairwise (Internal.betterEq score) :=
+    Internal.orderedExperts_pairwise score
   have hAppend : ordered.take activeExperts ++ ordered.drop activeExperts = ordered :=
     List.take_append_drop activeExperts ordered
   have hCross : ∀ a ∈ ordered.take activeExperts, ∀ b ∈ ordered.drop activeExperts,
-      betterEq score a b := by
+      Internal.betterEq score a b := by
     rw [← hAppend] at hPairwise
     exact (List.pairwise_append.mp hPairwise).2.2
-  apply betterEq_score_ge score
+  apply Internal.betterEq_score_ge score
   exact hCross ((chooseTopK score hActive).expert selectedSlot)
-    (chooseTopK_expert_mem_take score hActive selectedSlot) candidate
-    (mem_drop_of_not_selected score hActive candidate hCandidate)
+    (Internal.chooseTopK_expert_mem_take score hActive selectedSlot) candidate
+    (Internal.mem_drop_of_not_selected score hActive candidate hCandidate)
 end Route
 
 /-- Parameters for Kimi K3's Stable LatentMoE layer. -/
 structure StableLatentMoE (α : Type) [Storage α]
     (modelDim latentDim sharedHidden routedHidden numShared numRouted activeExperts : Nat) where
+  /-- Projection from model width into the routed-expert latent space. -/
   downProject : Tensor α (.dim modelDim (.dim latentDim .scalar))
+  /-- Projection from routed-expert latent space back to model width. -/
   upProject : Tensor α (.dim latentDim (.dim modelDim .scalar))
+  /-- RMSNorm scale applied to the routed latent aggregate. -/
   routedNormScale : Tensor α (.dim latentDim .scalar)
+  /-- Projection producing one raw score per routed expert. -/
   routerWeight : Tensor α (.dim modelDim (.dim numRouted .scalar))
+  /-- Bias used to select experts without changing their mixture weights. -/
   routerBias : Tensor α (.dim numRouted .scalar)
+  /-- Full-width shared experts evaluated for every token. -/
   shared : Fin numShared → Expert α modelDim sharedHidden modelDim
+  /-- Latent-width experts selected by the router. -/
   routed : Fin numRouted → Expert α latentDim routedHidden latentDim
 
 namespace StableLatentMoE
@@ -506,7 +523,7 @@ namespace StableLatentMoE
 variable {α : Type} [Storage α] [Context α]
 variable {modelDim latentDim sharedHidden routedHidden numShared numRouted activeExperts : Nat}
 
-/-- Raw router scores are sigmoid outputs (Eq. 12). -/
+/-- Raw router scores are sigmoid outputs (Eq. 13). -/
 def rawRouterScores
     (moe : StableLatentMoE α modelDim latentDim sharedHidden routedHidden numShared numRouted
       activeExperts)
@@ -523,7 +540,7 @@ theorem rawRouterScores_pos
     0 < Tensor.getScalar (moe.rawRouterScores x) expert := by
   rw [rawRouterScores, Activation.sigmoidSpec, Normalize.getScalar_mapSpec,
     Proofs.sigmoid_eq_inv_exp]
-  exact inv_pos.mpr (add_pos_of_pos_of_nonneg zero_lt_one (Real.exp_pos _).le)
+  positivity
 
 /-- Bias is used for top-k selection but not for the mixture weights (Eq. 13). -/
 def adjustedRouterScores
@@ -539,7 +556,7 @@ def routeWeights
     (route : Route numRouted activeExperts)
     (x : Tensor α (.dim modelDim .scalar)) : Tensor α (.dim activeExperts .scalar) :=
   let raw := moe.rawRouterScores x
-  Normalize.probabilities <|
+  Spec.normalizeByPositiveSumSpec <|
     Tensor.dim (fun slot => Tensor.scalar (Tensor.getScalar raw (route.expert slot)))
 
 /-- The selected raw routing scores have positive total mass for every nonempty route. -/
@@ -570,9 +587,30 @@ theorem routeWeights_apply
         Tensor.sumSpec
           (Tensor.dim fun selected => Tensor.scalar
             (Tensor.getScalar (moe.rawRouterScores x) (route.expert selected))) := by
-  rw [routeWeights, Normalize.probabilities,
-    if_pos (moe.selectedRouterScoreTotal_pos route x hActive)]
-  simp
+  rw [routeWeights, Spec.normalizeByPositiveSumSpec,
+    ite_eq_left (moe.selectedRouterScoreTotal_pos route x hActive)]
+  simp only [Tensor.getScalar_dim]
+
+/-- Routing weights of a nonempty route sum to one. -/
+theorem routeWeights_sum_eq_one
+    (moe : StableLatentMoE ℝ modelDim latentDim sharedHidden routedHidden numShared numRouted
+      activeExperts)
+    (route : Route numRouted activeExperts) (x : Tensor ℝ (.dim modelDim .scalar))
+    (hActive : 0 < activeExperts) :
+    Tensor.sumSpec (moe.routeWeights route x) = 1 := by
+  rw [Spec.sum_spec_vec]
+  simp_rw [moe.routeWeights_apply route x hActive]
+  rw [← Finset.sum_div]
+  have hTotal := moe.selectedRouterScoreTotal_pos route x hActive
+  have hNumerator :
+      (∑ slot, Tensor.getScalar (moe.rawRouterScores x) (route.expert slot)) =
+        Tensor.sumSpec
+          (Tensor.dim fun slot => Tensor.scalar
+            (Tensor.getScalar (moe.rawRouterScores x) (route.expert slot))) := by
+    rw [Spec.sum_spec_vec]
+    simp only [Tensor.getScalar_dim]
+  rw [hNumerator]
+  exact div_self hTotal.ne'
 
 /-- Sum all full-width shared experts. -/
 def sharedOutput
@@ -582,7 +620,7 @@ def sharedOutput
     Tensor α (.dim modelDim .scalar) :=
   (List.finRange numShared).foldl
     (fun total i => total + (moe.shared i).forward gateCap upCap x)
-    (Tensor.full (.dim modelDim .scalar) 0)
+    (Tensor.zeros [modelDim])
 
 /-- Weighted aggregate of the selected latent experts, the vector `u` in Eq. 11. -/
 def routedAggregate
@@ -596,7 +634,7 @@ def routedAggregate
     (fun total slot =>
       let expertOutput := (moe.routed (route.expert slot)).forward gateCap upCap latent
       total + Tensor.mapSpec (fun value => Tensor.getScalar weights slot * value) expertOutput)
-    (Tensor.full (.dim latentDim .scalar) 0)
+    (Tensor.zeros [latentDim])
 
 /--
 Stable LatentMoE forward pass (Eq. 11): shared experts operate at model width, while the selected
@@ -662,15 +700,26 @@ noncomputable def forwardMXFP4 {latentBlocks hiddenBlocks : Nat}
 
 The router, low-rank latent projection, and mixture weights are evaluated by `moe` before this
 witness is constructed. Each selected expert then certifies its own MXFP8 activation encodings and
-MXFP4 block scales. `scaleCovers` rules out silent saturation of the source expert weights.
+MXFP4 block scales. The three coverage fields state directly that packing cannot saturate any
+source weight.
 -/
 structure MXExecution {latentBlocks hiddenBlocks : Nat} (format : Microscaling.FP8Format)
     (moe : StableLatentMoE ℝ modelDim (latentBlocks * 32) sharedHidden (hiddenBlocks * 32)
       numShared numRouted activeExperts)
     (route : Route numRouted activeExperts) (gateCap upCap : ℝ)
     (input : Tensor ℝ (.dim modelDim .scalar)) where
+  /-- Per-expert MXFP4 block scales. -/
   scales : Fin numRouted → MXFP4Expert.Scales latentBlocks hiddenBlocks (latentBlocks * 32)
-  scaleCovers : ∀ expert, MXFP4Expert.ScalesCover (scales expert) (moe.routed expert)
+  gateScaleCovers : ∀ expert output inputBlock offset,
+    |get2 (moe.routed expert).gateWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
+      6 * Microscaling.scaleValue ((scales expert).gate output inputBlock)
+  upScaleCovers : ∀ expert output inputBlock offset,
+    |get2 (moe.routed expert).upWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
+      6 * Microscaling.scaleValue ((scales expert).up output inputBlock)
+  downScaleCovers : ∀ expert output hiddenBlock offset,
+    |get2 (moe.routed expert).downWeight (finProdFinEquiv (hiddenBlock, offset)) output| ≤
+      6 * Microscaling.scaleValue ((scales expert).down output hiddenBlock)
+  /-- Certified microscaled execution for each selected expert. -/
   selected : ∀ slot,
     MXFP4Expert.Execution format (scales (route.expert slot)) (moe.routed (route.expert slot))
       gateCap upCap (vecMatMulSpec input moe.downProject)
@@ -689,7 +738,7 @@ noncomputable def routedAggregateMX {latentBlocks hiddenBlocks : Nat}
     (fun total slot =>
       let expertOutput := (execution.selected slot).output
       total + Tensor.mapSpec (fun value => Tensor.getScalar weights slot * value) expertOutput)
-    (Tensor.full (.dim (latentBlocks * 32) .scalar) 0)
+    (Tensor.zeros [latentBlocks * 32])
 
 /-- Stable LatentMoE with the precision split used by K3 deployment: shared experts, routing,
 latent projections, normalization, and the final up-projection remain high precision, while every
@@ -707,86 +756,5 @@ noncomputable def forwardMX {latentBlocks hiddenBlocks : Nat}
   shared + vecMatMulSpec (RMSNorm.scale routed moe.routedNormScale) moe.upProject
 
 end StableLatentMoE
-
-namespace QuantileBalancing
-
-/-- Bias-adjusted score used only to choose experts. -/
-def adjustedScore {numExperts : Nat} (raw bias : Fin numExperts → ℝ)
-    (expert : Fin numExperts) : ℝ :=
-  raw expert + bias expert
-
-/-- The balanced assignment constraints from Eq. 20. -/
-structure IsBalancedAssignment {tokens experts : Nat} (active targetLoad : Nat)
-    (assignment : Fin tokens → Fin experts → Bool) : Prop where
-  tokenLoad : ∀ token, (List.finRange experts).countP (assignment token · = true) = active
-  expertLoad : ∀ expert, (List.finRange tokens).countP (assignment · expert = true) = targetLoad
-
-/-- Score of a discrete expert assignment in Eq. 20. -/
-def assignmentScore {tokens experts : Nat}
-    (scores : Fin tokens → Fin experts → ℝ)
-    (assignment : Fin tokens → Fin experts → Bool) : ℝ :=
-  (List.finRange tokens).foldl (fun total token =>
-    (List.finRange experts).foldl (fun subtotal expert =>
-      if assignment token expert then subtotal + scores token expert else subtotal) total) 0
-
-/-- One token-side coordinate objective from Eq. 24. -/
-def tokenCoordinateObjective {experts : Nat} (active : Nat)
-    (margins : Fin experts → ℝ) (cutoff : ℝ) : ℝ :=
-  active * cutoff +
-    (List.finRange experts).foldl (fun total expert => total + max 0 (margins expert - cutoff)) 0
-
-/-- Number of batch elements whose margin lies strictly above a proposed quantile threshold. -/
-noncomputable def exceedanceCount {tokens : Nat} (margins : Fin tokens → ℝ) (threshold : ℝ) : Nat :=
-  (Finset.univ.filter fun token => threshold < margins token).card
-
-/-- A threshold is an exact target quantile when precisely `targetLoad` margins exceed it. The
-strict comparison matches Eq. 14's no-ties convention. -/
-def IsExactTargetQuantile {tokens : Nat} (targetLoad : Nat)
-    (margins : Fin tokens → ℝ) (threshold : ℝ) : Prop :=
-  exceedanceCount margins threshold = targetLoad
-
-/-- Number of tokens assigned to one expert after applying its proposed next-step bias. -/
-noncomputable def routedTokenCount {tokens : Nat}
-    (rawScore cutoff : Fin tokens → ℝ) (nextBias : ℝ) : Nat :=
-  (Finset.univ.filter fun token => cutoff token < rawScore token + nextBias).card
-
-/-- Negating an exact margin quantile produces a bias that gives the expert exactly its target
-load. This is the correctness statement behind the Quantile Balancing update in Eq. 14. -/
-theorem neg_quantile_bias_hits_target {tokens : Nat} (targetLoad : Nat)
-    (rawScore cutoff : Fin tokens → ℝ) (threshold : ℝ)
-    (hQuantile : IsExactTargetQuantile targetLoad
-      (fun token => rawScore token - cutoff token) threshold) :
-    routedTokenCount rawScore cutoff (-threshold) = targetLoad := by
-  rw [← hQuantile]
-  apply congrArg Finset.card
-  ext token
-  simp only [Finset.mem_filter, Finset.mem_univ, true_and]
-  constructor <;> intro h <;> linarith
-
-/-- The common-offset centering step in Eq. 14. -/
-noncomputable def centerBias {experts : Nat} (bias : Fin experts → ℝ) : Fin experts → ℝ :=
-  let mean := (List.finRange experts).foldl (fun total expert => total + bias expert) 0 / experts
-  fun expert => bias expert - mean
-
-/-- Centering expert biases preserves every pairwise adjusted-score comparison. -/
-theorem centerBias_preserves_pairwise_order {experts : Nat} (raw bias : Fin experts → ℝ)
-    (left right : Fin experts) :
-    adjustedScore raw (centerBias bias) left ≥ adjustedScore raw (centerBias bias) right ↔
-      adjustedScore raw bias left ≥ adjustedScore raw bias right := by
-  simp only [adjustedScore, centerBias]
-  constructor <;> intro h <;> linarith
-
-/-- Consequently, centering a QB bias leaves the set of valid top-k routes unchanged. -/
-theorem centerBias_preserves_topK {experts active : Nat} (route : Route experts active)
-    (raw bias : Fin experts → ℝ) :
-    route.IsTopK (adjustedScore raw (centerBias bias)) ↔
-      route.IsTopK (adjustedScore raw bias) := by
-  constructor <;> intro h selected candidate hCandidate
-  · exact (centerBias_preserves_pairwise_order raw bias _ _).mp
-      (h selected candidate hCandidate)
-  · exact (centerBias_preserves_pairwise_order raw bias _ _).mpr
-      (h selected candidate hCandidate)
-
-end QuantileBalancing
 
 end KimiK3

@@ -11,9 +11,15 @@ public import KimiK3.GraphSpec.Backbone
 /-!
 # Kimi K3 language-model graph
 
-This file assembles the individually verified decoder graphs into the typed graph of a complete
-language model.  It deliberately reuses `KimiK3.LanguageModel` and `KimiK3.BackboneLayer`: the
-GraphSpec layer is a lowering of those mathematical objects, not a second architecture hierarchy.
+This file assembles the individually verified decoder graphs into a typed graph for one complete
+autoregressive token step. It reuses the parameters and component equations of
+`KimiK3.LanguageModel` and `KimiK3.BackboneLayer`, while representing causal state as fixed-shape
+tensor packs suitable for GraphSpec.
+
+The theorems in this file connect the graph to the packed semantics defined here. They do not yet
+prove a representation bridge to the list-based caches used by `SequenceMixer.CausalState`, nor an
+equivalence with the full-sequence `LanguageModel.logits` definition. Those are separate refinement
+obligations rather than consequences of shape checking.
 
 The first step is to give every concrete backbone layer one dependent graph ABI.  Its parameter
 and state shapes are computed from the existing `SequenceMixer` and `ChannelMixer` constructors.
@@ -23,12 +29,10 @@ Pattern matching then selects one of the four refinement theorems proved in `Bac
 @[expose] public section
 
 namespace KimiK3
-
-open TorchLean
 namespace GraphSpec
 namespace DecoderLayer
 
-open Spec
+open Spec TorchLean
 open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
@@ -223,7 +227,8 @@ def nextPartialTerm {Γ : List Shape} (pastTokens : Nat) :
 /-- Select the updated causal state from the pure result of a layer specification. -/
 def nextStateValues (pastTokens : Nat) :
     (sequence : SequenceMixer ℝ cfg decayRank) →
-      TorchLean.TensorPack ℝ (Outputs pastTokens sequence) → TorchLean.TensorPack ℝ (NextStateShapes pastTokens sequence)
+      TorchLean.TensorPack ℝ (Outputs pastTokens sequence) →
+        TorchLean.TensorPack ℝ (NextStateShapes pastTokens sequence)
   | .kda _ _, .cons nextWindow (.cons nextState
       (.cons _sequenceOutput (.cons _channelOutput (.cons _nextPartial .nil)))) =>
       .cons nextWindow (.cons nextState .nil)
@@ -319,7 +324,8 @@ theorem evalArgs_inputTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ
     (hGateCap : Term.eval env gateCap = .scalar (cfg.situGateCap : ℝ))
     (hUpCap : Term.eval env upCap = .scalar (cfg.situUpCap : ℝ)) :
     Term.evalArgs env
-        (inputTerms pastTokens sequence completed partialState state control epsilon gateCap upCap) =
+        (inputTerms pastTokens sequence completed partialState state control epsilon gateCap
+          upCap) =
       inputs pastTokens sequence (Term.eval env completed) (Term.eval env partialState)
         (Term.evalArgs env state) scoreScale := by
   cases sequence with
@@ -344,21 +350,20 @@ theorem evalArgs_inputTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ
                 Backbone.MLADense.inputs, Backbone.depthInputs,
                 TorchLean.TensorPack.append, hControl, hGateCap, hUpCap]
 
-set_option linter.unusedVariables false in
 /-- Mathematical transition denoted by the graph selected for `layer`.
 
 This definition is intentionally only a dispatcher.  The four branch equations remain the
 substantive specifications in `Backbone`; this common result type lets the complete decoder recurse
 without erasing which causal state each layer owns.
 
-The named latent-width hypotheses `hQueryLatent` and `hKVLatent` match the graph construction
+The latent-width hypotheses match the graph construction
 interface. They remain part of this interface even though the branch equations do not require them.
 -/
 noncomputable def specStep (pastTokens : Nat) (layer : BackboneLayer ℝ cfg decayRank)
     {completedCount : Nat} (route : Route cfg.numRoutedExperts cfg.activeExperts)
     (partialPresent : Bool) (hCompleted : 0 < completedCount) (hModel : 0 < cfg.hiddenDim)
-    (hWidth : 0 < cfg.shortConvWidth) (hQueryLatent : 0 < cfg.queryLatentDim)
-    (hKVLatent : 0 < cfg.kvLatentDim) (_hRoutedLatent : 0 < cfg.routedLatentDim)
+    (hWidth : 0 < cfg.shortConvWidth) (_hQueryLatent : 0 < cfg.queryLatentDim)
+    (_hKVLatent : 0 < cfg.kvLatentDim) (_hRoutedLatent : 0 < cfg.routedLatentDim)
     (completed : Tensor ℝ (.dim completedCount (.dim cfg.hiddenDim .scalar)))
     (partialState : Tensor ℝ (.dim cfg.hiddenDim .scalar))
     (state : TorchLean.TensorPack ℝ (StateShapes pastTokens layer.sequence)) (scoreScale : ℝ) :
@@ -394,12 +399,11 @@ noncomputable def specStep (pastTokens : Nat) (layer : BackboneLayer ℝ cfg dec
       | .sparse moe =>
           match state with
           | .cons pastLatentCache (.cons pastSharedKeyCache .nil) =>
-              Backbone.MLASparse.specStep partialPresent hCompleted hModel mla moe route sequenceQuery
-                sequenceNormScale channelQuery channelNormScale completed
+              Backbone.MLASparse.specStep partialPresent hCompleted hModel mla moe route
+                sequenceQuery sequenceNormScale channelQuery channelNormScale completed
                 partialState pastLatentCache pastSharedKeyCache
                 scoreScale cfg.situGateCap cfg.situUpCap
 
-set_option linter.unusedVariables false in
 /-- Expert route determined by the channel input encountered at this decoder layer.
 
 Sparse layers apply K3's deterministic top-k rule to the bias-adjusted router scores. Dense layers
@@ -412,8 +416,8 @@ calculation itself does not depend on those positivity proofs.
 noncomputable def expectedRoute (pastTokens : Nat)
     (layer : BackboneLayer ℝ cfg decayRank) {completedCount : Nat}
     (partialPresent : Bool) (hCompleted : 0 < completedCount) (hModel : 0 < cfg.hiddenDim)
-    (hWidth : 0 < cfg.shortConvWidth) (hQueryLatent : 0 < cfg.queryLatentDim)
-    (hKVLatent : 0 < cfg.kvLatentDim)
+    (hWidth : 0 < cfg.shortConvWidth) (_hQueryLatent : 0 < cfg.queryLatentDim)
+    (_hKVLatent : 0 < cfg.kvLatentDim)
     (hActive : cfg.activeExperts ≤ cfg.numRoutedExperts)
     (completed : Tensor ℝ (.dim completedCount (.dim cfg.hiddenDim .scalar)))
     (partialState : Tensor ℝ (.dim cfg.hiddenDim .scalar))
@@ -457,7 +461,8 @@ def RouteAgrees (pastTokens : Nat) (layer : BackboneLayer ℝ cfg decayRank)
     (hActive : cfg.activeExperts ≤ cfg.numRoutedExperts)
     (completed : Tensor ℝ (.dim completedCount (.dim cfg.hiddenDim .scalar)))
     (partialState : Tensor ℝ (.dim cfg.hiddenDim .scalar))
-    (state : TorchLean.TensorPack ℝ (StateShapes pastTokens layer.sequence)) (scoreScale : ℝ) : Prop :=
+    (state : TorchLean.TensorPack ℝ (StateShapes pastTokens layer.sequence))
+    (scoreScale : ℝ) : Prop :=
   match layer.channel with
   | .dense _ => True
   | .sparse _ =>
@@ -585,7 +590,8 @@ theorem model_specFwd_eq_specStep
                       (⟨sequenceQuery, sequenceNormScale, .kda kda logFloor, channelQuery,
                         channelNormScale, .sparse moe⟩ : BackboneLayer ℝ cfg decayRank)
                       kda moe route
-                      completed partialState previousWindow previousState logFloor Normalize.l2Epsilon
+                      completed partialState previousWindow previousState logFloor
+                      Normalize.l2Epsilon
                       cfg.situGateCap cfg.situUpCap rfl
   | mla mla =>
       cases channel with
@@ -623,7 +629,7 @@ end DecoderLayer
 
 namespace DepthSchedule
 
-open Spec
+open Spec TorchLean
 open TorchLean.Tensor
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
@@ -695,7 +701,7 @@ def advance (blockSize processedLayers modelDim : Nat) (hBlockSize : 0 < blockSi
     let nextCompleted : Tensor ℝ
         (.dim (completedCount blockSize (processedLayers + 1)) (.dim modelDim .scalar)) :=
       Tensor.castShape appended hShape
-    .cons nextCompleted <| .cons (Tensor.full (.dim modelDim .scalar) 0) .nil
+    .cons nextCompleted <| .cons (Tensor.zeros (.dim modelDim .scalar)) .nil
   else
     have hCount := completedCount_succ_of_not_boundary hBlockSize hBoundary
     have hShape :
@@ -721,7 +727,7 @@ def advanceBlock {Γ : List Shape} (blockSize processedLayers modelDim : Nat)
         (.cons nextPartial .nil)
     let appended : Term Γ
         (.dim (completedCount blockSize processedLayers + 1) (.dim modelDim .scalar)) :=
-      GraphSpec.concatAxisZeroTerm (completedCount blockSize processedLayers) 1
+      GraphSpec.concatLeadingTerm (completedCount blockSize processedLayers) 1
         (.dim modelDim .scalar) completed row
     have hCount := completedCount_succ_of_boundary hBlockSize hBoundary
     let nextCompleted : Term Γ
@@ -750,23 +756,23 @@ theorem eval_advanceBlock {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
       advance blockSize processedLayers modelDim hBlockSize (Term.eval env completed)
         (Term.eval env nextPartial) := by
   by_cases hBoundary : (processedLayers + 1) % blockSize = 0
-  · rw [advanceBlock.eq_def, dif_pos hBoundary]
+  · rw [advanceBlock.eq_def, dite_eq_left hBoundary]
     simp only [Block.eval, Term.evalArgs, Term.eval_cast]
-    rw [GraphSpec.eval_concatAxisZeroTerm]
+    rw [GraphSpec.eval_concatLeadingTerm]
     simp only [Term.eval_op, Term.evalArgs, NN.GraphSpec.DAG.PrimOp.reshape_specFwd,
       NN.GraphSpec.DAG.PrimOp.zero_specFwd]
-    rw [advance.eq_def, dif_pos hBoundary]
+    rw [advance.eq_def, dite_eq_left hBoundary]
     rw [Tensor.eqRec_eq_cast_shape]
-  · rw [advanceBlock.eq_def, dif_neg hBoundary]
+  · rw [advanceBlock.eq_def, dite_eq_right hBoundary]
     simp only [Block.eval, Term.evalArgs, Term.eval_cast]
-    rw [advance.eq_def, dif_neg hBoundary]
+    rw [advance.eq_def, dite_eq_right hBoundary]
     rw [Tensor.eqRec_eq_cast_shape]
 
 end DepthSchedule
 
 namespace Decoder
 
-open Spec
+open Spec TorchLean
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
 
@@ -827,7 +833,8 @@ theorem processedAfter_eq_add_length {Layer : Type} (processedLayers : Nat)
       simp only [processedAfter, ih, List.length_cons]
       omega
 
-/-- Inputs to a decoder segment: depth state, causal states, numerical controls, and shared scalars. -/
+/-- Inputs to a decoder segment: depth state, causal states, numerical controls, and shared
+scalars. -/
 abbrev InputsFor (pastTokens processedLayers : Nat) (model : LanguageModel ℝ cfg decayRank)
     (indices : List (Fin cfg.numLayers)) : List Shape :=
   DepthSchedule.Shapes cfg.attnResBlockSize processedLayers cfg.hiddenDim ++
@@ -852,8 +859,9 @@ def parametersFor (model : LanguageModel ℝ cfg decayRank) :
 def packStates (pastTokens : Nat) (model : LanguageModel ℝ cfg decayRank)
     (state : ∀ index, TorchLean.TensorPack ℝ
       (DecoderLayer.StateShapes pastTokens (model.layer index).sequence)) :
-    (indices : List (Fin cfg.numLayers)) → TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices)
-  | List.nil => .nil
+    (indices : List (Fin cfg.numLayers)) →
+      TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices)
+  | [] => .nil
   | index :: rest =>
       TorchLean.TensorPack.append (state index)
         (packStates pastTokens model state rest)
@@ -863,15 +871,16 @@ def emptyState (sequence : SequenceMixer ℝ cfg decayRank) :
     TorchLean.TensorPack ℝ (DecoderLayer.StateShapes 0 sequence) :=
   match sequence with
   | .kda _ _ =>
-      .cons (Tensor.full (.dim cfg.shortConvWidth (.dim cfg.hiddenDim .scalar)) 0) <|
-        .cons (Tensor.full (.dim cfg.numHeads (.dim cfg.kdaHeadDim (.dim cfg.kdaValueDim .scalar))) 0) .nil
+      .cons (Tensor.zeros (.dim cfg.shortConvWidth (.dim cfg.hiddenDim .scalar))) <|
+        .cons (Tensor.zeros [cfg.numHeads, cfg.kdaHeadDim, cfg.kdaValueDim]) .nil
   | .mla _ =>
-      .cons (Tensor.full (.dim 0 (.dim cfg.kvLatentDim .scalar)) 0) <|
-        .cons (Tensor.full (.dim 0 (.dim cfg.qkReservedHeadDim .scalar)) 0) .nil
+      .cons (Tensor.zeros (.dim 0 (.dim cfg.kvLatentDim .scalar))) <|
+        .cons (Tensor.zeros (.dim 0 (.dim cfg.qkReservedHeadDim .scalar))) .nil
 
 /-- Empty causal states for a fresh decoder run. -/
 def initialStatesFor (model : LanguageModel ℝ cfg decayRank) :
-    (indices : List (Fin cfg.numLayers)) → TorchLean.TensorPack ℝ (StateShapesFor 0 model indices) :=
+    (indices : List (Fin cfg.numLayers)) →
+      TorchLean.TensorPack ℝ (StateShapesFor 0 model indices) :=
   packStates 0 model (fun index => emptyState (model.layer index).sequence)
 
 /-- Numerical control consumed by one sequence mixer.
@@ -898,7 +907,8 @@ noncomputable def inputsFor (pastTokens processedLayers : Nat)
     (indices : List (Fin cfg.numLayers))
     (depth : TorchLean.TensorPack ℝ
       (DepthSchedule.Shapes cfg.attnResBlockSize processedLayers cfg.hiddenDim))
-    (states : TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices)) (mlaScoreScale : ℝ) :
+    (states : TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices))
+    (mlaScoreScale : ℝ) :
     TorchLean.TensorPack ℝ (InputsFor pastTokens processedLayers model indices) :=
   TorchLean.TensorPack.append depth <|
     TorchLean.TensorPack.append states <|
@@ -934,8 +944,9 @@ noncomputable def runSpec {architecture : Config} {decayRank : Nat}
       Route architecture.text.numRoutedExperts architecture.text.activeExperts)
     (pastTokens processedLayers : Nat) :
     (indices : List (Fin architecture.text.numLayers)) →
-      TorchLean.TensorPack ℝ (DepthSchedule.Shapes architecture.text.attnResBlockSize processedLayers
-        architecture.text.hiddenDim) →
+      TorchLean.TensorPack ℝ
+        (DepthSchedule.Shapes architecture.text.attnResBlockSize processedLayers
+          architecture.text.hiddenDim) →
       TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices) → ℝ →
       TorchLean.TensorPack ℝ (OutputsFor pastTokens processedLayers model indices)
   | List.nil, depth, _states, _mlaScoreScale =>
@@ -973,8 +984,9 @@ noncomputable def runSpecAuto {architecture : Config} {decayRank : Nat}
     (hcfg : architecture.WF) (model : LanguageModel ℝ architecture.text decayRank)
     (pastTokens processedLayers : Nat) :
     (indices : List (Fin architecture.text.numLayers)) →
-      TorchLean.TensorPack ℝ (DepthSchedule.Shapes architecture.text.attnResBlockSize processedLayers
-        architecture.text.hiddenDim) →
+      TorchLean.TensorPack ℝ
+        (DepthSchedule.Shapes architecture.text.attnResBlockSize processedLayers
+          architecture.text.hiddenDim) →
       TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices) → ℝ →
       TorchLean.TensorPack ℝ (OutputsFor pastTokens processedLayers model indices)
   | List.nil, depth, _states, _mlaScoreScale =>
@@ -1002,11 +1014,13 @@ noncomputable def runSpecAuto {architecture : Config} {decayRank : Nat}
           (DecoderLayer.nextStateValues pastTokens layer.sequence result) restResult
 termination_by indices => indices.length
 
-/-- Every staged route agrees with the deterministic router along the actual decoder execution.
+/-- Proposition stating that every staged route agrees with the deterministic router along the
+packed decoder execution.
 
-The recursive call follows `runSpecAuto`: consequently, the route for layer `i + 1` is checked using
-the representation produced by the automatically routed layers through `i`. Dense layers contribute
-the proposition `True`; sparse layers require equality with `StableLatentMoE.route`.
+The recursive call follows `runSpecAuto`, so the route for layer `i + 1` is compared with scores
+computed from the representation produced through layer `i`. Dense layers contribute `True`;
+sparse layers require equality with `StableLatentMoE.route`. This is a proof obligation supplied to
+the final theorem, not a route check executed inside the floating-point DAG.
 -/
 noncomputable def RoutesAgree {architecture : Config} {decayRank : Nat}
     (hcfg : architecture.WF) (model : LanguageModel ℝ architecture.text decayRank)
@@ -1014,8 +1028,9 @@ noncomputable def RoutesAgree {architecture : Config} {decayRank : Nat}
       Route architecture.text.numRoutedExperts architecture.text.activeExperts)
     (pastTokens processedLayers : Nat) :
     (indices : List (Fin architecture.text.numLayers)) →
-      TorchLean.TensorPack ℝ (DepthSchedule.Shapes architecture.text.attnResBlockSize processedLayers
-        architecture.text.hiddenDim) →
+      TorchLean.TensorPack ℝ
+        (DepthSchedule.Shapes architecture.text.attnResBlockSize processedLayers
+          architecture.text.hiddenDim) →
       TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices) → ℝ → Prop
   | List.nil, _depth, _states, _mlaScoreScale => True
   | index :: rest, depth, states, mlaScoreScale =>
@@ -1252,12 +1267,13 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
                 (DepthSchedule.completedCount architecture.text.attnResBlockSize processedLayers)
                 layer (route index)
                 (DepthSchedule.partialPresent architecture.text.attnResBlockSize processedLayers)
-                (DepthSchedule.completedCount_pos architecture.text.attnResBlockSize processedLayers)
+                (DepthSchedule.completedCount_pos architecture.text.attnResBlockSize
+                  processedLayers)
                 hcfg.hiddenDim_pos hcfg.numHeads_pos hcfg.kdaHeadDim_pos hcfg.kdaValueDim_pos
                 hcfg.shortConvWidth_pos hcfg.queryLatentDim_pos hcfg.kvLatentDim_pos
                 hcfg.routedLatentDim_pos).inline paramParts.1
-                  (DecoderLayer.inputTerms pastTokens layer.sequence completed partialState stateParts.1
-                    control epsilon gateCap upCap)) =
+                  (DecoderLayer.inputTerms pastTokens layer.sequence completed partialState
+                    stateParts.1 control epsilon gateCap upCap)) =
             DecoderLayer.specStep pastTokens layer (route index)
               (DepthSchedule.partialPresent architecture.text.attnResBlockSize processedLayers)
               (DepthSchedule.completedCount_pos architecture.text.attnResBlockSize processedLayers)
@@ -1429,8 +1445,9 @@ def initialParamsFor {architecture : Config} {decayRank : Nat} (hcfg : architect
     (route : ∀ _index : Fin architecture.text.numLayers,
       Route architecture.text.numRoutedExperts architecture.text.activeExperts)
     (pastTokens processedLayers : Nat) :
-    (indices : List (Fin architecture.text.numLayers)) → TorchLean.TensorPack Float (ParamsFor model indices)
-  | List.nil => .nil
+    (indices : List (Fin architecture.text.numLayers)) →
+      TorchLean.TensorPack Float (ParamsFor model indices)
+  | [] => .nil
   | index :: rest =>
       let layer := model.layer index
       let layerGraph := DecoderLayer.model pastTokens
@@ -1527,7 +1544,7 @@ end Decoder
 
 namespace TokenStep
 
-open Spec
+open Spec TorchLean
 open NN.GraphSpec.DAG
 open Runtime.Autograd.Torch
 
@@ -1559,7 +1576,8 @@ abbrev Outputs (pastTokens : Nat)
     [.dim architecture.text.vocabSize .scalar]
 
 /-- Learned real-valued tensors in the `Params` order. -/
-def parameters (model : LanguageModel ℝ architecture.text decayRank) : TorchLean.TensorPack ℝ (Params model) := by
+def parameters (model : LanguageModel ℝ architecture.text decayRank) :
+    TorchLean.TensorPack ℝ (Params model) := by
   let decoder := Decoder.parametersFor model (List.finRange architecture.text.numLayers)
   let final : TorchLean.TensorPack ℝ
       [.dim architecture.text.hiddenDim .scalar,
@@ -1592,7 +1610,7 @@ def initialDepth (embedding : Tensor ℝ (.dim architecture.text.hiddenDim .scal
       (DepthSchedule.Shapes architecture.text.attnResBlockSize 0 architecture.text.hiddenDim) :=
   .cons (Tensor.reshapeSpec embedding (by
       simp [Shape.size, DepthSchedule.completedCount])) <|
-    .cons (Tensor.full (.dim architecture.text.hiddenDim .scalar) 0) .nil
+    .cons (Tensor.zeros (.dim architecture.text.hiddenDim .scalar)) .nil
 
 /-- Graph terms for the initial AttnRes state of one token. -/
 def initialDepthTerms {Γ : List Shape}
@@ -1665,7 +1683,7 @@ def finalSourcesTerm {Γ : List Shape}
     let appended : Term Γ
         (.dim (DepthSchedule.completedCount architecture.text.attnResBlockSize
           architecture.text.numLayers + 1) (.dim architecture.text.hiddenDim .scalar)) :=
-      GraphSpec.concatAxisZeroTerm
+      GraphSpec.concatLeadingTerm
         (DepthSchedule.completedCount architecture.text.attnResBlockSize
           architecture.text.numLayers) 1 (.dim architecture.text.hiddenDim .scalar) completed row
     Term.cast appended (by simp [finalSourceCount, hBoundary])
@@ -1685,7 +1703,7 @@ theorem eval_finalSourcesTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ 
   · have hCompleted := Term.eval_get env depth (Var.head)
     have hPartial := Term.eval_get env depth (.tail .head)
     simp only [finalSourcesTerm, finalSources, hBoundary, dite_false, Term.eval_cast]
-    rw [GraphSpec.eval_concatAxisZeroTerm]
+    rw [GraphSpec.eval_concatLeadingTerm]
     simp only [Term.eval_op, Term.evalArgs, NN.GraphSpec.DAG.PrimOp.reshape_specFwd]
     rw [hCompleted, hPartial]
     rw [Tensor.eqRec_eq_cast_shape]
@@ -1706,7 +1724,8 @@ theorem outputsFor_full (pastTokens : Nat)
   simp only [Decoder.OutputsFor]
   rw [processedAfter_full]
 
-/-- Apply K3's final AttnRes retrieval, normalization, and vocabulary projection to a decoder run. -/
+/-- Apply K3's final AttnRes retrieval, normalization, and vocabulary projection to a decoder
+run. -/
 noncomputable def finishDecoder (hcfg : architecture.WF)
     (model : LanguageModel ℝ architecture.text decayRank)
     (pastTokens : Nat)
@@ -1793,7 +1812,7 @@ def initialParams (hcfg : architecture.WF)
     (route : ∀ _index : Fin architecture.text.numLayers,
       Route architecture.text.numRoutedExperts architecture.text.activeExperts)
     (pastTokens : Nat) : TorchLean.TensorPack Float (Params languageModel) :=
-  .cons (Tensor.full (.dim architecture.text.vocabSize (.dim architecture.text.hiddenDim .scalar)) 0) <|
+  .cons (Tensor.zeros [architecture.text.vocabSize, architecture.text.hiddenDim]) <|
     TorchLean.TensorPack.append
       (ss₁ := Decoder.ParamsFor languageModel (List.finRange architecture.text.numLayers))
       (ss₂ :=
@@ -1801,17 +1820,19 @@ def initialParams (hcfg : architecture.WF)
           .dim architecture.text.hiddenDim .scalar,
           .dim architecture.text.hiddenDim (.dim architecture.text.vocabSize .scalar)])
       (Decoder.fullModel hcfg languageModel route pastTokens).initParams <|
-        .cons (Tensor.full (.dim architecture.text.hiddenDim .scalar) 0) <|
-          .cons (Tensor.full (.dim architecture.text.hiddenDim .scalar) 0) <|
-            .cons (Tensor.full (.dim architecture.text.hiddenDim
-                (.dim architecture.text.vocabSize .scalar)) 0) .nil
+        .cons (Tensor.zeros (.dim architecture.text.hiddenDim .scalar)) <|
+          .cons (Tensor.zeros (.dim architecture.text.hiddenDim .scalar)) <|
+            .cons (Tensor.zeros (.dim architecture.text.hiddenDim
+                (.dim architecture.text.vocabSize .scalar))) .nil
 
+/-- Extract the token-embedding table from the token-step parameter terms. -/
 def embeddingTableTerm {Γ : List Shape}
     (languageModel : LanguageModel ℝ architecture.text decayRank)
     (params : Args Γ (Params languageModel)) :
     Term Γ (.dim architecture.text.vocabSize (.dim architecture.text.hiddenDim .scalar)) :=
   Args.get params Var.head
 
+/-- Extract the per-layer decoder parameters from the token-step parameter terms. -/
 def decoderParameterTerms {Γ : List Shape}
     (languageModel : LanguageModel ℝ architecture.text decayRank)
     (params : Args Γ (Params languageModel)) :
@@ -1819,6 +1840,7 @@ def decoderParameterTerms {Γ : List Shape}
   match params with
   | .cons _ rest => (Args.splitAppend rest).1
 
+/-- Extract the final-source, normalization, and vocabulary-head parameters. -/
 def finalParameterTerms {Γ : List Shape}
     (languageModel : LanguageModel ℝ architecture.text decayRank)
     (params : Args Γ (Params languageModel)) : Args Γ
@@ -1828,6 +1850,7 @@ def finalParameterTerms {Γ : List Shape}
   match params with
   | .cons _ rest => (Args.splitAppend rest).2
 
+/-- Assemble the decoder inputs from the embedding, cached states, and shared controls. -/
 def decoderInputTerms {Γ : List Shape} (pastTokens : Nat)
     (languageModel : LanguageModel ℝ architecture.text decayRank)
     (embedding : Term Γ (.dim architecture.text.hiddenDim .scalar))
@@ -1930,12 +1953,13 @@ def graph (hcfg : architecture.WF)
             hcfg.hiddenDim_pos)
           (.cons retrieved (.cons finalNormScale .nil))
         let logits := Term.op
-          (NN.GraphSpec.DAG.PrimOp.broadcastVecMat .scalar .scalar .scalar
-      architecture.text.hiddenDim architecture.text.vocabSize .scalar .scalar)
+          (PrimOp.broadcastVecMat .scalar .scalar .scalar
+            architecture.text.hiddenDim architecture.text.vocabSize
+            (Shape.CanBroadcastTo.refl .scalar) (Shape.CanBroadcastTo.refl .scalar))
           (.cons hidden (.cons vocabularyHead .nil))
         Block.ret (Args.append resultParts.1 (.cons logits .nil)) }
 
-/-- The complete token DAG has exactly the mathematical token-step semantics. -/
+/-- The complete token DAG has exactly the packed, route-staged token-step semantics. -/
 theorem graph_specFwd_eq_runSpec (hcfg : architecture.WF)
     (languageModel : LanguageModel ℝ architecture.text decayRank)
     (route : ∀ _index : Fin architecture.text.numLayers,
@@ -1983,16 +2007,16 @@ theorem graph_specFwd_eq_runSpec (hcfg : architecture.WF)
     Term.evalArgs_splitAppend_snd, TorchLean.TensorPack.split_append,
     Term.eval, Term.eval_get, Env.tget, eval_finalSourcesTerm, AttnRes.eval_term,
     NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd,
-    broadcastVecMat_scalar_specFwd]
+    PrimOp.broadcastVecMat]
   rw [runSpec]
   rw [GraphSpec.rmsNormSemantics_scalar_eq_scale]
-  rfl
+  simp [finishDecoder, NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec]
 
 /-- The complete token DAG refines K3's automatically routed semantics for a valid route trace.
 
-This is the end-to-end routing statement: the graph begins with token embedding lookup, checks each
-sparse layer against the scores computed from that layer's actual hidden representation, and ends at
-the vocabulary logits. No claim about routing is delegated to an arbitrary caller-provided choice.
+The graph begins with token embedding lookup and ends at vocabulary logits. It is specialized to a
+route trace. The `hRoutes` hypothesis certifies that every sparse-layer route equals the route
+computed from that layer's actual hidden representation; top-k itself is not a node in the graph.
 -/
 theorem graph_specFwd_eq_runSpecAuto (hcfg : architecture.WF)
     (languageModel : LanguageModel ℝ architecture.text decayRank)

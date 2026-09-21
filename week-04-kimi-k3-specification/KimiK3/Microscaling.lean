@@ -6,7 +6,6 @@ Authors: TorchLean Team
 
 module
 
-public import NN.Floats.NeuralFloat.Core
 public import NN.Proofs.Tensor.Basic.LinearAlgebra
 public import NN.Spec.Core.TensorReductionShape
 
@@ -25,18 +24,20 @@ multiplications.  The matrix layout follows TorchLean's convention: the first te
 input axis and the second is the output axis.  A block therefore contains 32 consecutive input
 coordinates for one output coordinate.
 
-Reference: Open Compute Project, "Microscaling Formats (MX) Specification", version 1.0,
-Sections 5.2--5.4, September 2023.
+References:
+
+* Kimi Team, "Kimi K3: Open Frontier Intelligence", 2026, Section 4.1.4, p. 14:
+  https://arxiv.org/abs/2607.24653
+* Open Compute Project, "Microscaling Formats (MX) Specification", version 1.0,
+  Sections 5.2--5.4, September 2023.
 -/
 
 @[expose] public section
 
 namespace KimiK3
-
-open TorchLean
 namespace Microscaling
 
-open TorchLean.Floats
+open TorchLean
 open Spec
 open Tensor
 
@@ -46,11 +47,11 @@ abbrev E8M0 := Fin 255
 
 /-- Real value of an E8M0 scale. Code `e` denotes the binary power `2^(e - 127)`. -/
 noncomputable def scaleValue (scale : E8M0) : ℝ :=
-  neuralBpow binaryRadix ((scale.val : ℤ) - 127)
+  (2 : ℝ) ^ ((scale.val : ℤ) - 127)
 
 /-- Every finite E8M0 scale is strictly positive. -/
 theorem scaleValue_pos (scale : E8M0) : 0 < scaleValue scale :=
-  neuralBpow.pos binaryRadix _
+  zpow_pos (by norm_num) _
 
 /-- Decode one four-bit E2M1 payload. Codes `0`--`7` are nonnegative and codes `8`--`15`
 carry the sign bit. Both signed-zero encodings denote real zero. -/
@@ -114,7 +115,7 @@ theorem quantizeE2M1_error_le_one {value : ℝ} (hvalue : |value| ≤ 6) :
     |decodeE2M1 (quantizeE2M1 value) - value| ≤ 1 := by
   rw [abs_le] at hvalue
   by_cases hnegative : value < 0
-  · rw [quantizeE2M1, if_pos hnegative, decodeE2M1_negate]
+  · rw [quantizeE2M1, ite_eq_left hnegative, decodeE2M1_negate]
     have hround := quantizeE2M1Nonnegative_error_le_one
       (value := -value) (by linarith) (by linarith [hvalue.1])
     calc
@@ -124,8 +125,15 @@ theorem quantizeE2M1_error_le_one {value : ℝ} (hvalue : |value| ≤ 6) :
           -(decodeE2M1 (quantizeE2M1Nonnegative (-value)) + value) by ring_nf, abs_neg]
       _ = |decodeE2M1 (quantizeE2M1Nonnegative (-value)) - (-value)| := by ring_nf
       _ ≤ 1 := hround
-  · rw [quantizeE2M1, if_neg hnegative]
+  · rw [quantizeE2M1, ite_eq_right hnegative]
     exact quantizeE2M1Nonnegative_error_le_one (le_of_not_gt hnegative) hvalue.2
+
+/-- Quantization is exact on the decoded E2M1 value set, including both signed zeros. -/
+@[simp]
+theorem decode_quantizeE2M1 (code : Fin 16) :
+    decodeE2M1 (quantizeE2M1 (decodeE2M1 code)) = decodeE2M1 code := by
+  fin_cases code <;>
+    norm_num [quantizeE2M1, quantizeE2M1Nonnegative, negateE2M1Code, decodeE2M1]
 
 /-- The two OCP private-element encodings available to MXFP8. -/
 inductive FP8Format where
@@ -176,15 +184,17 @@ noncomputable def decodeFP8 (format : FP8Format) (code : FP8Code format) : ℝ :
   let denominator : ℝ := (2 ^ format.mantissaBits : Nat)
   let magnitude :=
     if rawExponent = 0 then
-      (rawMantissa : ℝ) / denominator * neuralBpow binaryRadix (1 - format.bias)
+      (rawMantissa : ℝ) / denominator * (2 : ℝ) ^ (1 - format.bias)
     else
       (1 + (rawMantissa : ℝ) / denominator) *
-        neuralBpow binaryRadix ((rawExponent : ℤ) - format.bias)
+        (2 : ℝ) ^ ((rawExponent : ℤ) - format.bias)
   if code.1.val < 128 then magnitude else -magnitude
 
 /-- A microscaling block with the OCP-mandated block size of 32. -/
 structure Block (Code : Type) where
+  /-- Shared positive power-of-two scale for the block. -/
   scale : E8M0
+  /-- Private element code at each of the 32 block positions. -/
   element : Fin 32 → Code
 
 namespace Block
@@ -287,11 +297,13 @@ structure is the proof boundary between that policy and the format-independent e
 -/
 structure MXFP8Encoding (format : FP8Format) (blocks : Nat)
     (source : Tensor ℝ (.dim (blocks * 32) .scalar)) where
+  /-- Encoded MXFP8 blocks. -/
   encoded : MXFP8Vector format blocks
+  /-- Coordinatewise upper bounds on absolute decoding error. -/
   errorBound : Tensor ℝ (.dim (blocks * 32) .scalar)
-  errorBound_nonneg : ∀ index, 0 ≤ Tensor.getScalar errorBound index
   decode_error_le : ∀ index,
-    |Tensor.getScalar (decodeVector (decodeFP8 format) encoded) index - Tensor.getScalar source index| ≤
+    |Tensor.getScalar (decodeVector (decodeFP8 format) encoded) index -
+        Tensor.getScalar source index| ≤
       Tensor.getScalar errorBound index
 
 namespace MXFP8Encoding
@@ -303,12 +315,19 @@ noncomputable def decode {format : FP8Format} {blocks : Nat}
     Tensor ℝ (.dim (blocks * 32) .scalar) :=
   decodeVector (decodeFP8 format) encoding.encoded
 
+/-- A valid absolute-error certificate necessarily has nonnegative bounds. -/
+theorem errorBound_nonneg {format : FP8Format} {blocks : Nat}
+    {source : Tensor ℝ (.dim (blocks * 32) .scalar)}
+    (encoding : MXFP8Encoding format blocks source) (index : Fin (blocks * 32)) :
+    0 ≤ Tensor.getScalar encoding.errorBound index :=
+  (abs_nonneg _).trans (encoding.decode_error_le index)
+
 end MXFP8Encoding
 
 /-- A matrix whose input axis is partitioned into blocks of 32. Each output coordinate has one
 independent block scale for each consecutive group on the input axis. -/
-structure BlockMatrix (Code : Type) (inputBlocks outputDim : Nat) where
-  block : Fin outputDim → Fin inputBlocks → Block Code
+abbrev BlockMatrix (Code : Type) (inputBlocks outputDim : Nat) :=
+  Fin outputDim → Fin inputBlocks → Block Code
 
 namespace BlockMatrix
 
@@ -319,14 +338,14 @@ noncomputable def decode {Code : Type} {inputBlocks outputDim : Nat}
   Tensor.dim fun input =>
     let position := finProdFinEquiv.symm input
     Tensor.dim fun output =>
-      Tensor.scalar ((matrix.block output position.1).decode decodeElement position.2)
+      Tensor.scalar ((matrix output position.1).decode decodeElement position.2)
 
 /-- Every decoded MXFP4 matrix coordinate is bounded by six times the scale of its block. -/
 theorem abs_decode_mxfp4_le {inputBlocks outputDim : Nat}
     (matrix : BlockMatrix (Fin 16) inputBlocks outputDim)
     (input : Fin (inputBlocks * 32)) (output : Fin outputDim) :
     |get2 (matrix.decode decodeE2M1) input output| ≤
-      6 * scaleValue (matrix.block output (finProdFinEquiv.symm input).1).scale := by
+      6 * scaleValue (matrix output (finProdFinEquiv.symm input).1).scale := by
   obtain ⟨⟨inputBlock, offset⟩, rfl⟩ := finProdFinEquiv.surjective input
   have hsplit := Equiv.symm_apply_apply finProdFinEquiv (inputBlock, offset)
   have hblock : (finProdFinEquiv (inputBlock, offset)).divNat = inputBlock :=
@@ -334,7 +353,7 @@ theorem abs_decode_mxfp4_le {inputBlocks outputDim : Nat}
   have hoffset : (finProdFinEquiv (inputBlock, offset)).modNat = offset :=
     congrArg Prod.snd hsplit
   simpa [decode, Spec.get2, Spec.get, Spec.get, hblock, hoffset] using
-    abs_mxfp4_decode_le (matrix.block output inputBlock) offset
+    abs_mxfp4_decode_le (matrix output inputBlock) offset
 
 end BlockMatrix
 
@@ -345,8 +364,8 @@ abbrev MXFP4Matrix (inputBlocks outputDim : Nat) := BlockMatrix (Fin 16) inputBl
 noncomputable def quantizeMXFP4Matrix {inputBlocks outputDim : Nat}
     (scale : Fin outputDim → Fin inputBlocks → E8M0)
     (values : Tensor ℝ (.dim (inputBlocks * 32) (.dim outputDim .scalar))) :
-    MXFP4Matrix inputBlocks outputDim where
-  block output inputBlock := quantizeMXFP4Block (scale output inputBlock) fun offset =>
+    MXFP4Matrix inputBlocks outputDim :=
+  fun output inputBlock => quantizeMXFP4Block (scale output inputBlock) fun offset =>
     get2 values (finProdFinEquiv (inputBlock, offset)) output
 
 /-- Matrix quantization inherits the scalar block bound at the corresponding output and input
@@ -383,10 +402,12 @@ theorem vecMatMul_quantizeMXFP4Matrix_error_le {inputBlocks outputDim : Nat}
       |get2 weights (finProdFinEquiv (inputBlock, offset)) output| ≤
         6 * scaleValue (scale output inputBlock))
     (input : Tensor ℝ (.dim (inputBlocks * 32) .scalar)) (output : Fin outputDim) :
-    |Tensor.getScalar (vecMatMulSpec input ((quantizeMXFP4Matrix scale weights).decode decodeE2M1)) output -
+    |Tensor.getScalar
+          (vecMatMulSpec input ((quantizeMXFP4Matrix scale weights).decode decodeE2M1)) output -
         Tensor.getScalar (vecMatMulSpec input weights) output| ≤
       ∑ index : Fin (inputBlocks * 32),
-        |Tensor.getScalar input index| * scaleValue (scale output (finProdFinEquiv.symm index).1) := by
+        |Tensor.getScalar input index| *
+          scaleValue (scale output (finProdFinEquiv.symm index).1) := by
   rw [Spec.getScalar_vec_mat_mul_spec, Spec.getScalar_vec_mat_mul_spec,
     ← Finset.sum_sub_distrib]
   calc
@@ -414,7 +435,8 @@ theorem vecMatMul_quantizeMXFP4Matrix_error_le {inputBlocks outputDim : Nat}
       intro index _
       rw [abs_mul]
     _ ≤ ∑ index : Fin (inputBlocks * 32),
-        |Tensor.getScalar input index| * scaleValue (scale output (finProdFinEquiv.symm index).1) := by
+        |Tensor.getScalar input index| *
+          scaleValue (scale output (finProdFinEquiv.symm index).1) := by
       apply Finset.sum_le_sum
       intro index _
       exact mul_le_mul_of_nonneg_left
