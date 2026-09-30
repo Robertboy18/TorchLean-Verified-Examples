@@ -197,8 +197,8 @@ theorem eval_sequenceInputTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ
   simp only [sequenceInputTerm, sequenceInput, Term.eval_op, Term.evalArgs,
     NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd]
   rw [AttnRes.eval_term, eval_sequenceSourcesTerm]
-  change NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSemantics hModel _ _ = _
-  exact GraphSpec.rmsNormVectorSemantics_eq_scale hModel _ _
+  change NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSpec hModel _ _ = _
+  exact GraphSpec.rmsNormVectorSpec_eq_scale hModel _ _
 
 theorem eval_channelInputTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
     (completedCount modelDim : Nat) (hModel : 0 < modelDim)
@@ -214,8 +214,8 @@ theorem eval_channelInputTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ 
   simp only [channelInputTerm, channelInput, Term.eval_op, Term.evalArgs,
     NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd]
   rw [AttnRes.eval_term, eval_channelSourcesTerm]
-  change NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSemantics hModel _ _ = _
-  exact GraphSpec.rmsNormVectorSemantics_eq_scale hModel _ _
+  change NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSpec hModel _ _ = _
+  exact GraphSpec.rmsNormVectorSpec_eq_scale hModel _ _
 
 @[simp] theorem eval_finishPartialTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
     (modelDim : Nat)

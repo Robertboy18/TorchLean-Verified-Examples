@@ -236,8 +236,7 @@ def stepModel (pastTokens modelDim heads queryLatentDim kvLatentDim contentKeyDi
     Term.op (NN.GraphSpec.DAG.PrimOp.add scoreShape)
       (.cons contentScores (.cons sharedScores .nil))
   let scaledScores : Term Γ scoreShape :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.scalarMul scoreShape)
-      (.cons scoreScale (.cons scores .nil))
+    scaleTerm scoreShape scoreScale scores
   let weights : Term Γ scoreShape :=
     Term.op (NN.GraphSpec.DAG.PrimOp.softmax scoreShape 2) (.cons scaledScores .nil)
   let headOutput3 : Term Γ (.dim heads (.dim 1 (.dim valueDim .scalar))) :=
@@ -326,14 +325,14 @@ theorem stepModel_specFwd_eq_stepFixed
     TorchLean.TensorPack.append, NN.GraphSpec.DAG.PrimOp.concatAxis,
     NN.GraphSpec.DAG.PrimOp.concatAxisSpec, Shape.replaceAxis,
     NN.GraphSpec.DAG.PrimOp.reshape_specFwd,
-    NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd, NN.GraphSpec.DAG.PrimOp.rmsNormSemantics,
+    NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd, NN.GraphSpec.DAG.PrimOp.rmsNormSpec,
     NN.GraphSpec.DAG.PrimOp.matmul_specFwd,
     NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth_specFwd,
-    NN.GraphSpec.DAG.PrimOp.add_specFwd, NN.GraphSpec.DAG.PrimOp.scalarMul_specFwd,
+    NN.GraphSpec.DAG.PrimOp.add_specFwd, eval_scaleTerm,
     NN.GraphSpec.DAG.PrimOp.sigmoid_specFwd, NN.GraphSpec.DAG.PrimOp.mul_specFwd,
     PrimOp.broadcastVecMat, NN.GraphSpec.DAG.PrimOp.broadcast,
     NN.GraphSpec.DAG.PrimOp.softmax, GatedMLA.stepFixed,
-    GraphSpec.rmsNormVectorSemantics_eq_scale]
+    GraphSpec.rmsNormVectorSpec_eq_scale]
   simp [Tensor.permuteByAdjacentSwaps]
   constructor
   · with_unfolding_all rfl

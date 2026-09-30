@@ -140,7 +140,7 @@ def fullPrefixScores
   let input := Run.tokenBatchTensor cfg 1 padded
   let logits ← predict input
   let first : Fin 1 := ⟨0, by decide⟩
-  pure <| (text.batchLogitScoresAt logits first
+  pure <| (Tensor.get (Tensor.get logits first)
     (Fin.ofNat cfg.sequenceLength (tokens.length - 1))).to (Array Float)
 
 /-- Prefix lengths that exercise the cache at the beginning and at the complete prompt. -/

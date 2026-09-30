@@ -34,7 +34,7 @@ namespace TorchLeanGPT
 namespace CachedDecode
 namespace Runtime
 
-open _root_.Runtime.Autograd.Cuda
+open _root_.Runtime.Autograd.LibTorch
 
 /-- A borrowed parameter buffer together with the shape checked by TorchLean. -/
 structure ParameterBuffer where

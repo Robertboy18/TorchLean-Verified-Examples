@@ -15,36 +15,19 @@ private def torchLeanOptions : NameMap String :=
   let opts := match get_config? cuda_home with
     | some value => opts.insert `cuda_home value
     | none => opts
-  let opts := match get_config? cuda_arch with
-    | some value => opts.insert `cuda_arch value
-    | none => opts
-  let opts := match get_config? libtorch with
-    | some value => opts.insert `libtorch value
-    | none => opts
   let opts := match get_config? libtorch_home with
     | some value => opts.insert `libtorch_home value
     | none => opts
-  match get_config? torchleanBuildDir with
-  | some value => opts.insert `torchleanBuildDir value
-  | none => opts
+  opts
 
-/-- CUDA libraries needed when this downstream package links a TorchLean executable. -/
+/-- LibTorch's SDK dependencies are carried by its shared libraries. -/
 private def nativeLinkArgs : Array String :=
-  let cudaEnabled := match get_config? cuda with
-    | some value => value == "true" || value == "1"
-    | none => false
-  if cudaEnabled then
-    let cudaHome := (get_config? cuda_home).getD "/usr/local/cuda"
-    #[
-      "-L", s!"{cudaHome}/lib64", "-lcudart", "-lcublas", "-lcufft",
-      "-Wl,-rpath," ++ s!"{cudaHome}/lib64"
-    ]
-  else if Platform.isWindows || Platform.isOSX then
+  if Platform.isWindows || Platform.isOSX then
     #[]
   else
-    #["-lm", "-lstdc++"]
+    #["-lm"]
 
-/-- Whether the Week 3 cached decoder should compile its CUDA implementation or host stub. -/
+/-- Whether the cached decoder can use TorchLean's LibTorch storage. -/
 private def cudaEnabled : Bool :=
   match get_config? cuda with
   | some value => value == "true" || value == "1"
@@ -55,25 +38,49 @@ private def buildCachedDecoder (pkg : Package) : FetchM (Job FilePath) := do
   let lean ← getLeanInstall
   let some torchLean ← findPackageByName? `TorchLean
     | error "the cached decoder requires the TorchLean dependency"
-  let includeArgs := #[
-    "-I", lean.includeDir.toString,
-    "-I", (torchLean.dir / "csrc/cuda/common").toString
-  ]
+  let includeArgs := #["-I", lean.includeDir.toString]
   let libFile := pkg.buildDir / nameToStaticLib "torchlean_gpt_cached_decode"
   if cudaEnabled then
-    let cudaHome := (get_config? cuda_home).getD "/usr/local/cuda"
-    let cudaArch := (get_config? cuda_arch).getD "all-major"
-    let source ← inputFile
-      (pkg.dir /
-        "week-03-gpt-training/csrc/cached_decode/torchlean_gpt_cached_decode.cu") false
-    let objectFile := pkg.buildDir / "torchlean_gpt_cached_decode.o"
-    let object ← buildO objectFile source
-      (includeArgs ++ #[
-        "-I", s!"{cudaHome}/include",
-        "-c", "--std=c++17", "-O3", "-Xcompiler", "-fPIC",
-        s!"--gpu-architecture={cudaArch}"
-      ]) #[] s!"{cudaHome}/bin/nvcc"
-    buildStaticLib libFile #[object]
+    let backend ← torchLean.fetchTargetJob `torchlean_libtorch
+    backend.mapM fun _ => do
+      let sourceDir ← IO.FS.realPath (pkg.dir / "week-03-gpt-training/csrc/cached_decode")
+      let buildDir := pkg.buildDir / "cached-decode"
+      IO.FS.createDirAll buildDir
+      let buildDir ← IO.FS.realPath buildDir
+      let torchSource ← IO.FS.realPath torchLean.dir
+      let backendFile ← IO.FS.realPath
+        (torchLean.buildDir / "libtorch" / nameToSharedLib "torchlean_libtorch")
+      let mut resolveArgs := #[(torchSource / "scripts/libtorch_build.py").toString,
+        "--resolve-home"]
+      if let some home := get_config? libtorch_home then
+        resolveArgs := resolveArgs.push s!"--libtorch-home={home}"
+      let home ← captureProc { cmd := "python3", args := resolveArgs }
+      let cmake := (← IO.getEnv "TORCHLEAN_CMAKE").getD "cmake"
+      let fallbackCompiler ← IO.getEnv "CXX"
+      let compiler := ((← IO.getEnv "TORCHLEAN_CXX").orElse
+        (fun _ => fallbackCompiler)).getD "c++"
+      let mut args := #["-S", sourceDir.toString, "-B", buildDir.toString,
+        s!"-DTORCHLEAN_LIBTORCH_HOME={home.trimAscii.toString}",
+        s!"-DTORCHLEAN_LEAN_INCLUDE={lean.includeDir}",
+        s!"-DTORCHLEAN_SOURCE={torchSource}",
+        s!"-DTORCHLEAN_BACKEND={backendFile}",
+        s!"-DTORCHLEAN_OUTPUT_DIR={buildDir}", "-DCMAKE_BUILD_TYPE=Release",
+        s!"-DCMAKE_CXX_COMPILER={compiler}"]
+      if let some cudaHome := get_config? cuda_home then
+        args := args.push s!"-DCUDAToolkit_ROOT={cudaHome}"
+      if let some extra := ← IO.getEnv "TORCHLEAN_LIBTORCH_CMAKE_ARGS" then
+        let parsed := Json.parse extra >>= Json.getArr? >>= fun xs => xs.mapM Json.getStr?
+        match parsed with
+        | .ok flags =>
+          unless flags.all (·.startsWith "-D") do
+            error "TORCHLEAN_LIBTORCH_CMAKE_ARGS must contain only CMake -D options"
+          args := args ++ flags
+        | .error message => error message
+      proc { cmd := cmake, args := args }
+      proc { cmd := cmake, args := #["--build", buildDir.toString, "--parallel", "2"] }
+      let output := buildDir / nameToSharedLib "torchlean_gpt_cached_decode"
+      addTrace (.ofHash (← computeFileHash output) output.toString)
+      return output
   else
     let source ← inputFile
       (pkg.dir /

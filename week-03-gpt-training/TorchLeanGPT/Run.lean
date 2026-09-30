@@ -845,7 +845,7 @@ partial def generateIds
           let predictionPosition := if ids.isEmpty then 0 else ids.length - 1
           let x := tokenBatchTensor cfg batch ids
           let logits ← predict x
-          let scores := text.batchLogitScoresAt logits firstBatch
+          let scores := Tensor.get (Tensor.get logits firstBatch)
             (Fin.ofNat cfg.sequenceLength predictionPosition)
           let recent :=
             if generation.repeatWindow = 0 then
@@ -891,9 +891,9 @@ def printCompletion
 /-- Update the schedule's learning rate without resetting AdamW moments. -/
 def setAdamWLearningRate {shapes : List Shape} (learningRate : Float) :
     _root_.Runtime.Autograd.Model.Optim.StateList
-      _root_.Optim.AdamW.State Float shapes →
+      (fun _ _ => _root_.Optim.AdamW.State Float) Float shapes →
     _root_.Runtime.Autograd.Model.Optim.StateList
-      _root_.Optim.AdamW.State Float shapes
+      (fun _ _ => _root_.Optim.AdamW.State Float) Float shapes
   | .nil => .nil
   | .cons state rest =>
       .cons { state with learningRate } (setAdamWLearningRate learningRate rest)
@@ -980,7 +980,7 @@ def optimizeObjective
 
   let trainOneStep (step : Nat) : IO Unit := do
     let state ← optimizerStateRef.get
-    let learningRate := Trainer.Scheduler.learningRateAt schedule step
+    let learningRate := schedule.rate step
     let state := setAdamWLearningRate learningRate state
     let startedAt ← IO.monoMsNow
     let (inputs, dataInputs) := trainSample step
@@ -1238,7 +1238,9 @@ def runFloatCommand
     (commandName : String) (args : List String) (banner : String)
     (command : Runtime.Config → List String → IO Unit)
     (defaultSeed : Nat := 0) : IO UInt32 := do
-  let (seed, args) ← CLI.seed commandName (CLI.dropDashDash args) (default := defaultSeed)
+  let (seed, args) ← IO.ofExcept <|
+    (CLI.takeSeed (CLI.dropDashDash args) (default := defaultSeed)).mapError
+      (fun message => s!"{commandName}: {message}")
   Module.Command.run commandName ("--seed" :: toString seed :: args) (.native command)
     { banner? := some (fun _ => banner) }
 

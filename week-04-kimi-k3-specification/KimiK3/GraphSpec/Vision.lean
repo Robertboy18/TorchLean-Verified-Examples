@@ -106,8 +106,7 @@ private theorem linearize_triple {a b c : Nat} (i : Fin a) (j : Fin b) (k : Fin 
   have inner := Coord.linearize_cons_val (s := []) k PUnit.unit
   have scalar : (Coord.linearize (s := []) PUnit.unit).val = 0 :=
     Nat.eq_zero_of_le_zero (Nat.le_of_lt_succ (Coord.linearize (s := []) PUnit.unit).isLt)
-  simpa only [TorchLean.Tensor.Internal.Shape.size, Nat.mul_one, scalar,
-    Nat.one_mul, Nat.zero_add, middle, inner]
+  simpa [middle, inner, scalar, TorchLean.Tensor.Internal.Shape.size, Nat.mul_assoc]
     using outer
 
 private theorem rearrange_frame_patch {frames patches features : Nat}
@@ -250,18 +249,18 @@ private theorem einsum_patches_eq_matMul {frames rows columns pixels features : 
 
 end
 
-private theorem rmsNormSemantics_batch_tokens {frames patches width : Nat}
+private theorem rmsNormSpec_batch_tokens {frames patches width : Nat}
     (hWidth : 0 < width) (input : Tensor ℝ [frames, patches, width])
     (gamma : Tensor ℝ [width]) :
-    PrimOp.rmsNormSemantics [frames, patches] hWidth gamma input =
+    PrimOp.rmsNormSpec [frames, patches] hWidth gamma input =
       Tensor.mapLeading [frames, patches]
         (fun token => RMSNorm.scalePositive hWidth token gamma) input := by
   rfl
 
-@[simp] private theorem rmsNormSemantics_rows_eq {rowCount width : ℕ}
+@[simp] private theorem rmsNormSpec_rows_eq {rowCount width : ℕ}
     (hWidth : 0 < width) (input : Tensor ℝ [rowCount, width])
     (gamma : Tensor ℝ [width]) :
-    NN.GraphSpec.DAG.PrimOp.rmsNormSemantics (.dim rowCount .scalar) hWidth gamma input =
+    NN.GraphSpec.DAG.PrimOp.rmsNormSpec (.dim rowCount .scalar) hWidth gamma input =
       RMSNorm.rows hWidth input gamma := by
   rfl
 
@@ -432,7 +431,7 @@ theorem eval_mergeAndProjectTerm {Γ : List Shape} (env : TorchLean.TensorPack �
     Term.eval_cast, NN.GraphSpec.DAG.PrimOp.matmul_specFwd,
     NN.GraphSpec.DAG.PrimOp.gelu_specFwd,
     NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd,
-    rmsNormSemantics_rows_eq]
+    rmsNormSpec_rows_eq]
 
 /-- Primitive DAG for one MoonViT-V2 divided-attention block. -/
 def blockTerm {Γ : List Shape} (frames rows columns heads hiddenDim headDim intermediateDim : ℕ)
@@ -457,7 +456,7 @@ def blockTerm {Γ : List Shape} (frames rows columns heads hiddenDim headDim int
     (NN.GraphSpec.DAG.PrimOp.rmsNorm [frames, spatialTokens] hiddenDim hHidden)
     (.cons spatialInput (.cons spatialNorm .nil))
   let spatialDelta := Term.op
-    (NN.GraphSpec.DAG.PrimOp.multiHeadAttention
+    (NN.GraphSpec.DAG.PrimOp.attention
       (.dim frames .scalar) spatialTokens heads hiddenDim headDim hSpatial)
     (.cons spatialQuery <| .cons spatialKey <| .cons spatialValue <|
       .cons spatialOutput <| .cons normalizedSpatial .nil)
@@ -470,7 +469,7 @@ def blockTerm {Γ : List Shape} (frames rows columns heads hiddenDim headDim int
     (NN.GraphSpec.DAG.PrimOp.rmsNorm [spatialTokens, frames] hiddenDim hHidden)
     (.cons temporalInput (.cons temporalNorm .nil))
   let temporalDelta := Term.op
-    (NN.GraphSpec.DAG.PrimOp.multiHeadAttention
+    (NN.GraphSpec.DAG.PrimOp.attention
       (.dim spatialTokens .scalar) frames heads hiddenDim headDim hFrames)
     (.cons temporalQuery <| .cons temporalKey <| .cons temporalValue <|
       .cons temporalOutput <| .cons normalizedTemporal .nil)
@@ -536,7 +535,7 @@ theorem eval_blockTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
   simp only [blockTerm, Term.eval_op, Term.evalArgs,
     NN.GraphSpec.DAG.PrimOp.reshape_specFwd,
     NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd,
-    NN.GraphSpec.DAG.PrimOp.multiHeadAttention_specFwd,
+    NN.GraphSpec.DAG.PrimOp.attention_specFwd,
     NN.GraphSpec.DAG.PrimOp.add_specFwd,
     NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth_specFwd,
     NN.GraphSpec.DAG.PrimOp.matmul_specFwd,
@@ -551,7 +550,7 @@ theorem eval_blockTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
   have temporalSwap := @rearrange_patch_frame
   dsimp only [id, TorchLean.Tensor.Internal.Rep.castShape] at spatialSwap temporalSwap
   simp only [spatialSwap, temporalSwap]
-  simp only [rmsNormSemantics_batch_tokens,
+  simp only [rmsNormSpec_batch_tokens,
     RMSNorm.rows, Tensor.mapLeading]
   simp only [Tensor.matmulSpec, Tensor.LinearAlgebra.Internal.matmulCommonBatchSpec]
   simp

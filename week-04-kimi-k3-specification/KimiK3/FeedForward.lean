@@ -556,7 +556,7 @@ def routeWeights
     (route : Route numRouted activeExperts)
     (x : Tensor α (.dim modelDim .scalar)) : Tensor α (.dim activeExperts .scalar) :=
   let raw := moe.rawRouterScores x
-  Spec.normalizeByPositiveSumSpec <|
+  Normalize.probabilities <|
     Tensor.dim (fun slot => Tensor.scalar (Tensor.getScalar raw (route.expert slot)))
 
 /-- The selected raw routing scores have positive total mass for every nonempty route. -/
@@ -587,7 +587,7 @@ theorem routeWeights_apply
         Tensor.sumSpec
           (Tensor.dim fun selected => Tensor.scalar
             (Tensor.getScalar (moe.rawRouterScores x) (route.expert selected))) := by
-  rw [routeWeights, Spec.normalizeByPositiveSumSpec,
+  rw [routeWeights, Normalize.probabilities,
     ite_eq_left (moe.selectedRouterScoreTotal_pos route x hActive)]
   simp only [Tensor.getScalar_dim]
 

@@ -143,8 +143,7 @@ def modelGivenRoute
       let score := selectLeadingTerm numRouted .scalar expertIndex rawScores
       let weight := Term.op (NN.GraphSpec.DAG.PrimOp.mul .scalar)
         (.cons score (.cons inverseTotal .nil))
-      Term.op (NN.GraphSpec.DAG.PrimOp.scalarMul (.dim latentDim .scalar))
-        (.cons weight (.cons expertOutput .nil))
+      scaleTerm [latentDim] weight expertOutput
   let normalized := Term.op (NN.GraphSpec.DAG.PrimOp.rmsNorm .scalar latentDim hLatent)
     (.cons routedOutput (.cons routedNormScale .nil))
   let projected := Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar latentDim modelDim
@@ -198,7 +197,7 @@ theorem modelGivenRoute_specFwd_eq_forward
     Term.weakenLeft, Term.rename, Term.eval_sum, List.foldl_map,
     eval_selectLeadingTerm, Term.eval, Term.evalArgs, Env.tget,
     TorchLean.TensorPack.append,
-    NN.GraphSpec.DAG.PrimOp.add,
+    NN.GraphSpec.DAG.PrimOp.add, eval_scaleTerm,
     PrimOp.broadcastVecMat, NN.GraphSpec.DAG.PrimOp.sigmoid,
     NN.GraphSpec.DAG.PrimOp.rmsNorm,
     KimiK3.StableLatentMoE.forward, KimiK3.StableLatentMoE.sharedOutput,
@@ -208,7 +207,7 @@ theorem modelGivenRoute_specFwd_eq_forward
     div_eq_mul_inv, mul_assoc]
   rw [selectedTotal_eq]
   simp [Spec.get, Spec.get, Tensor.getScalar]
-  rw [KimiK3.RMSNorm.scale_eq_scalePositive hLatent]
+  simp only [KimiK3.RMSNorm.scale_eq_scalePositive hLatent]
   rfl
 
 /--

@@ -30,6 +30,46 @@ Pattern matching then selects one of the four refinement theorems proved in `Bac
 
 namespace KimiK3
 namespace GraphSpec
+
+open Spec TorchLean NN.GraphSpec.DAG
+
+/-- Split graph arguments at the parameter/state boundary of a decoder component. -/
+def splitArgs {Γ : List Shape} : {left right : List Shape} →
+    Args Γ (left ++ right) → Args Γ left × Args Γ right
+  | [], _, args => (.nil, args)
+  | _ :: _, _, .cons value rest =>
+      let parts := splitArgs rest
+      (.cons value parts.1, parts.2)
+
+/-- Evaluating the left argument group selects the corresponding input tensors. -/
+@[simp] theorem eval_splitArgs_left {α : Type} [Storage α] [Context α]
+    {Γ left right : List Shape} (env : TorchLean.TensorPack α Γ)
+    (args : Args Γ (left ++ right)) :
+    Term.evalArgs env (splitArgs args).1 = (TorchLean.TensorPack.split (Term.evalArgs env args)).1 := by
+  induction left with
+  | nil => rfl
+  | cons _ _ ih =>
+      cases args with
+      | cons value rest => simp [splitArgs, Term.evalArgs, TorchLean.TensorPack.split, ih]
+
+/-- Evaluating the remaining argument group selects the remaining input tensors. -/
+@[simp] theorem eval_splitArgs_right {α : Type} [Storage α] [Context α]
+    {Γ left right : List Shape} (env : TorchLean.TensorPack α Γ)
+    (args : Args Γ (left ++ right)) :
+    Term.evalArgs env (splitArgs args).2 = (TorchLean.TensorPack.split (Term.evalArgs env args)).2 := by
+  induction left with
+  | nil => rfl
+  | cons _ _ ih =>
+      cases args with
+      | cons value rest => simp [splitArgs, Term.evalArgs, TorchLean.TensorPack.split, ih]
+
+private theorem eval_splitArgs {α : Type} [Storage α] [Context α]
+    {Γ left right : List Shape} (env : TorchLean.TensorPack α Γ)
+    (args : Args Γ (left ++ right)) :
+    (Term.evalArgs env (splitArgs args).1, Term.evalArgs env (splitArgs args).2) =
+      TorchLean.TensorPack.split (Term.evalArgs env args) := by
+  exact Prod.ext (eval_splitArgs_left env args) (eval_splitArgs_right env args)
+
 namespace DecoderLayer
 
 open Spec TorchLean
@@ -1111,19 +1151,18 @@ def runBlock {architecture : Config} {decayRank : Nat} (hcfg : architecture.WF)
       cases params
       cases states
       cases controls
-      exact Block.castOutputs (outputsFor_nil pastTokens processedLayers model)
-        (Block.ret depth)
+      exact outputsFor_nil pastTokens processedLayers model ▸ Block.ret depth
   | index :: rest, params, depth, states, controls, epsilon, gateCap, upCap => by
       let layer := model.layer index
-      let paramParts := Args.splitAppend
+      let paramParts := splitArgs
         (left := DecoderLayer.Params layer.sequence layer.channel)
         (right := ParamsFor model rest) params
-      let stateParts := Args.splitAppend
+      let stateParts := splitArgs
         (left := DecoderLayer.StateShapes pastTokens layer.sequence)
         (right := StateShapesFor pastTokens model rest) states
       let completed := Args.get depth Var.head
       let partialState := Args.get depth (.tail .head)
-      let controlParts := Args.splitAppend
+      let controlParts := splitArgs
         (left := [.scalar]) (right := ControlShapesFor model rest) controls
       let sequenceControl := Args.get controlParts.1 Var.head
       let layerGraph := DecoderLayer.model pastTokens
@@ -1170,7 +1209,7 @@ def runBlock {architecture : Config} {decayRank : Nat} (hcfg : architecture.WF)
                 (Args.vars recursiveOutputs)
             let nextStates' := Args.rename (Var.inLeft nextDepthShapes) nextStates
             let nextStates'' := Args.rename (Var.inLeft recursiveOutputs) nextStates'
-            Block.castOutputs (outputsFor_cons pastTokens processedLayers model index rest) <|
+            outputsFor_cons pastTokens processedLayers model index rest ▸
               Block.ret (Args.append nextStates'' recursiveResults)
 termination_by indices => indices.length
 
@@ -1210,7 +1249,7 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
       cases params
       cases states
       cases controls
-      simp only [Block.eval_castOutputs, Block.eval]
+      simp only [Block.eval]
       rfl
   | cons index rest ih =>
       rw [runBlock.eq_def]
@@ -1221,20 +1260,20 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
         (DecoderLayer.StateShapes pastTokens layer.sequence ++
           StateShapesFor pastTokens languageModel rest) at states
       change Args Γ ([.scalar] ++ ControlShapesFor languageModel rest) at controls
-      let paramParts := Args.splitAppend
+      let paramParts := splitArgs
         (left := DecoderLayer.Params layer.sequence layer.channel)
         (right := ParamsFor languageModel rest) params
-      let stateParts := Args.splitAppend
+      let stateParts := splitArgs
         (left := DecoderLayer.StateShapes pastTokens layer.sequence)
         (right := StateShapesFor pastTokens languageModel rest) states
-      let controlParts := Args.splitAppend
+      let controlParts := splitArgs
         (left := [.scalar]) (right := ControlShapesFor languageModel rest) controls
       let completed := Args.get depth Var.head
       let partialState := Args.get depth (.tail .head)
       let control := Args.get controlParts.1 Var.head
-      have hParamParts := Term.evalArgs_splitAppend env params
-      have hStateParts := Term.evalArgs_splitAppend env states
-      have hControlParts := Term.evalArgs_splitAppend env controls
+      have hParamParts := eval_splitArgs env params
+      have hStateParts := eval_splitArgs env states
+      have hControlParts := eval_splitArgs env controls
       dsimp [paramParts, stateParts, controlParts] at hParamParts hStateParts hControlParts
       have hParamParts' := hParamParts.trans <| congrArg
         (TorchLean.TensorPack.split
@@ -1419,7 +1458,7 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
           hDepthResults, hLiftedStates]
       rw [Block.eval_andThen]
       rw [hRecursive]
-      simp only [Block.eval_castOutputs, Block.eval, Term.evalArgs_append, envDepth,
+      simp only [Block.eval_cast, Block.eval, Term.evalArgs_append, envDepth,
         Term.evalArgs_rename_inLeft,
         DecoderLayer.evalArgs_nextStateTerms, Term.evalArgs_rename_inRight,
         Term.evalArgs_vars, layer]
@@ -1476,20 +1515,20 @@ def model {architecture : Config} {decayRank : Nat} (hcfg : architecture.WF)
       let all := Args.vars
         (ParamsFor languageModel indices ++
           InputsFor pastTokens processedLayers languageModel indices)
-      let parameterAndInput := Args.splitAppend
+      let parameterAndInput := splitArgs
         (left := ParamsFor languageModel indices)
         (right := InputsFor pastTokens processedLayers languageModel indices) all
-      let depthAndRest := Args.splitAppend
+      let depthAndRest := splitArgs
         (left := DepthSchedule.Shapes architecture.text.attnResBlockSize processedLayers
           architecture.text.hiddenDim)
         (right := StateShapesFor pastTokens languageModel indices ++
           (ControlShapesFor languageModel indices ++ [.scalar, .scalar, .scalar]))
         parameterAndInput.2
-      let stateAndRest := Args.splitAppend
+      let stateAndRest := splitArgs
         (left := StateShapesFor pastTokens languageModel indices)
         (right := ControlShapesFor languageModel indices ++ [.scalar, .scalar, .scalar])
         depthAndRest.2
-      let controlAndShared := Args.splitAppend
+      let controlAndShared := splitArgs
         (left := ControlShapesFor languageModel indices)
         (right := [.scalar, .scalar, .scalar]) stateAndRest.2
       let epsilon := Args.get controlAndShared.2 Var.head
@@ -1524,7 +1563,7 @@ theorem model_specFwd_eq_runSpec {architecture : Config} {decayRank : Nat}
   simp only [NN.GraphSpec.DAG.MultiModel.specFwd, model, InputsFor, inputsFor]
   rw [eval_runBlock (mlaScoreScale := mlaScoreScale)]
   all_goals
-    simp only [Term.evalArgs_splitAppend_fst, Term.evalArgs_splitAppend_snd,
+    simp only [eval_splitArgs_left, eval_splitArgs_right,
       Term.evalArgs_vars, TorchLean.TensorPack.split_append,
       Term.eval_get, Env.tget]
 
@@ -1838,7 +1877,7 @@ def decoderParameterTerms {Γ : List Shape}
     (params : Args Γ (Params languageModel)) :
     Args Γ (Decoder.ParamsFor languageModel (List.finRange architecture.text.numLayers)) :=
   match params with
-  | .cons _ rest => (Args.splitAppend rest).1
+  | .cons _ rest => (splitArgs rest).1
 
 /-- Extract the final-source, normalization, and vocabulary-head parameters. -/
 def finalParameterTerms {Γ : List Shape}
@@ -1848,7 +1887,7 @@ def finalParameterTerms {Γ : List Shape}
         .dim architecture.text.hiddenDim .scalar,
         .dim architecture.text.hiddenDim (.dim architecture.text.vocabSize .scalar)] :=
   match params with
-  | .cons _ rest => (Args.splitAppend rest).2
+  | .cons _ rest => (splitArgs rest).2
 
 /-- Assemble the decoder inputs from the embedding, cached states, and shared controls. -/
 def decoderInputTerms {Γ : List Shape} (pastTokens : Nat)
@@ -1857,14 +1896,14 @@ def decoderInputTerms {Γ : List Shape} (pastTokens : Nat)
     (allInputs : Args Γ (Inputs pastTokens languageModel)) :
     Args Γ (Decoder.InputsFor pastTokens 0 languageModel
       (List.finRange architecture.text.numLayers)) :=
-  let stateAndRest := Args.splitAppend
+  let stateAndRest := splitArgs
     (left := Decoder.StateShapesFor pastTokens languageModel
       (List.finRange architecture.text.numLayers))
     (right :=
       Decoder.ControlShapesFor languageModel (List.finRange architecture.text.numLayers) ++
         [.scalar, .scalar, .scalar])
     allInputs
-  let controlAndShared := Args.splitAppend
+  let controlAndShared := splitArgs
     (left := Decoder.ControlShapesFor languageModel
       (List.finRange architecture.text.numLayers))
     (right := [.scalar, .scalar, .scalar]) stateAndRest.2
@@ -1880,7 +1919,7 @@ theorem eval_decoderParameterTerms {Γ : List Shape} (env : TorchLean.TensorPack
         | .cons _ rest => rest)).1 := by
   cases params with
   | cons table rest =>
-      exact Term.evalArgs_splitAppend_fst env rest
+      exact eval_splitArgs_left env rest
 
 theorem eval_finalParameterTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
     (languageModel : LanguageModel ℝ architecture.text decayRank)
@@ -1891,7 +1930,7 @@ theorem eval_finalParameterTerms {Γ : List Shape} (env : TorchLean.TensorPack �
         | .cons _ rest => rest)).2 := by
   cases params with
   | cons table rest =>
-      exact Term.evalArgs_splitAppend_snd env rest
+      exact eval_splitArgs_right env rest
 
 theorem eval_decoderInputTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
     (pastTokens : Nat) (languageModel : LanguageModel ℝ architecture.text decayRank)
@@ -1905,7 +1944,7 @@ theorem eval_decoderInputTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ
         TorchLean.TensorPack.append stateAndRest.1 <|
           TorchLean.TensorPack.append controlAndShared.1 controlAndShared.2 := by
   simp only [decoderInputTerms, Term.evalArgs_append, eval_initialDepthTerms,
-    Term.evalArgs_splitAppend_fst, Term.evalArgs_splitAppend_snd]
+    eval_splitArgs_left, eval_splitArgs_right]
 
 /-- Complete typed DAG for one autoregressive token step, from embedding lookup to logits. -/
 def graph (hcfg : architecture.WF)
@@ -1918,7 +1957,7 @@ def graph (hcfg : architecture.WF)
   { initParams := initialParams hcfg languageModel route pastTokens
     body := by
       let all := Args.vars (Params languageModel ++ Inputs pastTokens languageModel)
-      let parameterAndInput := Args.splitAppend
+      let parameterAndInput := splitArgs
         (left := Params languageModel) (right := Inputs pastTokens languageModel) all
       let decoderParameters := decoderParameterTerms languageModel parameterAndInput.1
       let finalParameters := finalParameterTerms languageModel parameterAndInput.1
@@ -1927,8 +1966,8 @@ def graph (hcfg : architecture.WF)
         (embeddingTableTerm languageModel parameterAndInput.1)
       let decoderInputs := decoderInputTerms pastTokens languageModel embedding parameterAndInput.2
       let decoder := Decoder.fullModel hcfg languageModel route pastTokens
-      let decoderBlock := Block.castOutputs (outputsFor_full pastTokens languageModel)
-        (decoder.inline decoderParameters decoderInputs)
+      let decoderBlock := outputsFor_full pastTokens languageModel ▸
+        decoder.inline decoderParameters decoderInputs
       exact decoderBlock.andThen <|
         let decoderOutputs :=
           Decoder.NextStateShapesFor pastTokens languageModel
@@ -1938,7 +1977,7 @@ def graph (hcfg : architecture.WF)
         let extended := Params languageModel ++ Inputs pastTokens languageModel
         let decoderResults : Args (extended ++ decoderOutputs) decoderOutputs :=
           Args.rename (Var.inRight extended) (Args.vars decoderOutputs)
-        let resultParts := Args.splitAppend decoderResults
+        let resultParts := splitArgs decoderResults
         let liftOriginal := fun {shape : Shape} (term : Term extended shape) =>
           Term.weakenAppend decoderOutputs term
         let finalQuery := liftOriginal (Args.get finalParameters Var.head)
@@ -1975,10 +2014,10 @@ theorem graph_specFwd_eq_runSpec (hcfg : architecture.WF)
   simp only [NN.GraphSpec.DAG.MultiModel.specFwd, graph, Params, Inputs, Outputs,
     parameters, inputs, Decoder.InputsFor]
   rw [Block.eval_andThen]
-  rw [Block.eval_castOutputs]
+  rw [Block.eval_cast]
   rw [NN.GraphSpec.DAG.MultiModel.eval_inline]
   rw [eval_decoderParameterTerms, eval_decoderInputTerms]
-  simp only [Term.evalArgs_splitAppend_fst, Term.evalArgs_splitAppend_snd,
+  simp only [eval_splitArgs_left, eval_splitArgs_right,
     Term.evalArgs_vars, TorchLean.TensorPack.split_append,
     Term.eval_get, Env.tget, embeddingTableTerm,
     StableLatentMoE.eval_selectLeadingTerm]
@@ -2003,14 +2042,14 @@ theorem graph_specFwd_eq_runSpec (hcfg : architecture.WF)
   rw [hDecoder]
   simp only [Block.eval, Term.evalArgs_append, Term.evalArgs,
     Term.evalArgs_rename_inRight, Term.evalArgs_vars, Term.eval_weakenAppend,
-    eval_finalParameterTerms, Term.evalArgs_splitAppend_fst,
-    Term.evalArgs_splitAppend_snd, TorchLean.TensorPack.split_append,
+    eval_finalParameterTerms, eval_splitArgs_left,
+    eval_splitArgs_right, TorchLean.TensorPack.split_append,
     Term.eval, Term.eval_get, Env.tget, eval_finalSourcesTerm, AttnRes.eval_term,
     NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd,
     PrimOp.broadcastVecMat]
   rw [runSpec]
-  rw [GraphSpec.rmsNormSemantics_scalar_eq_scale]
-  simp [finishDecoder, NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec]
+  rw [GraphSpec.rmsNormSpec_scalar_eq_scale]
+  simp [finishDecoder, NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec, Tensor.zipEach]
 
 /-- The complete token DAG refines K3's automatically routed semantics for a valid route trace.
 

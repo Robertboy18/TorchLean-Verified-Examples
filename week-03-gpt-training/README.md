@@ -59,8 +59,9 @@ lake build TorchLeanGPT
 The last command checks the Lean model and theorem modules without requiring a
 GPU. `lake-manifest.json` records the tested dependencies; ordinary builds use those revisions
 without running `lake update`.
-To compile the training and cached-generation executables
-against CUDA:
+To compile the training and cached-generation executables with LibTorch's CUDA backend,
+first select a compatible LibTorch SDK with `TORCHLEAN_LIBTORCH_HOME` (or
+`-Klibtorch_home=PATH`). Then run:
 
 ```bash
 lake -R -Kcuda=true \
@@ -73,10 +74,13 @@ lake -R -Kcuda=true \
   benchmark_torchlean_gpt_cache
 ```
 
-For an A100-only build, add `-K cuda_arch=sm_80` to both build and run commands. This also
-works with CUDA 11, which does not accept the default `all-major` target. The example forwards
-`cuda_home` and `cuda_arch` to TorchLean and uses the same toolkit for its cached decoder.
-Pass the same build-directory options when invoking CUDA executables through `lake exe`.
+We reuse LibTorch for matrix products, normalization, activations, and cached attention.
+The example-local C++ adapter only owns the persistent key/value cache; it no longer maintains
+separate CUDA kernels. CMake reads the selected SDK's compiler and linker settings. SDK discovery
+may also require a matching CUDA development toolkit, selected with `CUDA_HOME` or `-Kcuda_home`.
+Pass the same build-directory and SDK options when invoking executables through `lake exe`.
+Without `-Kcuda=true`, the proof modules and ordinary CPU execution remain available, but calls to
+the native cached decoder report that LibTorch was not linked.
 
 The current tied-model builder draws all initializers from one seed stream. Historical runs below
 used the earlier builder, so a fresh run with the same numeric seed need not reproduce their initial
@@ -728,7 +732,8 @@ restored exactly and that both runs use the same global step indices. Parsing a
 checkpoint and restoring its device buffers are checked by the executable; they
 are not hidden inside that theorem.
 
-The Lean 4.34 regression ran three CUDA AdamW updates with dropout `0.1`, then resumed the
+Before the LibTorch migration, the Lean 4.34 regression ran three CUDA AdamW updates with
+dropout `0.1`, then resumed the
 step-one checkpoint and repeated the remaining two updates. Both the final parameter file and
 optimizer file were byte-identical. The test used width 8, two heads, one layer, context 32,
 batch size 1, seed 19, and the full 50,257-token vocabulary. This checks the serializer, random
@@ -738,7 +743,7 @@ additions; for repeatability checks, set `TORCHLEAN_CUDA_DETERMINISTIC_REDUCTION
 the original run and its continuation. The pure theorem assumes the same step-indexed update
 rule in both runs.
 
-A separate Lean 4.34 smoke test initialized the full GPT-2-small preset (124,412,160 stored
+A separate pre-migration Lean 4.34 smoke test initialized the full GPT-2-small preset (124,412,160 stored
 parameters, 12 layers, width 768, 12 heads, context 1,024) and ran one CUDA training update on
 TinyShakespeare with batch size 1 and seed 19. Validation loss on the selected evaluation batch
 fell from `11.010458` to `9.484279`, and the parameter checkpoint was saved. This tests the

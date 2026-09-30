@@ -89,6 +89,16 @@ end RMSNorm
 
 namespace Normalize
 
+/-- Divide routing weights by their positive total, with a uniform fallback otherwise.
+The fallback also fixes the specification for empty routes and rounded scalar arithmetic. -/
+def probabilities {α : Type} [Storage α] [Context α] {n : Nat}
+    (weights : Tensor α [n]) : Tensor α [n] :=
+  let total := Tensor.sumSpec weights
+  if 0 < total then
+    Tensor.dim (fun index => Tensor.scalar (Tensor.getScalar weights index / total))
+  else
+    Tensor.dim (fun _ => Tensor.scalar (1 / (n : α)))
+
 /-- KDA's additive L2 regularizer is `10⁻⁶`, distinct from RMSNorm's `10⁻⁵` stabilizer. -/
 def l2Epsilon {α : Type} [Context α] : α :=
   1 / 1000000
@@ -101,11 +111,11 @@ def l2Epsilon {α : Type} [Context α] : α :=
   exact Tensor.getScalar_map f vector index
 
 /-- Positive total mass selects ordinary normalization. -/
-theorem normalizeByPositiveSumSpec_of_sum_pos {α : Type} [Storage α] [Context α] {n : Nat}
+theorem probabilities_of_sum_pos {α : Type} [Storage α] [Context α] {n : Nat}
     (weights : Tensor α [n]) (hTotal : 0 < Tensor.sumSpec weights) :
-    Spec.normalizeByPositiveSumSpec weights =
+    probabilities weights =
       Tensor.mapSpec (fun weight => weight / Tensor.sumSpec weights) weights := by
-  unfold Spec.normalizeByPositiveSumSpec
+  unfold probabilities
   simp only [hTotal, ite_eq_left]
   apply Tensor.ext_vector
   intro index
@@ -114,11 +124,11 @@ theorem normalizeByPositiveSumSpec_of_sum_pos {α : Type} [Storage α] [Context 
   simp [Tensor.getScalar, hEntry]
 
 /-- Nonpositive total mass selects the uniform fallback. -/
-theorem normalizeByPositiveSumSpec_of_sum_nonpos {α : Type} [Storage α] [Context α] {n : Nat}
+theorem probabilities_of_sum_nonpos {α : Type} [Storage α] [Context α] {n : Nat}
     (weights : Tensor α [n]) (hTotal : ¬ 0 < Tensor.sumSpec weights) :
-    Spec.normalizeByPositiveSumSpec weights =
+    probabilities weights =
       Tensor.full [n] ((1 : α) / ((n : Nat) : α)) := by
-  unfold Spec.normalizeByPositiveSumSpec
+  unfold probabilities
   apply Tensor.ext_vector
   intro index
   simp [hTotal, Tensor.getScalar_eq_apply, Tensor.dim, Tensor.scalar]

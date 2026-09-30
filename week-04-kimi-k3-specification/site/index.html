@@ -794,9 +794,11 @@
     (gateWeight upWeight : Term Γ [inputDim, hiddenDim])
     (downWeight : Term Γ [hiddenDim, outputDim])
     (gateCap upCap : Term Γ .scalar) : Term Γ [outputDim] :=
-  <span class="kw">let</span> gate := Term.op (PrimOp.vecMat inputDim hiddenDim)
+  <span class="kw">let</span> gate := Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar
+    inputDim hiddenDim (.refl .scalar) (.refl .scalar))
     (.cons input (.cons gateWeight .nil))
-  <span class="kw">let</span> up := Term.op (PrimOp.vecMat inputDim hiddenDim)
+  <span class="kw">let</span> up := Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar
+    inputDim hiddenDim (.refl .scalar) (.refl .scalar))
     (.cons input (.cons upWeight .nil))
   <span class="kw">let</span> cappedGate := softCapTerm [hiddenDim] gateCap gate
   <span class="kw">let</span> sigmoidGate := Term.op (PrimOp.sigmoid [hiddenDim])
@@ -806,7 +808,8 @@
   <span class="kw">let</span> cappedUp := softCapTerm [hiddenDim] upCap up
   <span class="kw">let</span> hidden := Term.op (PrimOp.mul [hiddenDim])
     (.cons gated (.cons cappedUp .nil))
-  Term.op (PrimOp.vecMat hiddenDim outputDim)
+  Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar
+    hiddenDim outputDim (.refl .scalar) (.refl .scalar))
     (.cons hidden (.cons downWeight .nil))</code></pre>
           <p>Every intermediate has a shape in its type. Because this is an ordinary term rather
             than an opaque “expert” node, graph composition and lowering can still inspect it.</p>
@@ -1024,22 +1027,15 @@
     (retention : Term Γ (.dim heads (.dim keyDim .scalar)))
     (beta : Term Γ (.dim heads .scalar)) :
     Term Γ (.dim heads (.dim keyDim (.dim valueDim .scalar))) :=
-  <span class="kw">let</span> decayed := Term.op
-    (PrimOp.batchedRowScale heads keyDim valueDim)
-    (.cons retention (.cons state .nil))
+  <span class="kw">let</span> decayed := Term.op (PrimOp.mul [heads, keyDim, valueDim])
+    (.cons (expandTerm [heads, keyDim] [valueDim] retention) (.cons state .nil))
   <span class="kw">let</span> correction := batchedVecMatTerm heads keyDim valueDim key decayed
-  <span class="kw">let</span> correctionOuter := Term.op
-    (PrimOp.batchedOuter heads keyDim valueDim)
-    (.cons key (.cons correction .nil))
-  <span class="kw">let</span> writeOuter := Term.op
-    (PrimOp.batchedOuter heads keyDim valueDim)
-    (.cons key (.cons value .nil))
-  <span class="kw">let</span> scaledCorrection := Term.op
-    (PrimOp.batchedScale heads (.dim keyDim (.dim valueDim .scalar)))
-    (.cons beta (.cons correctionOuter .nil))
-  <span class="kw">let</span> scaledWrite := Term.op
-    (PrimOp.batchedScale heads (.dim keyDim (.dim valueDim .scalar)))
-    (.cons beta (.cons writeOuter .nil))
+  <span class="kw">let</span> correctionOuter := outerTerm [heads] keyDim valueDim key correction
+  <span class="kw">let</span> writeOuter := outerTerm [heads] keyDim valueDim key value
+  <span class="kw">let</span> scaledCorrection := Term.op (PrimOp.mul [heads, keyDim, valueDim])
+    (.cons (expandTerm [heads] [keyDim, valueDim] beta) (.cons correctionOuter .nil))
+  <span class="kw">let</span> scaledWrite := Term.op (PrimOp.mul [heads, keyDim, valueDim])
+    (.cons (expandTerm [heads] [keyDim, valueDim] beta) (.cons writeOuter .nil))
   <span class="kw">let</span> corrected := Term.op
     (PrimOp.sub (.dim heads (.dim keyDim (.dim valueDim .scalar))))
     (.cons decayed (.cons scaledCorrection .nil))
@@ -1155,8 +1151,7 @@
   Term.op (PrimOp.add scoreShape)
     (.cons contentScores (.cons sharedScores .nil))
 <span class="kw">let</span> scaledScores : Term Γ scoreShape :=
-  Term.op (PrimOp.scalarMul scoreShape)
-    (.cons scoreScale (.cons scores .nil))
+  scaleTerm scoreShape scoreScale scores
 <span class="kw">let</span> weights : Term Γ scoreShape :=
   Term.op (PrimOp.softmax scoreShape 2) (.cons scaledScores .nil)</code></pre>
         <pre class="lean-code"><code><span class="thm">theorem</span> stepModel_specFwd_eq_stepFixed
@@ -1245,7 +1240,8 @@
       (.dim sources (.dim modelDim .scalar)) 0)
     (.cons normalized .nil)
   <span class="kw">let</span> scores := Term.op
-    (NN.GraphSpec.DAG.PrimOp.vecMat modelDim sources)
+    (PrimOp.broadcastVecMat .scalar .scalar .scalar modelDim sources
+      (.refl .scalar) (.refl .scalar))
     (.cons query (.cons transposed .nil))
   <span class="kw">let</span> kernels := Term.op
     (NN.GraphSpec.DAG.PrimOp.exp (.dim sources .scalar))
@@ -1259,10 +1255,9 @@
       (.cons boundKernels .nil)
     <span class="kw">let</span> inverse := Term.op
       (NN.GraphSpec.DAG.PrimOp.inv .scalar) (.cons denominator .nil)
-    <span class="kw">let</span> weights := Term.op
-      (NN.GraphSpec.DAG.PrimOp.scalarMul (.dim sources .scalar))
-      (.cons inverse (.cons boundKernels .nil))
-    Term.op (NN.GraphSpec.DAG.PrimOp.vecMat sources modelDim)
+    <span class="kw">let</span> weights := scaleTerm [sources] inverse boundKernels
+    Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar sources modelDim
+      (.refl .scalar) (.refl .scalar))
       (.cons weights (.cons (Term.weakenRight values) .nil))</code></pre>
         <pre class="lean-code"><code><span class="thm">theorem</span> eval_term {Γ : List Shape}
     (env : TorchLean.TensorPack ℝ Γ)

@@ -63,8 +63,7 @@ def term {Γ : List Shape} (sources modelDim : Nat)
     let denominator := Term.op (NN.GraphSpec.DAG.PrimOp.sum (.dim sources .scalar))
       (.cons boundKernels .nil)
     let inverse := Term.op (NN.GraphSpec.DAG.PrimOp.inv .scalar) (.cons denominator .nil)
-    let weights := Term.op (NN.GraphSpec.DAG.PrimOp.scalarMul (.dim sources .scalar))
-      (.cons inverse (.cons boundKernels .nil))
+    let weights := scaleTerm [sources] inverse boundKernels
     Term.op (PrimOp.broadcastVecMat .scalar .scalar .scalar sources modelDim
       (Shape.CanBroadcastTo.refl .scalar) (Shape.CanBroadcastTo.refl .scalar))
       (.cons weights (.cons (Term.weakenRight values) .nil))
@@ -84,16 +83,17 @@ theorem eval_term {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
       KimiK3.AttnRes.attendPacked hModel (Term.eval env query) (Term.eval env values) := by
   unfold term
   rw [eval_let1]
-  simp only [Term.eval_op, Term.evalArgs, Term.eval_var_last_append, Term.eval_weakenRight]
+  simp only [Term.eval_op, Term.evalArgs, eval_scaleTerm,
+    Term.eval_var_last_append, Term.eval_weakenRight]
   simp only [NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd,
     NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth_specFwd,
     NN.GraphSpec.DAG.PrimOp.inv_specFwd,
-    NN.GraphSpec.DAG.PrimOp.scalarMul_specFwd,
     PrimOp.broadcastVecMat, NN.GraphSpec.DAG.PrimOp.exp,
     NN.GraphSpec.DAG.PrimOp.sum, NN.GraphSpec.DAG.PrimOp.one]
-  simp [KimiK3.AttnRes.attendPacked, NN.GraphSpec.DAG.PrimOp.rmsNormSemantics,
-    NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSemantics, RMSNorm.scalePositive,
-    div_eq_mul_inv, mul_comm, Spec.get]
+  simp [KimiK3.AttnRes.attendPacked, NN.GraphSpec.DAG.PrimOp.rmsNormSpec,
+    NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSpec, RMSNorm.scalePositive,
+    PrimOp.Internal.mapFinalAxis, Tensor.mapLeading, Tensor.ones,
+    Tensor.invSpec, div_eq_mul_inv, mul_comm, Spec.get]
 
 /-- Standalone graph wrapper for one packed AttnRes retrieval. -/
 def model (sources modelDim : Nat) (hModel : 0 < modelDim) :
