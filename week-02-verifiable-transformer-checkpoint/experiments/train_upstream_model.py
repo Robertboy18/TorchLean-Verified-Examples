@@ -10,11 +10,10 @@ This wrapper prepares Neel's small-model run that Lean later checks:
 4. optionally run circuit extraction / verification.
 
 Why the wrapper exists:
-Neel's repo was written against a Transformers version whose GPT2Attention
-forward signature used `layer_past`; the local environment currently has a newer
-Transformers release that passes `past_key_values` / `cache_position`.  The
-compatibility shim below preserves the repo's sparsemax attention semantics while
-accepting the newer signature.
+Neel's repo uses the older GPT2Attention forward signature and its triangular
+`bias` buffer. Transformers 5 passes `past_key_values` / `cache_position` and
+constructs masks separately. The compatibility shim keeps the upstream
+sparsemax calculation and supplies the causal buffer it expects.
 """
 
 from __future__ import annotations
@@ -98,6 +97,16 @@ def train_small(args: argparse.Namespace, repo: Path) -> None:
     config.save(args.output_dir / "config.json")
 
     model = vt_train.create_small_model(config)
+    # The upstream sparsemax rule reads this non-parameter causal mask. GPT-2
+    # no longer registers it in Transformers 5, so restore the same triangle.
+    for block in model.transformer.h:
+        block.attn.register_buffer(
+            "bias",
+            torch.ones(config.max_seq_len, config.max_seq_len, dtype=torch.bool)
+            .tril()
+            .view(1, 1, config.max_seq_len, config.max_seq_len),
+            persistent=False,
+        )
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
     model.to(device)
 
@@ -112,7 +121,7 @@ def train_small(args: argparse.Namespace, repo: Path) -> None:
     train_dataset = vt_train.SmallVerifiableDataset(task_sampling=args.task_sampling)
     training_args = TrainingArguments(
         output_dir=str(args.output_dir),
-        overwrite_output_dir=True,
+        use_cpu=args.cpu,
         max_steps=args.max_steps,
         per_device_train_batch_size=args.batch_size,
         learning_rate=args.learning_rate,

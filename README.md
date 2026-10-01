@@ -43,6 +43,32 @@ recursive arguments. Velvet would become useful there when verifying an actual m
 implementation against those specifications; wrapping native calls alone would not prove them
 correct. The dependency stays in this repository, outside the main TorchLean library.
 
+## Python examples
+
+`requirements.txt` pins PyTorch 2.13.0 and Transformers 5.10.4, which include the fixes for
+the dependency alerts reported against the earlier pins. Accelerate is included for Week 2's
+Hugging Face trainer. Use a virtual environment so these tools do not replace an existing
+TorchLean SDK installation.
+
+Choose a PyTorch wheel compatible with your platform and NVIDIA driver before installing the
+remaining requirements. For example, the Linux A100 checks used the CUDA 12.6 wheel:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu126
+python -m pip install -r requirements.txt
+```
+
+For CPU-only Python use, select `https://download.pytorch.org/whl/cpu` instead. The default
+PyPI wheel for this PyTorch release uses CUDA 13; installing it does not upgrade your NVIDIA
+driver. Lean's CPU build does not require Python or PyTorch.
+
+If this Python installation also supplies LibTorch, point `TORCHLEAN_LIBTORCH_HOME` at its
+`torch` package directory and rebuild the native adapters. Do not reuse adapters linked against
+the previous SDK. The [Week 3 instructions](week-03-gpt-training/#build) describe the
+native build.
+
 ## Build the Lean developments
 
 All four weeks share one Lake project and one pinned TorchLean dependency. On a fresh checkout:

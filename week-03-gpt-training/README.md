@@ -51,6 +51,8 @@ cd TorchLean-Verified-Examples
 
 python3 -m venv .venv
 source .venv/bin/activate
+# Linux/NVIDIA example; see the root README for CPU-only Python installation.
+python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu126
 python -m pip install -r requirements.txt
 
 lake build TorchLeanGPT
