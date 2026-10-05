@@ -281,7 +281,9 @@ def targetMarginAt (idx : Nat) : Float :=
   let input := expectedInput idx
   let target := expectedTarget idx
   let alternate := expectedAlternate idx
-  outputLogit input target - outputLogit input alternate
+  let hidden := finalHiddenState input
+  dotFloat (matrixRowD lmhead target) hidden dModel -
+    dotFloat (matrixRowD lmhead alternate) hidden dModel
 
 /-- Whether one finite-domain prompt gives a positive projected target margin. -/
 def rowPasses (idx : Nat) : Bool :=

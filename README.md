@@ -71,7 +71,14 @@ native build.
 
 ## Build the Lean developments
 
-All four weeks share one Lake project and one pinned TorchLean dependency. On a fresh checkout:
+All four weeks share one Lake project and one pinned TorchLean dependency.
+
+We updated the shared dependency to TorchLean `13d02834`, including its tensor API cleanup,
+LibTorch adapter, and custom-computation support. LeanProfiler is pinned to `8a4a0265`.
+The experiments below keep their existing models and theorem statements; updating the library
+does not replace the checkpoints or repeat the historical training runs.
+
+On a fresh checkout:
 
 ```bash
 git clone https://github.com/Robertboy18/TorchLean-Verified-Examples.git

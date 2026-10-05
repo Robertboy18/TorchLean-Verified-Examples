@@ -87,11 +87,14 @@ The public theorems are chosen to check behavior rather than repeat record field
   requested load when the selected threshold already has the exact strict-exceedance count; ties
   at the threshold are excluded from that count by definition
   ([Section 2.3.3, p. 8, and Appendices C--D, pp. 43--44](https://arxiv.org/pdf/2607.24653#page=8)).
-* `coordinateObjective_minimized_at_exactQuantile` proves the finite-batch coordinate-minimization
-  claim behind the QB update directly, including score ties. `cumulativeThrough_sum` and
-  `abs_estimate_sub_le_width` prove the additive histogram and one-bin interpolation guarantees.
-* `ContextParallel.composeAll_apply` proves that an associative scan of segment summaries built
-  from mathlib affine maps has exactly the same state semantics as sequential execution.
+* `coordinateObjective_minimized_at_exactQuantile` proves coordinate minimization when the
+  threshold has exactly the requested number of strict exceedances. Ties are allowed only when
+  that assumption holds; the theorem does not construct a suitable threshold for every tied
+  batch. `cumulativeThrough_sum` proves additive histogram pooling. `abs_estimate_sub_le_width`
+  bounds interpolation error when the true quantile is already known to lie in the selected bin.
+* `ContextParallel.composeAll_apply` proves that composing supplied affine summaries agrees with
+  applying those same summaries sequentially. A bridge from actual KDA updates to these summaries
+  has not yet been proved.
 * `MoonEP.peakRedundant_le_of_one_source` proves the report's redundant-expert upper bound after
   making its per-rank capacity and one-source hypotheses explicit.
 * `FeatureFusion.initial_fusion_eq_high` proves that the report's `[0 0 I]` initialization sends the
@@ -130,6 +133,24 @@ not proved. MXFP4/MXFP8 blocks and error bounds are formalized, but the report d
 MXFP8 encoding and scaling choice, so those choices remain explicit assumptions. The released
 Hugging Face checkpoint also omits the separately trained MTP draft layer, while `paperConfig`
 retains the one-layer MTP design described in the technical report.
+
+The masked next-token gradient is recorded as a formula, without a derivative theorem connecting
+it to the loss. The histogram error result assumes the true quantile belongs to the chosen bin;
+the bin-selection procedure has not been proved to establish that assumption. These are remaining
+proof obligations in this development, not errors demonstrated in the report.
+
+## Report edge cases
+
+Appendix C sets score ties aside when deriving the strict-threshold assignment rule. With two
+equal scores and a requested load of one, a strict threshold selects either both or neither.
+The tied cutoff can still minimize the coordinate objective. Thus coordinate minimization and
+an exact strict-exceedance count are not equivalent for every batch; tie-breaking needs a separate
+rule. We checked this example in Lean. It does not refute the report's stated no-tie argument.
+
+Equation 16 also needs a boundary convention when target and draft distributions have zero
+overlap: the negative-log acceptance loss is infinite. Our `likelihoodLoss` uses `EReal` to retain
+that case instead of silently using Lean's real-valued `log 0` convention. Neither observation
+establishes a bug in the released model.
 
 ## Sources
 

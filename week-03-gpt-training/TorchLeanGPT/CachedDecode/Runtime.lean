@@ -81,12 +81,16 @@ def parameterBuffer {shape : Shape}
 def collectParameterBuffers :
     {shapes : List Shape} →
       _root_.Runtime.Autograd.Torch.ParamList Float shapes →
-      IO (Array ParameterBuffer)
-  | List.nil, .nil => pure #[]
-  | List.cons _ _, .cons parameter parameters => do
-      let head ← parameterBuffer parameter
-      let tail ← collectParameterBuffers parameters
-      pure <| #[head] ++ tail
+      IO (Array ParameterBuffer) :=
+  let rec go :
+      {shapes : List Shape} →
+        _root_.Runtime.Autograd.Torch.ParamList Float shapes →
+        Array ParameterBuffer → IO (Array ParameterBuffer)
+    | List.nil, .nil, result => pure result
+    | List.cons _ _, .cons parameter parameters, result => do
+        let head ← parameterBuffer parameter
+        go parameters (result.push head)
+  fun parameters => go parameters #[]
 
 /-- Checked conversion used for every dimension passed through the native ABI. -/
 def natToUInt32 (label : String) (value : Nat) : IO UInt32 := do

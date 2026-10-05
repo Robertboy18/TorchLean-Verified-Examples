@@ -1479,8 +1479,13 @@
           adding its negation as a bias produces the same strict inequality and therefore the same
           cardinality. <code>coordinateObjective_minimized_at_exactQuantile</code> proves that the
           same threshold minimizes the finite coordinate dual objective. The histogram development
-          proves exact count pooling and a one-bin-width approximation bound;
-          <code>centerBias_preserves_pairwise_order</code> handles mean-centering separately.</p>
+          proves exact count pooling and a one-bin-width approximation bound when the true
+          quantile lies in the chosen bin; we have not proved that bin selection establishes this
+          assumption. <code>centerBias_preserves_pairwise_order</code> handles mean-centering separately.</p>
+        <p>There is a small but important tie case here. If two scores are equal and we want one
+          selection, no strict threshold can select exactly one. The tied cutoff can still minimize
+          the objective. Appendix C sets ties aside in practice; our exact-count theorem keeps its
+          assumption explicit rather than claiming to solve every tied batch.</p>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/FeedForward.lean#L741" target="_blank" rel="noreferrer">FeedForward.lean, Quantile Balancing ↗</a>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/QuantileBalancing.lean" target="_blank" rel="noreferrer">QuantileBalancing.lean, coordinate minimum ↗</a>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/QuantileHistogram.lean" target="_blank" rel="noreferrer">QuantileHistogram.lean, pooled estimator ↗</a>
@@ -2685,8 +2690,9 @@
           <a class="paper-cite" href="https://arxiv.org/pdf/2607.24653v2#page=18" target="_blank" rel="noreferrer">§5.1.2, p. 18 ↗</a></p>
         <p>The Lean development represents each segment by an affine state transition and its
           zero-state output. It proves identity, associative composition, sequential equivalence,
-          and the append law used by a prefix scan. Network collectives and measured scaling are
-          deliberately outside that theorem.
+          and the append law used by a prefix scan for supplied affine summaries. We have not yet
+          connected those summaries to the actual KDA updates. Network collectives and measured
+          scaling are also outside that theorem.
           <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/ContextParallel.lean" target="_blank" rel="noreferrer">ContextParallel.lean ↗</a></p>
 
         <h3>Training a 2.78T sparse model takes several kinds of parallelism</h3>
@@ -3253,7 +3259,7 @@
         <div class="boundary-row" role="row"><span>Pre-training data and scaling law (§§3.1–3.2)</span><span class="status boundary">empirical</span><p>Dataset manifests, sampling code, fitted curves, and reproducible measurements.</p></div>
         <div class="boundary-row" role="row"><span>Optimizer and context curriculum (§§3.3–3.4)</span><span class="status boundary">reported design</span><p>Stage durations, optimizer execution, checkpoints, loss traces, and evidence that a run followed the described curriculum.</p></div>
         <div class="boundary-row" role="row"><span>RL synthesis and agent environments (§4.2)</span><span class="status boundary">not modeled</span><p>Environment semantics, graders, reward aggregation, sandbox behavior, and rollout traces.</p></div>
-        <div class="boundary-row" role="row"><span>KDA kernels and context parallelism (§5.1)</span><span class="status boundary">scan algebra checked</span><p>A refinement proof from the affine scan to finite-precision kernels and distributed collectives.</p></div>
+        <div class="boundary-row" role="row"><span>KDA kernels and context parallelism (§5.1)</span><span class="status boundary">scan algebra checked</span><p>The bridge from actual KDA updates to affine summaries, then refinement to finite-precision kernels and distributed collectives, remains open.</p></div>
         <div class="boundary-row" role="row"><span>MoonEP and memory system (§5.2)</span><span class="status boundary">counting checked</span><p>The online placement algorithm, communication semantics, memory accounting, and machine-checked cost assumptions.</p></div>
         <div class="boundary-row" role="row"><span>1M-context RL infrastructure (§5.3)</span><span class="status boundary">not modeled</span><p>Sequence packing, sandbox scheduling, failure recovery, and measured throughput.</p></div>
         <div class="boundary-row" role="row"><span>Inference and serving (§5.4)</span><span class="status boundary">not modeled</span><p>Prefix-cache policy, kernel implementation, fleet scheduler, latency traces, and end-to-end refinement.</p></div>
@@ -3273,9 +3279,9 @@
         <article data-search="sequence kda mla attnres cache recurrence chunk"><span>reference</span><h3>Sequence.lean</h3><b>causal semantics</b><p>KDA, Gated MLA, list caches, packed depth attention, and block-state transitions.</p></article>
         <article data-search="training muon loss context mopd eagle acceptance"><span>reference</span><h3>Training.lean</h3><b>selected equations</b><p>Per-head Muon, masked-loss formula, MOPD clipping, speculative acceptance, and EAGLE-3.</p></article>
         <article data-search="vision moonvit image video merge projector"><span>reference</span><h3>Vision.lean</h3><b>vision semantics</b><p>Spatial and temporal blocks, pooling, pixel-shuffle merge, projector, and full vision path.</p></article>
-        <article data-search="quantile balancing convex coordinate minimization"><span>proof</span><h3>QuantileBalancing.lean</h3><b>exact coordinate minimum</b><p>The exact finite-batch quantile globally minimizes the one-coordinate hinge objective, including ties.</p></article>
-        <article data-search="histogram quantile pooling interpolation"><span>proof</span><h3>QuantileHistogram.lean</h3><b>distributed counts and error</b><p>Shard-independent histogram pooling, interpolation range, and a one-bin-width error theorem.</p></article>
-        <article data-search="context parallel kcp affine prefix scan"><span>proof</span><h3>ContextParallel.lean</h3><b>associative scan</b><p>Affine segment summaries compose associatively and agree with sequential state execution.</p></article>
+        <article data-search="quantile balancing convex coordinate minimization"><span>proof</span><h3>QuantileBalancing.lean</h3><b>exact coordinate minimum</b><p>A threshold with exactly the requested strict-exceedance count minimizes the coordinate objective. Such a threshold is not constructed for every tied batch.</p></article>
+        <article data-search="histogram quantile pooling interpolation"><span>proof</span><h3>QuantileHistogram.lean</h3><b>distributed counts and error</b><p>Shard-independent pooling and interpolation error within one bin width, assuming the true quantile lies in that bin.</p></article>
+        <article data-search="context parallel kcp affine prefix scan"><span>proof</span><h3>ContextParallel.lean</h3><b>associative scan</b><p>Supplied affine summaries compose associatively and agree with sequential application. Their connection to actual KDA updates remains open.</p></article>
         <article data-search="moonep expert capacity redundant counting"><span>proof</span><h3>MoonEP.lean</h3><b>counting bounds</b><p>Redundant-expert upper bound with explicit hypotheses and the capacity lower bound.</p></article>
         <article data-search="post training teacher budget verbosity mopd"><span>protocol</span><h3>TrainingProtocols.lean</h3><b>deterministic controls</b><p>Nine teacher indices, selected MOPD reward, token-budget override, and verbosity enforcement.</p></article>
         <article data-search="chat template xtml tool call channel history"><span>protocol</span><h3>ChatTemplate.lean</h3><b>typed message grammar</b><p>Context zones, generation channels, and index-safe parallel tool call/result association.</p></article>

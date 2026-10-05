@@ -174,4 +174,4 @@ require velvet from git "https://github.com/verse-lab/velvet.git" @ "main"
 
 require LeanProfiler from git
   "https://github.com/lean-dojo/LeanProfiler.git" @
-    "271b0b4cfa7de8c29b92ae34cf7ca8c79ac989a2"
+    "8a4a02657ce3dd1f58eb7d505e46bdc1d97f6bb5"
