@@ -720,7 +720,7 @@
   exact CausalScan.outputs_length mixer.step mixer.initialState tokens</code></pre>
         <p>KDA and MLA therefore share one causal interface without sharing an untyped cache. The
           schedule proof still belongs to the model value, but it is not the formalization by itself.</p>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Model.lean#L72" target="_blank" rel="noreferrer">Model.lean, dependent sequence transition ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Model.lean#L70" target="_blank" rel="noreferrer">Model.lean, dependent sequence transition ↗</a>
       </aside>
     </section>
 
@@ -835,7 +835,7 @@
           those containers. Once I kept that separation, the larger model stopped looking like a
           collection of records and started reading as a program whose behavior could be proved.</p>
       </div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Expert.lean#L60" target="_blank" rel="noreferrer">GraphSpec/Expert.lean, complete worked pattern ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Expert.lean#L58" target="_blank" rel="noreferrer">GraphSpec/Expert.lean, complete worked pattern ↗</a>
     </section>
 
     <section id="configuration" class="spread chapter-anchor">
@@ -899,8 +899,8 @@
             every field of <code>Config.WF</code>.</li>
         </ol>
         <div class="proof-reading"><p><strong>Checked here:</strong> the concrete schedule and cache-width arithmetic evaluate to the report's values.</p><p><strong>Not checked here:</strong> the record does not allocate the checkpoint or derive 2.78T parameters from loaded weight tensors.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Config.lean#L185" target="_blank" rel="noreferrer">Config.lean, attention schedule ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Config.lean#L402" target="_blank" rel="noreferrer">Config.lean, released-config check ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Config.lean#L187" target="_blank" rel="noreferrer">Config.lean, attention schedule ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Config.lean#L362" target="_blank" rel="noreferrer">Config.lean, released-config check ↗</a>
       </aside>
     </section>
 
@@ -979,7 +979,7 @@
         <div class="assumption-box"><strong>No numerical approximation appears here.</strong><p>The
           recurrence is interpreted over an abstract scalar with TorchLean operations; the coordinate
           theorem specializes to real numbers. Finite-precision kernel behavior is a separate claim.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Sequence.lean#L138" target="_blank" rel="noreferrer">Sequence.lean, KDA state and update ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Sequence.lean#L159" target="_blank" rel="noreferrer">Sequence.lean, KDA state and update ↗</a>
       </aside>
     </section>
 
@@ -1084,7 +1084,7 @@
           down the paper's decay interval. The second checks that projection, window preparation,
           recurrence, and readout are wired into the same fixed-window token step.</p>
         <div class="proof-ladder"><div><span>reference step</span><code>KDALayer.stepWindow</code></div><i>proved equal</i><div><span>typed graph denotation</span><code>KDA.layerModel.specFwd</code></div><i>separate refinement needed</i><div class="boundary-rung"><span>kernel</span><code>fused finite-precision KDA</code></div></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/KDA.lean#L1024" target="_blank" rel="noreferrer">GraphSpec/KDA.lean, graph denotation ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/KDA.lean#L1034" target="_blank" rel="noreferrer">GraphSpec/KDA.lean, graph denotation ↗</a>
       </aside>
     </section>
 
@@ -1178,8 +1178,8 @@
           is not yet a theorem proving that packing the list cache and calling <code>stepFixed</code>
           agrees with <code>GatedMLA.step</code>. The graph theorem also stops before the report's
           32-bit output tile and fused training kernel.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MLA.lean#L116" target="_blank" rel="noreferrer">GraphSpec/MLA.lean, typed cache step ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MLA.lean#L334" target="_blank" rel="noreferrer">GraphSpec/MLA.lean, denotation theorem ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MLA.lean#L100" target="_blank" rel="noreferrer">GraphSpec/MLA.lean, typed cache step ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MLA.lean#L308" target="_blank" rel="noreferrer">GraphSpec/MLA.lean, denotation theorem ↗</a>
       </aside>
     </section>
 
@@ -1278,8 +1278,8 @@
         <div class="assumption-box"><strong>The packed/list bridge is not proved yet.</strong><p>The
           graph theorem targets <code>attendPacked</code>. The public <code>BlockState.retrieve</code>
           uses list-valued sources, and no theorem currently identifies those two representations.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/AttnRes.lean#L48" target="_blank" rel="noreferrer">GraphSpec/AttnRes.lean, retrieval term ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/AttnRes.lean#L81" target="_blank" rel="noreferrer">GraphSpec/AttnRes.lean, evaluation theorem ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/AttnRes.lean#L44" target="_blank" rel="noreferrer">GraphSpec/AttnRes.lean, retrieval term ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/AttnRes.lean#L78" target="_blank" rel="noreferrer">GraphSpec/AttnRes.lean, evaluation theorem ↗</a>
       </aside>
     </section>
 
@@ -1364,8 +1364,8 @@
           <code>modelAtInput</code> chooses the top experts mathematically while constructing a graph
           for one concrete real input. A runtime implementation can compute and check that route before
           executing <code>modelGivenRoute</code>; if the selected experts change, the staged graph changes.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MoE.lean#L254" target="_blank" rel="noreferrer">GraphSpec/MoE.lean, route-specialized graph ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/FeedForward.lean#L629" target="_blank" rel="noreferrer">FeedForward.lean, computed route is top-k ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MoE.lean#L227" target="_blank" rel="noreferrer">GraphSpec/MoE.lean, route-specialized graph ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/FeedForward.lean#L661" target="_blank" rel="noreferrer">FeedForward.lean, computed route is top-k ↗</a>
       </aside>
     </section>
 
@@ -1430,8 +1430,8 @@
         <div class="assumption-box"><strong>Coordinate-wise bound.</strong><p>This bounds each scalar
           coordinate. A bound on a whole network activation norm would require the surrounding
           linear maps and their norms.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/FeedForward.lean#L97" target="_blank" rel="noreferrer">FeedForward.lean, SiTU bound ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Primitives.lean#L46" target="_blank" rel="noreferrer">GraphSpec, transparent SiTU graph ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/FeedForward.lean#L93" target="_blank" rel="noreferrer">FeedForward.lean, SiTU bound ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Primitives.lean#L237" target="_blank" rel="noreferrer">GraphSpec, transparent SiTU graph ↗</a>
       </aside>
     </section>
 
@@ -1486,7 +1486,6 @@
           selection, no strict threshold can select exactly one. The tied cutoff can still minimize
           the objective. Appendix C sets ties aside in practice; our exact-count theorem keeps its
           assumption explicit rather than claiming to solve every tied batch.</p>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/FeedForward.lean#L741" target="_blank" rel="noreferrer">FeedForward.lean, Quantile Balancing ↗</a>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/QuantileBalancing.lean" target="_blank" rel="noreferrer">QuantileBalancing.lean, coordinate minimum ↗</a>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/QuantileHistogram.lean" target="_blank" rel="noreferrer">QuantileHistogram.lean, pooled estimator ↗</a>
       </aside>
@@ -1674,9 +1673,9 @@
           tensors. Their component theorems are real, but no theorem yet proves the packed layer step
           equals this public <code>forwardToken</code>. The final token graph is text-only and does not
           include <code>InputSlot.visual</code> or MoonViT.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Model.lean#L212" target="_blank" rel="noreferrer">Model.lean, backbone token step ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Model.lean#L282" target="_blank" rel="noreferrer">Model.lean, multimodal embedding behavior ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Backbone.lean#L420" target="_blank" rel="noreferrer">GraphSpec/Backbone.lean, first of four packed cases ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Model.lean#L213" target="_blank" rel="noreferrer">Model.lean, backbone token step ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Model.lean#L300" target="_blank" rel="noreferrer">Model.lean, multimodal embedding behavior ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Backbone.lean#L414" target="_blank" rel="noreferrer">GraphSpec/Backbone.lean, first of four packed cases ↗</a>
       </aside>
     </section>
 
@@ -1795,8 +1794,8 @@
           This graph also excludes MoonViT and visual-input splicing, a generation loop, runtime
           top-k, finite-precision kernels, checkpoint weights, and a proof that
           <code>toProgram</code> execution agrees with <code>specFwd</code>.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/LanguageModel.lean#L1709" target="_blank" rel="noreferrer">GraphSpec/LanguageModel.lean, final decoder semantics ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/LanguageModel.lean#L1998" target="_blank" rel="noreferrer">GraphSpec/LanguageModel.lean, one-token theorem ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/LanguageModel.lean#L1768" target="_blank" rel="noreferrer">GraphSpec/LanguageModel.lean, final decoder semantics ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/LanguageModel.lean#L2060" target="_blank" rel="noreferrer">GraphSpec/LanguageModel.lean, one-token theorem ↗</a>
       </aside>
     </section>
 
@@ -1860,7 +1859,7 @@
         <p>The first two theorems prove the representation change is bijective. The Gram theorems are
           conditional: if the supplied per-head orthogonalizer returns exact or ε-approximate column
           Gram matrices, the combined operation has that property for every head.</p>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L49" target="_blank" rel="noreferrer">Training.lean, PerHeadMuon ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L64" target="_blank" rel="noreferrer">Training.lean, PerHeadMuon ↗</a>
       </aside>
     </section>
 
@@ -2084,7 +2083,7 @@
         <p>The file proves how the supervised and masked branches of the declared formula reduce,
           but that is not a derivative theorem. Lean does not yet prove that automatic
           differentiation of <code>pretrainingLoss</code> produces this gradient.</p>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L182" target="_blank" rel="noreferrer">Training.lean, loss and declared gradient formula ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L154" target="_blank" rel="noreferrer">Training.lean, loss and declared gradient formula ↗</a>
       </aside>
     </section>
 
@@ -2267,7 +2266,7 @@
           three-by-three teacher index, budget override, and verbosity rule are formalized. The nine
           trained checkpoints, stop-gradient runtime implementation, generated trajectories,
           partial-rollout system, and RL optimization remain external evidence.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L261" target="_blank" rel="noreferrer">Training.lean, MOPD ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L238" target="_blank" rel="noreferrer">Training.lean, MOPD ↗</a>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/TrainingProtocols.lean" target="_blank" rel="noreferrer">TrainingProtocols.lean, teacher and budget rules ↗</a>
       </aside>
     </section>
@@ -2362,8 +2361,8 @@
         <div class="assumption-box"><strong>Format choice remains explicit.</strong><p>The report says
           MXFP8 but does not fix E4M3 versus E5M2 and every overflow convention. The Lean API takes
           the FP8 format as a parameter instead of inventing a paper claim.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Microscaling.lean#L195" target="_blank" rel="noreferrer">Microscaling.lean, shared-scale block decoder ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Microscaling.lean#L240" target="_blank" rel="noreferrer">Microscaling.lean, block error theorem ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Microscaling.lean#L203" target="_blank" rel="noreferrer">Microscaling.lean, shared-scale block decoder ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Microscaling.lean#L248" target="_blank" rel="noreferrer">Microscaling.lean, block error theorem ↗</a>
       </aside>
     </section>
 
@@ -2480,9 +2479,9 @@
         <div class="assumption-box"><strong>No EAGLE graph is proved here.</strong><p>The file gives
           pure recurrent semantics and distribution theorems. It does not build an EAGLE GraphSpec,
           connect the draft to native execution, or verify the seven-step training optimizer.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L392" target="_blank" rel="noreferrer">Training.lean, EAGLE fusion initialization ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L594" target="_blank" rel="noreferrer">Training.lean, lossless acceptance ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L697" target="_blank" rel="noreferrer">Training.lean, self-feeding draft step ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L362" target="_blank" rel="noreferrer">Training.lean, EAGLE fusion initialization ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L680" target="_blank" rel="noreferrer">Training.lean, lossless acceptance ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Training.lean#L714" target="_blank" rel="noreferrer">Training.lean, self-feeding draft step ↗</a>
       </aside>
     </section>
 
