@@ -107,7 +107,11 @@ theorem binUpper_eq_binLower_add {lower width : ℝ} (bin : ℕ) :
   simp only [binLower, binUpper]
   ring
 
-/-- The concrete interpolation formula from Appendix D. -/
+/-- Appendix D's interpolation formula for an integral target load.
+
+For a nonintegral load `q`, the report selects a bin using `ceil q` but interpolates using `q`
+itself. The natural-number argument here covers only the integral case.
+-/
 noncomputable def estimate (lower width : ℝ) (bin : ℕ)
     (targetRank cumulativeBefore countInBin : ℕ) : ℝ :=
   interpolate lower width bin

@@ -13,8 +13,9 @@ public import KimiK3.FeedForward
 
 Appendix C derives the QB update by minimizing a one-dimensional hinge objective. This file proves
 that claim directly for a finite batch. If exactly `targetLoad` margins strictly exceed a threshold,
-then the threshold is a global minimizer of the coordinate objective. Equal margins are handled by
-the non-strict hinge and therefore need no generic-position assumption.
+then the threshold is a global minimizer of the coordinate objective. The hinge argument permits
+equal margins, but the exact-count hypothesis need not have a witness for a tied batch. This file
+does not construct the threshold or cover nonintegral target loads.
 -/
 
 @[expose] public section

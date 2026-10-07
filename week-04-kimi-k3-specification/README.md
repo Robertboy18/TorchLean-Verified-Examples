@@ -139,6 +139,10 @@ it to the loss. The histogram error result assumes the true quantile belongs to 
 the bin-selection procedure has not been proved to establish that assumption. These are remaining
 proof obligations in this development, not errors demonstrated in the report.
 
+The QB coordinate objective and histogram estimator currently take natural-number target loads.
+Appendix D also describes fractional `q = mk/n`: it selects a bin using `ceil q` and interpolates
+with `q` itself. Our estimator covers the integral case, not that fractional interpolation rule.
+
 ## Report edge cases
 
 Appendix C sets score ties aside when deriving the strict-threshold assignment rule. With two
