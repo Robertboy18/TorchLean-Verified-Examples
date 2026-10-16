@@ -1,0 +1,43 @@
+{
+  "upstream_repo": "https://github.com/neelsomani/verifiable-transformers",
+  "upstream_commit": "8e3c54bad2494c17c91109fdb58cf9e2f1c98efc",
+  "train_command": [
+    "python",
+    "scripts/small/train.py",
+    "--output_dir",
+    "artifacts/upstream-small-gpt",
+    "--learning_rate",
+    "0.003",
+    "--weight_decay",
+    "0.01",
+    "--batch_size",
+    "64",
+    "--max_steps",
+    "5000",
+    "--eval_every",
+    "100",
+    "--seed",
+    "0",
+    "--task_sampling",
+    "balanced"
+  ],
+  "export_command": [
+    "python",
+    "scripts/small/extract_weights.py",
+    "--checkpoint",
+    "artifacts/upstream-small-gpt/checkpoint-final",
+    "--output",
+    "artifacts/upstream-small-gpt/smt_weights.json"
+  ],
+  "stopped_at_step": 200,
+  "all_tasks_perfect_at_stop": true,
+  "deterministic_algorithms": true,
+  "python": "3.12.13",
+  "torch": "2.6.0+cu124",
+  "transformers": "4.49.0",
+  "device": "NVIDIA A100-SXM4-80GB",
+  "sha256": {
+    "checkpoint-final/model.safetensors": "f5b04594e8a0d9f833bd041e3a239bd865fc502819fc2eb0765e8119c3955b07",
+    "smt_weights.json": "ab61ac5dce70292ab9fa4dcd5265d98e04c34c5d89b809384ab297ef9e7abc34"
+  }
+}

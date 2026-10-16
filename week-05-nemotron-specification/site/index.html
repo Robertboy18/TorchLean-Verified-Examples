@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Replay and rollback proofs for Nemotron's recurrent memory, with FloatLib rounding bounds and a checkpoint example where fewer writes leave more error.">
+  <title>Nemotron 3 Ultra: replaying a rounded state</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="../../week-04-kimi-k3-specification/site/vendor/katex/katex.min.css">
+  <script defer src="../../week-04-kimi-k3-specification/site/vendor/katex/katex.min.js"></script>
+  <script defer src="../../week-04-kimi-k3-specification/site/vendor/katex/auto-render.min.js"></script>
+  <script defer src="../../assets/article.js"></script>
+  <style>
+    :root { --blue:#286fa2; --orange:#b8612a; }
+    body { font-size:17.5px; }
+    main { max-width:calc(var(--measure) + 48px); margin:auto; padding:36px 24px 90px; }
+    main > :not(.report-reader.is-docked) { max-width:var(--measure); margin-left:auto; margin-right:auto; }
+    main > button.report-page-link[data-dock="true"] { display:block; margin-left:0; margin-right:auto; }
+    nav,.eyebrow,button,label,.legend,figcaption,.proof,.status { font-family:var(--sans); }
+    main > nav { font-size:13px; display:flex; gap:24px; flex-wrap:wrap; }
+    a { color:var(--green); text-underline-offset:3px; }
+    .article-meta { padding:16px 0; margin-top:20px; margin-bottom:32px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+    main > .article-meta { max-width:660px; margin-left:auto; margin-right:auto; }
+    h1 { margin:12px 0 20px; font:600 34px/1.3 var(--heading); letter-spacing:-.03em; }
+    h2 { margin-top:48px; font:600 25px/1.3 var(--heading); letter-spacing:-.025em; }
+    .lede { font-size:18px; color:var(--ink); }
+    .equation { border-left:3px solid var(--green); padding:18px 24px; margin:25px 0;
+      background:#eef3ed; font:20px/1.65 ui-monospace,monospace; overflow:auto; }
+    .proof { border-top:1px solid var(--line); padding:16px 0;
+      font-size:14px; margin:26px 0; }
+    .proof p { margin:9px 0; }
+    code { font: .88em ui-monospace,monospace; }
+    pre { padding:20px; background:#eef0eb; overflow:auto; font:14px/1.55 ui-monospace,monospace; }
+    .diagram { display:flex; gap:12px; flex-wrap:wrap; align-items:center;
+      margin:28px 0; font:15px system-ui,sans-serif; }
+    .diagram span { border:1px solid var(--line); background:white; padding:14px; border-radius:6px; }
+    .demo { border-top:1px solid var(--line); border-bottom:1px solid var(--line); background:white; padding:24px 0; }
+    .plot-scroll { overflow:auto; }
+    .controls { display:flex; align-items:center; flex-wrap:wrap; gap:20px; }
+    label { font-size:14px; display:grid; gap:5px; }
+    select,input { font:16px system-ui,sans-serif; accent-color:var(--green); }
+    .controls select { max-width:100%; padding:8px 10px; border:1px solid var(--line);
+      border-radius:3px; background:white; color:var(--ink); font:15px var(--sans); }
+    input[type=range] { width:180px; }
+    .legend { display:flex; flex-wrap:wrap; gap:18px; font-size:13px; margin-top:20px; }
+    .legend span::before { content:""; display:inline-block; width:20px; height:3px;
+      vertical-align:middle; margin-right:7px; background:var(--c); }
+    svg { display:block; width:100%; height:auto; margin-top:16px; }
+    figcaption { font-size:13px; color:var(--muted); margin-top:12px; }
+    .status { font-size:15px; margin:14px 0 0; }
+    table { border-collapse:collapse; width:100%; font:14px/1.5 system-ui,sans-serif; margin:22px 0; }
+    td,th { border-bottom:1px solid var(--line); text-align:left; padding:10px 12px; }
+    .small { font-size:15px; color:var(--muted); }
+    .report-reader { margin:36px 0; border:1px solid var(--line); background:white; }
+    .reader-ready .report-reader:not(.is-docked) { display:none; }
+    .state-figure { margin:30px auto; overflow:auto; }
+    .state-figure figcaption { margin-top:12px; }
+    .state-figure svg { background:white; }
+    .payload-figure { margin:30px auto; overflow:auto; }
+    .payload-figure figcaption { max-width:660px; margin-left:auto; margin-right:auto; }
+    .report-controls { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:12px; font:13px system-ui,sans-serif; }
+    .report-controls button,.report-page-link { border:1px solid var(--line); border-radius:4px; padding:8px 10px; background:var(--paper); color:var(--green); cursor:pointer; font:13px var(--sans); }
+    .report-reader iframe { display:block; width:100%; height:620px; border:0; background:white; }
+    .report-controls form { display:flex; align-items:center; gap:6px; }
+    .report-controls input[type=number] { width:58px; }
+    .report-controls .follow-chapters { display:flex; align-items:center; gap:6px; }
+    .site-header { position:sticky; top:0; z-index:20; }
+    .chapter-bar { display:flex; position:sticky; top:var(--topbar-height); z-index:12; padding:10px max(18px,calc((100vw - 1100px)/2));
+      border-bottom:1px solid var(--line); background:var(--paper); align-items:center; gap:10px; font-size:13px; }
+    .chapter-bar label { display:flex; align-items:center; gap:10px; min-width:0; }
+    #chapterPosition { font-size:12px; white-space:nowrap; }
+    .chapter-bar select { max-width:min(50vw,450px); border:0; padding:6px; background:transparent; color:var(--ink); font:13px var(--sans); }
+    .reader-button { border:1px solid var(--line); border-radius:4px; padding:7px 10px;
+      background:white; color:var(--green); cursor:pointer; font:13px system-ui,sans-serif; }
+    button:disabled { opacity:.45; cursor:default; }
+    .report-reader.is-docked { position:fixed; z-index:15; top:var(--reader-offset,120px); right:16px; bottom:66px; display:flex; flex-direction:column; width:clamp(360px,36vw,560px); margin:0; box-shadow:0 3px 25px #172c3520; }
+    .report-reader.is-docked iframe { flex:1 1 auto; height:auto; min-height:100px; }
+    .report-reader.is-docked .report-controls { flex:0 0 auto; }
+    [hidden] { display:none !important; }
+    :focus-visible { outline:2px solid var(--green); outline-offset:4px; }
+    html { scroll-padding-top:0; }
+    h2[id] { scroll-margin-top:var(--reader-offset,100px); }
+    @media(min-width:1101px) { body.report-open main { width:calc(100% - clamp(360px,36vw,560px) - 40px); max-width:none; margin-left:0; } body.report-open main > button.report-page-link[data-dock="true"] { margin-left:max(0px,calc((100% - var(--measure)) / 2)); } }
+    @media(max-width:1100px) { .report-reader.is-docked { top:auto; left:12px; right:12px; width:auto; height:72dvh; } }
+    @media(max-width:600px) { main{padding:28px 20px;} .eyebrow{margin-top:40px;}
+      .state-figure svg { min-width:620px; }
+      .payload-figure svg { min-width:620px; }
+      .plot-scroll svg { min-width:620px; }
+      .plot-scroll::before,.payload-figure::before,.state-figure::before { content:"Scroll across the figure →"; display:block; color:var(--muted); font-size:12px; margin-bottom:8px; }
+      body{font-size:17px;} h1{font-size:28px;} .demo{padding:14px 0;} h2{font-size:23px;} table{font-size:12px;} td,th{padding:8px 5px;}
+      .report-reader iframe{height:440px;} .report-controls{gap:8px;padding:8px;} .report-controls button{font-size:11px;}
+      .chapter-bar{padding:8px 12px;gap:8px;flex-wrap:wrap;}
+      .chapter-bar label{flex:1 1 calc(100% - 96px);width:calc(100% - 96px);}
+      #chapterPosition{display:none;}
+      .chapter-bar select{max-width:100%;width:100%;} }
+  </style>
+</head>
+<body>
+<a class="skip" href="#article">Skip to the article</a>
+<header class="site-header">
+  <a class="wordmark" href="../../">TorchLean <span>Verified Examples</span></a>
+  <div class="topbar-actions">
+    <a href="#lean-claims">Lean proofs</a>
+  </div>
+</header>
+<nav id="chapterBar" class="chapter-bar" aria-label="Chapter navigation" hidden>
+  <div class="chapter-report">
+    <button id="reportToggle" class="reader-button" type="button" aria-controls="nemotronReport" aria-pressed="false" hidden>Open PDF</button>
+    <button id="chapterPaper" class="reader-button" type="button" aria-controls="nemotronReport">p. 4</button>
+  </div>
+  <button id="previousChapter" class="reader-button" type="button" aria-label="Previous chapter">←</button>
+  <label for="chapterSelect"><span id="chapterPosition">Chapter</span><select id="chapterSelect"></select></label>
+  <button id="nextChapter" class="reader-button" type="button" aria-label="Next chapter">→</button>
+</nav>
+<main id="article">
+  <h1>Nemotron 3 Ultra: replaying a rounded state</h1>
+  <p class="article-meta">Robert Joseph George · TorchLean Verified Examples</p>
+  <p class="lede">After Moonshot AI's <a href="../../week-04-kimi-k3-specification/site/">Kimi K3</a>
+    in the last example, I wanted to look at an open-source model from a US team too.
+    NVIDIA's Nemotron 3 Ultra combines recurrent Mamba layers, attention, and routed experts in a
+    model with 550 billion parameters (55 billion of them active for each token) that supports a
+    million-token context. And NVIDIA released base, post-trained, and quantized checkpoints,
+    along with training datasets and recipes.
+    <a href="https://research.nvidia.com/labs/nemotron/Nemotron-3-Ultra/">Nemotron 3 Ultra release ↗</a></p>
+  <p>I want to work through one idea: keep an older checkpoint, and when we need the current
+    state, replay the recent inputs from it. Why bother replaying? NVIDIA explores it to cut the rounding error once the
+    state is stored in fewer bits, and that error matters because a recurrent layer keeps
+    overwriting its state, so rounding those numbers can affect later calculations.
+    Let's first check when replay gives us the same state, then use FloatLib to ask what
+    changes when we round the checkpoint.</p>
+  <p>NVIDIA's <a href="https://developer.nvidia.com/blog/creating-the-nvidia-nemotron-3-ultra-nvfp4-checkpoint-with-nvidia-model-optimizer/">account of quantizing Ultra</a>
+    makes the practical choices clear. A quantized model mixes several formats (the routed
+    experts use NVFP4, while the recurrent state cache uses FP16 with stochastic rounding), so
+    saving memory comes down to choosing what to round, where to round it, and how to keep the
+    rounding error small. Since we have the report and the implementation, I can follow those
+    choices into the equations and state the assumptions my proofs need.</p>
+  <p>A language model carries information forward as it reads. Attention does this by storing
+    keys and values for individual past tokens, while Mamba's state-space model (SSM) keeps a
+    tensor called the <em>state</em> and updates its entries with each new input. Nemotron uses
+    both. Its recurrent tensor keeps the same shape for the whole conversation, even though the
+    numbers in it change at every step.</p>
+  <figure class="state-figure">
+    <svg viewBox="0 0 780 200" role="img" aria-labelledby="stateFlowTitle stateFlowDescription">
+      <title id="stateFlowTitle">A recurrent layer updates its state once per token</title>
+      <desc id="stateFlowDescription">The initial state flows through three updates. Each update receives a new token and produces the state used by the next update.</desc>
+      <defs><marker id="stateArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#48718b"/></marker></defs>
+      <g fill="none" stroke="#48718b" stroke-width="2" marker-end="url(#stateArrow)">
+        <path d="M112 115H170"/><path d="M300 115H365"/><path d="M495 115H560"/><path d="M690 115H750"/>
+        <path d="M235 48V87"/><path d="M430 48V87"/><path d="M625 48V87"/>
+      </g>
+      <g fill="#e7f0f5" stroke="#b8cfdc"><rect x="170" y="89" width="130" height="52" rx="4"/><rect x="365" y="89" width="130" height="52" rx="4"/><rect x="560" y="89" width="130" height="52" rx="4"/></g>
+      <g fill="#243e4c" font-family="system-ui,sans-serif" font-size="15" text-anchor="middle">
+        <text x="68" y="119">Initial state</text><text x="235" y="119">Update</text><text x="430" y="119">Update</text><text x="625" y="119">Update</text>
+        <text x="235" y="37">Token 1</text><text x="430" y="37">Token 2</text><text x="625" y="37">Token 3</text>
+      </g>
+      <g fill="#51666d" font-family="system-ui,sans-serif" font-size="12" text-anchor="middle"><text x="332" y="168">State after token 1</text><text x="527" y="168">State after token 2</text><text x="730" y="168">Current state</text></g>
+    </svg>
+    <figcaption>Each update reads the previous state and the new input, and every arrow carries a
+      tensor of the same shape (not a growing list of all the earlier tokens).</figcaption>
+  </figure>
+  <p>In Nemotron 3 Ultra, those tensors span 48 Mamba blocks. Keeping them in FP32 takes
+    384 MiB per main-model sequence before any other allocations, and although each request’s
+    state has a fixed shape, that cost grows with the number of requests being served together.
+    So the <a href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Ultra-Technical-Report.pdf#page=44">report's §4.5</a>
+    saves that memory by storing the state in fewer bits, and to reduce the rounding error this
+    adds, it also explores keeping an older checkpoint and replaying the inputs since it was saved.
+    NVIDIA tested it in emulation on Nemotron 3 Super (the Ultra release doesn't use it yet).
+    I start with the memory calculation, then check when replay returns the same state and how
+    rounding a checkpoint affects later updates. In the example below you can change the storage
+    schedule and see why a smaller error budget need not mean a smaller actual error.</p>
+  <button class="report-page-link" type="button" data-page="44" data-dock="true" aria-controls="nemotronReport">Read the report beside this article · p. 44</button>
+
+  <aside id="nemotronReport" class="report-reader" aria-label="Nemotron 3 Ultra technical report reader">
+    <div class="report-controls">
+      <header class="pdf-pane-heading">
+        <span>NVIDIA report</span>
+        <div class="pdf-pane-actions">
+          <a id="nemotronExternal" class="reader-button" href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Ultra-Technical-Report.pdf#page=44" target="_blank" rel="noreferrer">Open PDF ↗</a>
+          <button id="closeReport" class="reader-button" type="button" hidden>Close ×</button>
+        </div>
+      </header>
+      <form id="reportPageForm" hidden>
+        <button id="reportPrevious" type="button" aria-label="Previous report page">←</button>
+        <label for="reportPage">Page</label><input id="reportPage" type="number" min="1" max="65" step="1" value="44" required>
+        <span>of 65</span><button type="submit">Go</button>
+        <button id="reportNext" type="button" aria-label="Next report page">→</button>
+        <label class="follow-chapters" for="followChapters"><input id="followChapters" type="checkbox"> Follow chapters</label>
+      </form>
+    </div>
+    <iframe id="nemotronPdf" title="NVIDIA Nemotron 3 Ultra technical report" loading="lazy"
+      src="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Ultra-Technical-Report.pdf#page=44&amp;view=FitH"></iframe>
+  </aside>
+
+  <h2 id="architecture" class="chapter-anchor" data-page="4">Counting the state and attention cache</h2>
+  <button class="report-page-link" type="button" data-page="4" data-dock="true" aria-controls="nemotronReport">Read Table 1 · p. 4</button>
+  <p>Ultra's <a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16/blob/77df655d5e9f8362164ed14dd8b48f8bce657498/config.json#L19-L128">released BF16 configuration</a>
+    lists 108 residual blocks: 48 Mamba blocks, 48 MoE blocks,
+    and 12 attention blocks. Mamba blocks hold recurrent state and attention blocks hold keys
+    and values. I transcribed their order as <code>releasedSchedule</code> (each entry names one residual
+    block), and Lean checks the counts.</p>
+  <p>Each <a href="https://arxiv.org/abs/2405.21060">Mamba-2</a> block has 256 heads, 64 value channels per head, and 128 state coordinates.
+    That gives a state tensor of shape <code>[256, 64, 128]</code>, and all 48 FP32 state
+    tensors together hold 384 MiB. On the attention side, each block has two KV heads of width
+    128, so the 12 blocks add 6144 bytes of FP8 keys and values for each token.</p>
+  <p>Mamba is a state-space layer: it updates
+    a fixed-size state using coefficients chosen from the current input. A mixture-of-experts
+    (MoE) block selects a few learned feed-forward transformations for each token. Attention
+    instead keeps keys, which future queries compare against, and values, which their attention
+    weights combine, so these three kinds of block have different storage needs.</p>
+  <p>Where does that 384 MiB come from? Let's count the entries. One Mamba head stores
+    \(64\times128=8{,}192\) entries, so 256 heads give 2,097,152 entries in a block, and at four
+    bytes per FP32 entry that's 8 MiB (here MiB means \(2^{20}\) bytes). Multiplying by 48 gives
+    384 MiB. The BF16 label on the model describes its weight representation, so don't read it as
+    the precision of every working state.</p>
+  <figure class="payload-figure">
+    <svg viewBox="0 0 780 350" role="img" aria-labelledby="payloadTitle payloadDescription">
+      <title id="payloadTitle">Recurrent-state payload stays fixed while the attention cache grows</title>
+      <desc id="payloadDescription">For one main-model sequence, FP32 recurrent states occupy 384 MiB and FP16 states occupy 192 MiB. The FP8 key and value cache grows by 6144 bytes per token, reaching those sizes at 65536 and 32768 tokens respectively. These are payload counts, not measured allocator use.</desc>
+      <g stroke="#e0e5e8" stroke-width="1"><path d="M85 58H725M85 126H725M85 194H725M85 262H725"/></g>
+      <g fill="none" stroke-width="2.5">
+        <path d="M85 262L725 58" stroke="#286fa2"/>
+        <path d="M85 160H725" stroke="#438260"/>
+        <path d="M85 211H725" stroke="#aa7540" stroke-dasharray="6 5"/>
+      </g>
+      <g fill="#fff" stroke-width="2"><circle cx="405" cy="160" r="5" stroke="#438260"/><circle cx="245" cy="211" r="5" stroke="#aa7540"/></g>
+      <g font-family="IBM Plex Sans,sans-serif" font-size="15" fill="#69737d">
+        <text x="85" y="28">Cache payload · MiB</text>
+        <text x="69" y="267" text-anchor="end">0</text><text x="69" y="199" text-anchor="end">256</text>
+        <text x="69" y="131" text-anchor="end">512</text><text x="69" y="63" text-anchor="end">768</text>
+        <text x="85" y="290" text-anchor="middle">0</text><text x="245" y="290" text-anchor="middle">32,768</text>
+        <text x="405" y="290" text-anchor="middle">65,536</text><text x="725" y="290" text-anchor="end">131,072 tokens</text>
+        <text x="490" y="150" fill="#438260">FP32 recurrent state · 384 MiB</text>
+        <text x="490" y="233" fill="#aa7540">FP16 recurrent state · 192 MiB</text>
+        <text x="520" y="60" fill="#286fa2">FP8 attention cache</text>
+      </g>
+    </svg>
+    <figcaption>Memory for one sequence. Recurrent state has a fixed number
+      of entries, while the attention cache adds keys and values for every token, and the circles mark
+      where the two payloads are equal. These counts leave out the serving system's other allocations.</figcaption>
+  </figure>
+  <p>The KV payload stays below the recurrent payload until 65,536 tokens, where the two meet
+    (<code>released_fp32_fp8_crossover</code> checks the exact boundary).
+    If you store the SSM state in FP16 instead, that boundary halves to 32,768 tokens. These counts cover the payload
+    for one main-model sequence. Convolution history, scale metadata, allocator padding, MTP, and
+    retained snapshots add to the serving system’s memory use.</p>
+  <p>Batch size matters here as much as sequence length: sixty-four active requests
+    with separate FP32 states already require \(64\times384\,\mathrm{MiB}=24\,\mathrm{GiB}\) for this payload alone.
+    Reducing the state to FP16 halves that arithmetic count, but it also changes what happens
+    every time an updated value is saved, which is why the rounding policy belongs in the
+    calculation below.</p>
+  <div class="proof"><a href="../Nemotron/Architecture/Dimensions.lean">Dimensions.lean</a>
+    <p>These formulas count tensor entries from the block schedule and dimensions, then multiply
+      by bytes per scalar. The same module checks the Mamba projection partition. It also checks
+      that using latent width 2048 rather than 8192 divides the routed-expert matrix parameter
+      count by four (the router, shared expert, and additional projections are outside that ratio).</p></div>
+
+<div id="lean-claims"></div>
+<pre data-lean-block="nemotron-architecture-1"></pre>
+<pre data-lean-block="nemotron-architecture-2"></pre>
+
+
+  <h2 id="replay" class="chapter-anchor" data-page="45">Recovering the state by replay</h2>
+  <p>Before replaying several tokens, let's run one prepared SSM update in Lean. We retain
+    <code>[10, 0]</code>, write <code>[2, 0]</code>, and read the first coordinate. The
+    output is 12. If you hover over the tensors and <code>step</code>, you can see how their dimensions
+    appear in the types.</p>
+  <pre data-lean-example="ssm"></pre>
+  <button class="report-page-link" type="button" data-page="45" data-dock="true" aria-controls="nemotronReport">Read report §4.5 · p. 45</button>
+  <p>So how do we get the current state without writing it after every token? We save it at an earlier point and keep the
+    inputs needed for the updates since then, and to recover the current state we start from that
+    checkpoint and run those updates again in order. Here \(s\) is the saved state and
+    \(u_1,\ldots,u_k\) are the prepared inputs (the values and coefficients consumed by the
+    recurrent update, after the earlier processing of each token). They aren't raw token IDs.
+    Replay a token ID through a changed projection or convolution and you won't necessarily get
+    back the prepared values used the first time.</p>
+  <p>In <a href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Ultra-Technical-Report.pdf#page=45">§4.5</a>,
+    the authors describe how they catch up from the older state:</p>
+  <blockquote class="source-quote"><p>we cache the input activations and apply activation replay to forward the state on-the-fly.</p></blockquote>
+  <p>Let's make that replay step precise. We have to retain the values the update consumed,
+    not resample them or regenerate them from a different state, and once those values are fixed
+    I can prove the replay identity for a general transition before looking at rounding.
+    (I'll use “scan” for applying that transition in order, carrying each updated state into
+    the next step.)</p>
+  <div class="diagram" aria-label="Checkpoint replay data flow">
+    <span>Stored checkpoint s</span><b aria-hidden="true">+</b><span>Pending inputs u₁ … uₖ</span>
+    <b aria-hidden="true">→</b><span>Same causal scan</span><b aria-hidden="true">→</b>
+    <span>Current state + outputs</span>
+  </div>
+  <div class="equation">current = scan(step, checkpoint, pending).state<br>
+    push(u): pending ← pending ++ [u]<br>
+    flush(Q): checkpoint ← Q(current); pending ← []</div>
+  <p>Replaying the old buffer and one new input gives the same result as recovering the current
+    state and then taking one more step. That's <code>observe_push</code> in Lean, and
+    <code>run_from_replay</code> extends the identity to a whole suffix, including every emitted
+    output. Both reuse the causal scan from the Kimi K3 example, so I didn't write a second one.</p>
+  <div class="proof">
+    <a href="../Nemotron/Cache/Replay.lean">Replay.lean</a>
+    <p>This replay identity holds for any deterministic transition and input list, as long as the
+      replay uses the same prepared inputs and arithmetic. Saving the state exactly preserves it
+      (<code>observe_flush_id_state</code>), while a lossy write replaces it with the quantizer’s
+      result (<code>observe_flush_state</code>), and a flush also clears the buffer’s earlier
+      output history.</p>
+  </div>
+  <p>If a step uses randomness, replay has to keep its random choices too, and once those choices
+    are fixed, the same deterministic identity applies. If you draw again on each replay, the question
+    becomes one about distributions, which needs a separate theorem that I haven't written.</p>
+  <p>Here's a small example you can check in your head: let the transition be \(s'=s+u\), the stored checkpoint
+    be 10, and the pending inputs be 2 and −3. Observing the buffer gives state 9. If we append
+    input 4 and replay from 10 we get 13, exactly as if we'd started from the observed state 9
+    and applied that one new update. But the identity depends on the order and contents of the
+    buffer, so it doesn't let us discard the −3 or replay a newly sampled substitute for it.</p>
+
+<pre data-lean-block="nemotron-replay-1"></pre>
+
+
+  <h2 id="error-budget" class="chapter-anchor" data-page="45">An error budget for checkpoint writes</h2>
+  <button class="report-page-link" type="button" data-page="45" data-dock="true" aria-controls="nemotronReport">Read cache assumptions · p. 45</button>
+  <p>A rounded checkpoint can differ from the reference state in every entry. How do we keep
+    track of that difference? Suppose one update bounds each coordinate error by \(L\) times the previous
+    allowance (with the prepared input held fixed), and each storage write adds at most
+    \(\delta\) to that allowance. Then running \(n\) updates before writing multiplies it by
+    \(L^n\) and adds one \(\delta\).</p>
+  <p>Writing \(E_j\) for the budget after the \(j\)th checkpoint gives the recurrence:</p>
+  <div class="math-display" data-tex="E_{j+1} = L^{n_{j+1}} E_j + \delta">Eⱼ₊₁ = L^(nⱼ₊₁) Eⱼ + δ</div>
+  <p>Here \(E_0\) is the error in the initial state and \(n_{j+1}\) is the number of
+    tokens in the next chunk. If each update shrinks or preserves a difference between states,
+    then \(0\le L\le1\), and after \(m\) writes we get:</p>
+  <div class="math-display" data-tex="E_m \le E_0 + m\delta">Eₘ ≤ E₀ + mδ, for 0 ≤ L ≤ 1.</div>
+  <p>So for \(E_0\ge0\), \(\delta\ge0\), and \(0\le L\le1\), you pay at most one \(\delta\) per
+    write. If updates can amplify a difference, the weighted recurrence still applies, but this
+    linear bound can fail. And even under the linear bound, moving the writes changes where their
+    errors enter the computation.</p>
+  <p>The factor \(L^n\) can make the weighted budget (a worst-case calculation, not a measurement
+    of an actual rounding error) much smaller than the count-only bound. With no initial error,
+    \(L=1/2\), a write allowance \(\delta=0.1\), and two chunks of two tokens, the first budget is
+    0.1 and the second is \(\frac14\times0.1+0.1=0.125\), because the older allowance has shrunk
+    through two updates before the new write contributes its own.</p>
+  <div class="proof">
+    <a href="../Nemotron/Cache/Error.lean">Error.lean</a>
+    <p><code>quantizedChunks_within_of_writes</code> works with arbitrary tensor shapes, sequence
+      lengths, and chunk partitions, and <code>checkpointBudget_le_count</code> bounds its budget
+      by the number of writes under the nonnegativity and retention assumptions above.</p>
+    <p>The <code>WritesWithin</code> premise asks for an error allowance at the states the
+      rounded execution actually writes, because floating-grid spacing grows with magnitude and no
+      single absolute cap can cover every unbounded real input. Fixed-grid quantizers can use the
+      stronger uniform premise in <code>quantizedChunks_within</code>.</p>
+    <p>Both executions receive the same prepared inputs, so if a perturbed state changes the next
+      sampled token, we'd need to control that change before using this comparison.</p>
+  </div>
+
+<details class="lean-result">
+  <summary>The checkpoint error theorem</summary>
+  <pre data-lean-block="nemotron-error-budget-1"></pre>
+</details>
+
+
+  <h2 id="storage-lab" class="chapter-anchor" data-page="45">Fewer writes can leave a larger error</h2>
+  <button class="report-page-link" type="button" data-page="45" data-dock="true" aria-controls="nemotronReport">Read the checkpoint study · p. 45</button>
+  <p><a href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Ultra-Technical-Report.pdf#page=45">Table 16</a>
+    reports emulated checkpointing experiments on Nemotron 3 Super, while the released
+    Ultra cache uses FP16 with stochastic rounding (described on page 46). For my example,
+    I use an integer grid so you can follow every rounding decision and isolate the effect of the
+    storage schedule (I'd need the report’s model and FP16 encoder to reproduce its
+    measurements).</p>
+  <p>I'd read the table one rounding policy at a time. With FP16 round-to-nearest, its reported
+    mean accuracy drop changes from 1.07% without checkpointing to 0.03% with period eight, but
+    with FP16 stochastic rounding the corresponding values are −0.26% and 0.19%. So checkpointing
+    helps several rows, though the table doesn't show it improving every policy.
+    Our example asks the related mathematical question: does reducing the number of writes
+    force a smaller terminal error for every input sequence?</p>
+  <p>No, and the example below shows why. It uses \(s'=as+u\) with nearest-even rounding to the integer grid, so
+    every write has absolute error at most ½. If you select the cancellation example, you'll see why fewer
+    writes need not decrease the actual terminal error, even when \(a=1\).</p>
+  <figure class="demo">
+    <div class="controls">
+      <label>Prepared inputs
+        <select id="example"><option value="ties">Repeated half-unit updates</option>
+          <option value="cancellation">Rounding errors that cancel</option>
+          <option value="mixed">Mixed signed updates</option></select></label>
+      <label>Checkpoint period <span id="periodText">2</span>
+        <input id="period" aria-label="Checkpoint period" type="range" min="1" max="8" value="2"></label>
+      <label>Retention a <span id="retentionText">1.00</span>
+        <input id="retention" aria-label="Retention factor" type="range" min="0" max="150" value="100"></label>
+    </div>
+    <div class="legend"><span style="--c:#20694e">Reference</span>
+      <span style="--c:var(--orange)">Write each token</span>
+      <span style="--c:var(--blue)">Checkpoint + replay</span></div>
+    <div class="plot-scroll"><svg id="plot" viewBox="0 0 820 280" role="img" aria-labelledby="plotTitle">
+      <title id="plotTitle">State trajectories under reference and quantized checkpoint schedules</title>
+    </svg></div>
+    <p class="status" id="result" aria-live="polite"></p>
+    <table><thead><tr><th>Schedule</th><th>Writes</th><th>Final state</th>
+      <th>Actual error</th><th>Weighted budget</th></tr></thead><tbody id="metrics"></tbody></table>
+    <figcaption>Dots on the blue curve mark storage writes. Between writes the pending inputs are replayed,
+      and the final partial chunk gets written too. Your browser draws this with JavaScript arithmetic,
+      while the two named rational counterexamples are proved in Lean with FloatLib's executable rounder.</figcaption>
+  </figure>
+  <p>My favourite example here is the cancellation sequence −0.9, −0.9, −0.5, −0.1, with exact sum −2.4. Writing each token
+    finishes at −2 (error 0.4), while writing every two tokens finishes at −3 (error 0.6).
+    Half the writes, and a bigger error! Both runs satisfy their error budgets. It's the signs of the rounding errors that explain the
+    difference: some cancel, and changing the schedule changes that cancellation, so fewer writes
+    need not reduce the actual final error. The report’s measurements are compatible with this
+    example.</p>
+  <div class="proof"><a href="../Nemotron/Cache/Rounding.lean">Rounding.lean</a>
+    <p>These are exact rational calculations using FloatLib’s nearest-even integer quantizer.
+      <code>fewer_writes_can_increase_error</code> checks the strict error inequality above, and
+      <code>repeated_ties_lose_updates</code> checks the other example, where two half-unit
+      additions rounded separately leave zero but rounding their sum once gives one.</p></div>
+
+<pre data-lean-block="nemotron-storage-lab-1"></pre>
+
+
+  <h2 id="tensor-core" class="chapter-anchor" data-page="3">The Mamba state update</h2>
+  <button class="report-page-link" type="button" data-page="3" data-dock="true" aria-controls="nemotronReport">Read architecture §2.1 · p. 3</button>
+  <p>Inside one recurrent head, the state is a matrix with one row per value channel and one
+    column per state coordinate (the tensor type records this as
+    <code>[valueDim, stateDim]</code>). For each token, the prepared input tells the head how much
+    old state to retain (\(a\)), what values to write (\(x\) and \(B\)), and how to read an
+    output (\(C\)).</p>
+  <div class="math-display" data-tex="S' = aS + xB^{\mathsf T}, \qquad y = S'C">S′ = aS + xBᵀ; y = S′C.</div>
+  <p>So the scalar \(a\) determines how much of the old state we retain, the outer product
+    \(xB^{\mathsf T}\) writes new information into the state, and multiplying by \(C\) reads an
+    output vector.</p>
+  <p>So what sensitivity factor does a Mamba update have? Start with two different states, \(S\) and \(T\), and apply the same prepared input to
+    both. When we subtract, their new input writes cancel:</p>
+  <div class="math-display" data-tex="\operatorname{update}(S,u)-\operatorname{update}(T,u)=a(S-T)">update(S,u) − update(T,u) = a(S − T).</div>
+  <p>Each coordinate difference is multiplied by \(a\), so \(|a|\le L\) gives the
+    sensitivity condition used in the error budget. <code>BoundedInput</code> pairs a prepared input
+    with evidence of that inequality, and the dimensions stay parameters throughout.</p>
+  <div class="proof"><a href="../Nemotron/SSM.lean">SSM.lean</a>
+    <p><code>update_sub_apply</code> checks the cancellation,
+      <code>update_within</code> bounds the remaining difference, and <code>checkpoint_error</code>
+      uses those results in the checkpoint theorem. The public <code>SSM.Sequence.run</code>
+      takes packed input tensors and returns a final state and one output row per token, and
+      <code>run_unstack</code> identifies each row with its scan output.</p></div>
+  <p>The model source gives us a reason for the retention bound. Its rate is
+    \(A=-\exp(\mathrm{logA})\) and a mathematical softplus gives a positive timestep \(\Delta\), so
+    \(a=\exp(\Delta A)\) lies between zero and one. I like this part: because the parameterization gives this bound
+    for every real log-rate, we can check it without looking at a single learned value.</p>
+  <div class="proof"><a href="../Nemotron/Architecture/Mamba2.lean">Mamba2.lean</a>
+    <p><code>prepareHead</code> shares each B/C group across its contiguous heads and scales B by Δ
+      before passing it to the SSM core. <code>prepareHead_bounded</code> checks the retention bound
+      and <code>updateHeads_within</code> lifts it to the tensor of all heads. As in the model
+      source, the step adds the D skip and reads the updated state before casting it for cache
+      storage.</p></div>
+  <p>I use the <a href="https://github.com/huggingface/transformers/blob/c8b25ab3af135bcfd9496eff3ef507303da17f15/src/transformers/models/nemotron_h/modeling_nemotron_h.py#L191-L249">pinned model implementation</a>
+    for these equations because the report’s cache section doesn't give the complete selective
+    SSM update. My adapter begins after projection and convolution, so connecting it to the full
+    decoder still needs proofs that I haven't written yet for gating, grouped normalization, and output projection, among
+    other operations. Its mathematical softplus also needs a refinement argument for PyTorch’s
+    finite-precision threshold branch.</p>
+
+  <h3>From state error to output error</h3>
+  <p>Does a small state error give a small output error? Not necessarily, if the read coefficients are
+    large. Say each state coordinate differs by at most \(e\) and both runs use the same read
+    vector \(C\). Then every output channel satisfies:</p>
+  <div class="math-display" data-tex="|y_i-\widehat y_i|\le e\sum_j |C_j|">|yᵢ − ŷᵢ| ≤ e ∑ⱼ |Cⱼ|.</div>
+  <p>You can't drop the absolute values. Suppose two read coefficients are 10 and −10.
+    Their sum is zero, but coordinate errors of +0.01 and −0.01 produce an output difference
+    of \(10\times0.01+(-10)\times(-0.01)=0.2\), because the two products have the same sign and
+    their errors add. With absolute values the bound is \(0.01\times(|10|+|-10|)=0.2\), which
+    covers that case.</p>
+  <p><code>SSM.read_within</code> follows from the tensor library's matrix-vector coordinate theorem and
+    mathlib’s absolute-sum inequality, and <code>step_output_within</code> also accounts for
+    retention in the next update. Both hold at arbitrary dimensions, even with an empty state axis.
+    To turn this formula into a small numerical bound, we'd need a bound on the sum of absolute
+    read coefficients. I haven't established one for learned weights. A logit bound would also
+    need to follow the error through gating, normalization, skip connections, and later blocks.</p>
+
+<details class="lean-result">
+  <summary>Retention and the grouped state update</summary>
+  <pre data-lean-block="nemotron-tensor-core-1"></pre>
+</details>
+<details class="lean-result">
+  <summary>State sensitivity and readout bounds</summary>
+  <pre data-lean-block="nemotron-tensor-core-2"></pre>
+</details>
+
+
+  <h2 id="rounding-boundary" class="chapter-anchor" data-page="46">Rounding theory and stored bits</h2>
+  <button class="report-page-link" type="button" data-page="46" data-dock="true" aria-controls="nemotronReport">Read the released cache policy · p. 46</button>
+  <p>For nearest-even rounding, FloatLib bounds the error by half a unit in the last place
+    (ULP), and <code>Cache.roundTensor_within</code> applies that theorem to each tensor entry, so
+    if we bound all those half-ULPs by \(\delta\), we get the storage allowance needed above. Near
+    zero, the theorem uses an absolute error bound that includes gradual underflow.</p>
+  <p>FloatLib’s real-valued grid has no upper exponent limit, so to connect it to stored bits, its
+    refinement theorems require finiteness premises (an overflowing result has no real value).
+    And since the released cache uses stochastic rounding, I also examine the local random
+    rounding choice and the assumptions needed to preserve its mean.</p>
+
+<pre data-lean-block="nemotron-rounding-boundary-1"></pre>
+
+
+  <h2 id="stochastic-writes" class="chapter-anchor" data-page="46">Stochastic rounding and the mean state</h2>
+  <button class="report-page-link" type="button" data-page="46" data-dock="true" aria-controls="nemotronReport">Read the stochastic cache policy · p. 46</button>
+  <p>Say you have a value 3.25 between grid points 3 and 4. Nearest rounding always chooses 3.
+    Stochastic rounding chooses 4 one quarter of the time and 3 the rest of the time, so the mean
+    is 3.25 even though each individual write changes the value. Since the state gets written
+    again and again, we care about both the average and the error along an individual run.</p>
+  <p>FloatLib's <code>roundQuot</code> chooses the upper integer when the entropy residue is
+    smaller than the discarded remainder. <code>roundQuot_sum</code> counts the choices made
+    by this executable rounder, and averaging them over uniform residues recovers the original
+    quotient.</p>
+  <div class="equation">
+    <span data-tex="\Pr(\mathrm{upper})=\frac{\mathrm{remainder}}{\mathrm{denominator}}">P(upper) = remainder / denominator</span><br>
+    <span data-tex="\mathbb{E}[Q(x)]=x">Mean rounded value = original value</span><br>
+    <span data-tex="\lvert Q(x)-x\rvert\le\text{grid spacing}">Absolute error of each write ≤ grid spacing</span>
+  </div>
+  <div class="proof"><a href="../Nemotron/Cache/Stochastic.lean">Stochastic.lean</a>
+    <p><code>roundTensor_mean</code> lifts this mean law to tensor coordinates, each with its own
+      sign and grid cell. It only asks that every coordinate sees uniform residues, so one shared
+      entropy word and independent words both work.
+      <code>Stochastic.roundTensor_within</code> bounds every outcome’s error by one grid spacing,
+      and with shared entropy those errors can be correlated even though each coordinate has the
+      right mean.</p>
+    <p>The entropy residues must be uniform, which isn't automatic: reducing a uniform fixed-width
+      word modulo an arbitrary denominator can bias them. Our adapter describes a local signed grid
+      cell for each coordinate, with an explicit quantum and denominator, so connecting it to the
+      released FP16 encoder still means checking saturation, overflow, flush-to-zero, and entropy
+      generation.</p>
+    <p>For example, a uniform three-bit word has eight possible values. Reducing it modulo
+      three gives residue zero for 0, 3, and 6, so that residue occurs with probability 3/8,
+      not 1/3, which would bias a rounding choice intended to occur one third of the time.
+      This denominator of three is an illustration (I'm not claiming NVIDIA's binary-format
+      encoder uses one), but it shows why the general theorem needs its uniform-residue premise.</p>
+  </div>
+  <p>Since the prepared SSM update multiplies the old state and adds a fixed write, updating a
+    nonempty ensemble of states and then averaging gives the update of their mean.
+    <code>update_mean</code> checks this identity, and <code>scan_mean</code> carries it through a
+    sequence when the actual ensemble’s storage perturbations have mean zero at every step.</p>
+  <p>That mean-zero condition must hold at the states reached during execution. Conditionally
+    unbiased rounding can establish it, but checking the encoder’s mean at one isolated input
+    isn't enough. And the inputs stay fixed throughout this argument. Nonlinear decoder layers
+    and changes in sampled tokens need their own analysis.</p>
+  <p>For the example 3.25, an unbiased write can leave an error of −0.25 or +0.75, and
+    averaging those errors with probabilities three quarters and one quarter gives zero.
+    But neither individual write is exact. To describe one run we still need its error
+    bound, and to describe the spread across runs we need a variance bound. A zero mean error
+    gives us neither, and it doesn't make the stored states identical either.</p>
+
+<details class="lean-result">
+  <summary>The stochastic-rounding theorems</summary>
+  <pre data-lean-block="nemotron-stochastic-writes-1"></pre>
+</details>
+
+  <h3>Why the mean doesn't survive every nonlinear map</h3>
+  <p>Let's carry the 3.25 example one step further and suppose a later calculation squares the
+    stored value. Three quarters of the writes return three and one quarter return four, so
+    the average stored value is 3.25, but the average square is</p>
+  <div class="equation"><span data-tex="\mathbb{E}[Q^2]=\tfrac34\,3^2+\tfrac14\,4^2=10.75\ne(3.25)^2=10.5625">The mean of a square need not equal the square of the mean.</span></div>
+  <p>The difference is 3/16, the variance of this rounded value. I made this square up
+    (it isn't one of Nemotron's decoder operations), but it shows that the mean-zero write error
+    hasn't disappeared: a nonlinear calculation can turn its spread into a change in the
+    mean output.</p>
+  <p>For the prepared SSM transition, fixed input coefficients make the update affine in
+    the state, so we can carry the mean through it. We can't reuse that argument unchanged
+    for nonlinear gates, normalization, or token selection, where we'd need to bound what
+    the next operation does to the rounding error, much as squaring did in this example.</p>
+
+
+
+  <h2 id="gradient-accumulation" class="chapter-anchor" data-page="12">Losing small gradient contributions in BF16</h2>
+  <button class="report-page-link" type="button" data-page="12" data-dock="true" aria-controls="nemotronReport">Read the first training divergence · p. 12</button>
+  <p><a href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Ultra-Technical-Report.pdf#page=12">The report's first training-divergence account</a>
+    describes a divergence after changing the output layer's local gradient
+    accumulation from FP32 to BF16. Each multi-token prediction head's loss had a weight of
+    0.05, the small contributions to the shared output layer were lost, and returning to the
+    FP32 recipe re-stabilized training. So let's look at how a representable contribution can
+    disappear during accumulation.</p>
+  <p>Multi-token prediction asks additional heads to predict farther-ahead targets during
+    training, and their losses contribute gradients to shared parameters, including the output
+    layer. Multiplying each head's loss by 0.05 reduces its gradient contribution before
+    accumulation, so the accumulator has to preserve small additions beside larger values.
+    Choosing a precision only from the size of each contribution isn't enough.</p>
+  <p>Take a running sum of 256 and add 1. The next BF16 value above 256 is 258, so 257 falls
+    halfway between them, and nearest-even rounding returns 256. So in BF16, 256 + 1 = 256,
+    and the 1 is just gone!
+    Binary32 represents 257 exactly, and I checked both equalities in Lean with FloatLib’s
+    finite-format arithmetic.</p>
+  <div class="equation"><span data-tex="\operatorname{add}_{\mathrm{BF16}}(256,1)=256">BF16: 256 + 1 → 256</span><br><span data-tex="\operatorname{add}_{\mathrm{binary32}}(256,1)=257">binary32: 256 + 1 → 257</span></div>
+  <p>The contribution 1 is itself representable in BF16, so the loss happens when it's
+    added to the larger running sum (these numbers illustrate that mechanism and aren't gradients
+    recorded from NVIDIA’s run). There's also a second training divergence in the report, but its
+    cause remained undetermined, and I don't have an explanation for it either.</p>
+  <div class="proof"><a href="../Nemotron/Training/Accumulation.lean">Accumulation.lean</a>
+    <p>For whole gradient tensors, <code>accumulate_within</code> reuses FloatLib’s reduction-tree
+      error theorem: we specify the addition order and bound the rounding error at each addition,
+      and the theorem then bounds the difference from the exact sum of the interpreted input
+      tensors.
+      A uniform allowance \(\delta\) gives \(\mathrm{nodeCount}\,\delta\).</p>
+    <p>The theorem accepts arbitrary tensor shapes and scalar carriers. Applying it to a backend
+      requires evidence of that backend’s addition order, and errors already present in the input
+      gradients must be accounted for separately.</p>
+  </div>
+
+<details class="lean-result">
+  <summary>The accumulation theorem and BF16 witness</summary>
+  <pre data-lean-block="nemotron-gradient-accumulation-1"></pre>
+</details>
+
+
+  <h2 id="speculative-rollback" class="chapter-anchor" data-page="48">Rolling back rejected draft tokens</h2>
+  <button class="report-page-link" type="button" data-page="48" data-dock="true" aria-controls="nemotronReport">Read speculative state rollback · p. 48</button>
+  <p>Suppose a draft proposes three tokens but the main model accepts only the first. Then the next
+    computation has to start from the state after that first token, because a state incorporating
+    the two rejected tokens would describe the wrong prefix.</p>
+  <p>So how do you get back to that state? Attention can discard the keys and values belonging to a rejected suffix, but a Mamba update
+    overwrites the fixed-size recurrent state, so discarding token records alone can't restore
+    it. Instead, <a href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Ultra-Technical-Report.pdf#page=48">NVIDIA retains a snapshot at every draft step</a>.
+    I include the initial state in the snapshot
+    sequence too, so rejecting the entire draft selects that state.</p>
+  <div class="diagram" aria-label="Restoring an accepted draft prefix">
+    <span>Initial state</span><b aria-hidden="true">→</b><span>Snapshot after draft 1</span>
+    <b aria-hidden="true">→</b><span>Snapshot after draft 2</span><b aria-hidden="true">→</b>
+    <span>Snapshot after draft 3</span></div>
+  <div class="proof"><a href="../Nemotron/Cache/Speculation.lean">Speculation.lean</a>
+    <p><code>restore_eq_prefix</code> identifies the selected snapshot with the state obtained by
+      running the accepted prefix. In <code>run_after_restore</code>, continuing from that snapshot
+      gives the same final state and committed outputs as running the accepted prefix followed by
+      the continuation.</p>
+    <p><code>SSM.Sequence.snapshots</code> exposes the states in a
+      <code>[tokens + 1, valueDim, stateDim]</code> tensor. Row zero is the initial state, and
+      <code>snapshots_unstack</code> identifies each bounded row with its corresponding prefix.</p>
+  </div>
+  <p>These rollback laws use the same causal scan and apply to any deterministic transition,
+    while a random transition must retain its choices in the state or prepared inputs for exact
+    replay. As for the speculative acceptance sampler, its probability law is a separate
+    obligation, and I haven't proved it here.</p>
+<details class="lean-result">
+  <summary>The rollback theorems</summary>
+  <pre data-lean-block="nemotron-speculative-rollback-1"></pre>
+</details>
+
+
+
+  <h2 id="conclusion" class="chapter-anchor">Conclusion</h2>
+    <p>I'd love to extend this to the token scores of the released model. That means following
+      the error from the actual storage writes through replay and the rest of the decoder, then
+      comparing it with the gap between the winning token and its competitors. And I think the
+      cancellation example is a good reason to measure the actual error as well as carry a worst-case
+      bound, since reducing that bound doesn't guarantee a smaller error on every input.</p>
+    <p>The replay proof takes the transition and checkpoint schedule as parameters, so if you're
+      trying a different recurrent model or storage format, we can reuse that argument and
+      work on the numerical assumptions specific to your update. I'd be happy to compare
+      examples, so send me yours :)</p>
+  <section id="references" class="article-references" aria-labelledby="referencesHeading">
+    <h2 id="referencesHeading">References</h2>
+    <ul>
+      <li>NVIDIA. <a href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-Ultra-Technical-Report.pdf">Nemotron 3 Ultra: Open, Efficient Mixture-of-Experts Hybrid Mamba-Transformer Model for Agentic Reasoning</a>, 2026.
+        Architecture in §2.1; cache experiments in §4.5; training divergence in §2.7; speculative rollback in §5.1.</li>
+      <li>Tri Dao and Albert Gu. <a href="https://arxiv.org/abs/2405.21060">Transformers are SSMs: Generalized Models and Efficient Algorithms Through Structured State Space Duality</a>, 2024. Mamba-2.</li>
+      <li>NVIDIA. <a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16/blob/77df655d5e9f8362164ed14dd8b48f8bce657498/config.json">Released BF16 configuration</a>.
+        The block order and dimensions used in our memory calculation.</li>
+      <li>Hugging Face Transformers. <a href="https://github.com/huggingface/transformers/blob/c8b25ab3af135bcfd9496eff3ef507303da17f15/src/transformers/models/nemotron_h/modeling_nemotron_h.py">Nemotron-H implementation</a>.
+        The pinned coefficient preparation and recurrent update used by the Lean adapter.</li>
+      <li>NVIDIA. <a href="https://developer.nvidia.com/blog/creating-the-nvidia-nemotron-3-ultra-nvfp4-checkpoint-with-nvidia-model-optimizer/">Creating the NVIDIA Nemotron 3 Ultra NVFP4 Checkpoint with NVIDIA Model Optimizer</a>, 2026.
+        The quantization choices in the released model.</li>
+    </ul>
+  </section>
+</main>
+<script>
+  const sequences = {ties:[.5,.5,.5,.5,.5,.5,.5,.5],
+    cancellation:[-.9,-.9,-.5,-.1], mixed:[.4,.7,-.2,.5,-.8,.3,.6,-.4]};
+  const el = id => document.getElementById(id);
+  function roundEven(x) {
+    const base = Math.floor(x), frac = x - base;
+    if (Math.abs(frac - .5) < 1e-12) return base % 2 === 0 ? base : base + 1;
+    return frac < .5 ? base : base + 1;
+  }
+  function trajectory(inputs,a,period) {
+    let checkpoint=0,pending=[],budget=0,writes=0;
+    const values=[0],sites=[];
+    inputs.forEach((u,i) => {
+      pending.push(u);
+      let current=pending.reduce((s,x)=>a*s+x,checkpoint);
+      if(pending.length===period || i===inputs.length-1) {
+        current=roundEven(current); budget=Math.pow(a,pending.length)*budget+.5;
+        checkpoint=current; pending=[]; writes++; sites.push(i+1);
+      }
+      values.push(current);
+    });
+    return {values,budget,writes,sites};
+  }
+  function fmt(x) { return Math.abs(x)<1e-10?'0':Number(x.toFixed(4)).toString(); }
+  function update() {
+    const inputs=sequences[el('example').value],a=Number(el('retention').value)/100;
+    const period=Number(el('period').value),reference=[0];
+    inputs.forEach(x=>reference.push(a*reference.at(-1)+x));
+    const every=trajectory(inputs,a,1),chosen=trajectory(inputs,a,period);
+    el('periodText').textContent=period;el('retentionText').textContent=a.toFixed(2);
+    const terminal=reference.at(-1),e1=Math.abs(every.values.at(-1)-terminal);
+    const e2=Math.abs(chosen.values.at(-1)-terminal);
+    el('result').textContent=`Inputs: ${inputs.join(', ')}. Retention ${a<=1?'is nonexpansive':'amplifies old error'}.`;
+    el('metrics').innerHTML=[['Each token',every,e1],['Checkpoint + replay',chosen,e2]].map(
+      ([name,t,e])=>`<tr><td>${name}</td><td>${t.writes}</td><td>${fmt(t.values.at(-1))}</td><td>${fmt(e)}</td><td>${fmt(t.budget)}</td></tr>`).join('');
+    const series=[{v:reference,c:'#20694e'},{v:every.values,c:'#b8612a'},
+      {v:chosen.values,c:'#286fa2'}];
+    const all=series.flatMap(s=>s.v),lo=Math.min(...all),hi=Math.max(...all);
+    const padding=Math.max(.5,(hi-lo)*.15),min=lo-padding,max=hi+padding;
+    const px=i=>52+i*730/inputs.length,py=v=>238-(v-min)*208/(max-min);
+    let svg='<title id="plotTitle">State trajectories under reference and quantized checkpoint schedules</title>';
+    for(let k=0;k<=4;k++) {const v=min+(max-min)*k/4,y=py(v);
+      svg+=`<line x1="52" x2="782" y1="${y}" y2="${y}" stroke="#e4e9e5"/><text x="44" y="${y+4}" text-anchor="end" font-size="11" fill="#51666d">${fmt(v)}</text>`;}
+    for(let i=0;i<=inputs.length;i++) svg+=`<text x="${px(i)}" y="263" text-anchor="middle" font-size="12" fill="#51666d">${i}</text>`;
+    series.forEach(s=>{svg+=`<polyline points="${s.v.map((v,i)=>`${px(i)},${py(v)}`).join(' ')}" fill="none" stroke="${s.c}" stroke-width="2.5"/>`;});
+    chosen.sites.forEach(i=>{svg+=`<circle cx="${px(i)}" cy="${py(chosen.values[i])}" r="4.5" fill="#286fa2" stroke="white" stroke-width="1"/>`;});
+    svg+='<text x="782" y="278" text-anchor="end" font-size="12" fill="#51666d">tokens</text>';
+    el('plot').innerHTML=svg;
+  }
+  ['example','period','retention'].forEach(id=>el(id).addEventListener('input',update));
+  update();
+  function setupReportReader() {
+    const pane=el('nemotronReport'),toggle=el('reportToggle'),close=el('closeReport');
+    const pageInput=el('reportPage'),previous=el('reportPrevious'),next=el('reportNext');
+    const follow=el('followChapters');
+    let frame=el('nemotronPdf'),open=false,opener=null,currentPage=44;
+    const report=new URL(frame.src);
+    const setOpen=(value,returnFocus=false) => {
+      if(value===open)return;
+      const readingLine=el('chapterBar').getBoundingClientRect().bottom+30;
+      const anchor=[...document.querySelectorAll('main > p,main > h2')].find(node=>node.getBoundingClientRect().bottom>=readingLine);
+      const offset=anchor?.getBoundingClientRect().top||0;
+      if(value)opener=document.activeElement;
+      open=value;pane.classList.toggle('is-docked',value);document.body.classList.toggle('report-open',value);
+      toggle.setAttribute('aria-pressed',String(value));toggle.textContent=value?'Close PDF':'Open PDF';close.hidden=!value;
+      if(value){frame.loading='eager';close.focus({preventScroll:true});}else if(returnFocus&&opener?.isConnected)opener.focus({preventScroll:true});
+      if(anchor&&matchMedia('(min-width:1101px)').matches)requestAnimationFrame(()=>scrollBy({top:anchor.getBoundingClientRect().top-offset,behavior:'instant'}));
+    };
+    const selectPage=() => {
+      pageInput.value=String(currentPage);previous.disabled=currentPage===1;next.disabled=currentPage===65;
+      el('nemotronExternal').href=`${report.origin}${report.pathname}#page=${currentPage}`;
+      document.querySelectorAll('.report-page-link').forEach(item=>item.setAttribute('aria-pressed',String(Number(item.dataset.page)===currentPage)));
+    };
+    const showPage=(page,{dock=false}={}) => {
+      if(!Number.isInteger(page)||page<1||page>65)return;
+      if(dock)setOpen(true);
+      if(currentPage!==page){
+        report.hash=`page=${page}&view=FitH`;
+        // Native PDF viewers may ignore a new fragment on an existing iframe.
+        const replacement=frame.cloneNode(false);replacement.loading='eager';replacement.src=report.href;
+        frame.replaceWith(replacement);frame=replacement;currentPage=page;
+      }
+      selectPage();
+    };
+    document.querySelectorAll('.report-page-link').forEach(button=>{
+      if(button.dataset.dock==='true')button.textContent=`PDF · p. ${button.dataset.page}`;
+      button.addEventListener('click',()=>showPage(Number(button.dataset.page),{dock:button.dataset.dock==='true'}));
+    });
+    toggle.addEventListener('click',()=>{
+      if(open)setOpen(false,true);
+      else showPage(Number(el(el('chapterSelect').value)?.dataset.page)||currentPage,{dock:true});
+    });
+    close.addEventListener('click',()=>setOpen(false,true));
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&open)setOpen(false,true);});
+    el('reportPageForm').addEventListener('submit',event=>{
+      event.preventDefault();if(pageInput.reportValidity())showPage(Number(pageInput.value));
+    });
+    previous.addEventListener('click',()=>showPage(currentPage-1));next.addEventListener('click',()=>showPage(currentPage+1));
+    document.addEventListener('chapterchange',event=>{
+      if(follow.checked&&open)showPage(Number(event.detail.heading.dataset.page));
+    });
+    follow.addEventListener('change',()=>{
+      const heading=document.getElementById(el('chapterSelect').value);
+      if(follow.checked&&heading)showPage(Number(heading.dataset.page));
+    });
+    toggle.hidden=false;el('reportPageForm').hidden=false;selectPage();
+    document.body.classList.add('reader-ready');
+    return {showPage};
+  }
+
+  function setupBookNavigation(reader) {
+    const bar=el('chapterBar'),select=el('chapterSelect');
+    const headings=[...document.querySelectorAll('main > h2.chapter-anchor')];
+    let currentIndex=-1,scheduled=false;
+    headings.forEach((heading,index)=>select.add(new Option(`${index+1}. ${heading.textContent}`,heading.id)));
+    const activate=index=>{
+      if(currentIndex===index)return;
+      currentIndex=index;const heading=headings[index];select.value=heading.id;
+      el('chapterPosition').textContent=`${index+1} / ${headings.length}`;
+      el('previousChapter').disabled=index===0;el('nextChapter').disabled=index===headings.length-1;
+      el('chapterPaper').hidden=!heading.dataset.page;
+      if(heading.dataset.page)el('chapterPaper').textContent=`p. ${heading.dataset.page}`;
+      document.dispatchEvent(new CustomEvent('chapterchange',{detail:{heading}}));
+    };
+    const navigate=index=>{
+      index=Math.max(0,Math.min(headings.length-1,index));
+      history.replaceState(null,'',`#${headings[index].id}`);
+      headings[index].scrollIntoView({behavior:'instant',block:'start'});activate(index);
+    };
+    select.addEventListener('change',()=>navigate(headings.findIndex(heading=>heading.id===select.value)));
+    el('previousChapter').addEventListener('click',()=>navigate(currentIndex-1));
+    el('nextChapter').addEventListener('click',()=>navigate(currentIndex+1));
+    el('chapterPaper').addEventListener('click',()=>{
+      const page=headings[currentIndex].dataset.page;
+      if(page)reader.showPage(Number(page),{dock:true});
+    });
+    const updateChapter=()=>{
+      const line=bar.getBoundingClientRect().bottom+36;
+      let index=0;headings.forEach((heading,i)=>{if(heading.getBoundingClientRect().top<=line)index=i;});
+      if(scrollY+innerHeight>=document.documentElement.scrollHeight-2)index=headings.length-1;
+      activate(index);scheduled=false;
+    };
+    const schedule=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(updateChapter);}};
+    bar.hidden=false;
+    const masthead=document.querySelector('.site-header');
+    const measure=()=>{document.documentElement.style.setProperty('--topbar-height',`${masthead.offsetHeight}px`);document.documentElement.style.setProperty('--reader-offset',`${masthead.offsetHeight+bar.offsetHeight+24}px`);schedule();};
+    if(window.ResizeObserver){const observer=new ResizeObserver(measure);observer.observe(bar);observer.observe(masthead);}
+    window.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',measure);
+    measure();updateChapter();
+  }
+
+  const reportReader=setupReportReader();
+  setupBookNavigation(reportReader);
+</script>
+</body>
+</html>

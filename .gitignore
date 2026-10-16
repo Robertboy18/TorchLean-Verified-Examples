@@ -1,0 +1,8 @@
+.lake/
+build/
+.venv-site/
+__pycache__/
+*.pyc
+.DS_Store
+week-03-gpt-training/data/
+week-03-gpt-training/artifacts/

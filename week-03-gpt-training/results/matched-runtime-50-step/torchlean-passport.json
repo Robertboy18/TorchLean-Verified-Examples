@@ -1,0 +1,60 @@
+{"width": 768,
+ "weighted_objective_support_theorem":
+ "TorchLeanGPT.weighted_rows_eq_of_eq_on_support",
+ "warmup_steps": 10,
+ "vocab": 50257,
+ "validation_tokens": 108185,
+ "validation_target_mask":
+ "week-03-gpt-training/data/smol-smoltalk-10m/val.mask",
+ "validation_shard": "week-03-gpt-training/data/smol-smoltalk-10m/val.bin",
+ "validation_records_content_hash64": 13984063227218770629,
+ "validation_mask_content_hash64": 5304932956714801655,
+ "validation_dialogue_records":
+ "week-03-gpt-training/data/smol-smoltalk-10m/val.records",
+ "validation_content_hash64": 10431844325209035229,
+ "training_target_theorem": "TorchLeanGPT.causal_window_target_is_next_token",
+ "training_target_mask_theorem":
+ "TorchLeanGPT.causal_window_mask_is_next_target",
+ "training_resume_theorem": "TorchLeanGPT.Training.resume_eq_uninterrupted",
+ "train_tokens": 11891815,
+ "train_target_mask": "week-03-gpt-training/data/smol-smoltalk-10m/train.mask",
+ "train_shard": "week-03-gpt-training/data/smol-smoltalk-10m/train.bin",
+ "train_records_content_hash64": 3673038632725363125,
+ "train_mask_content_hash64": 16060331144500272338,
+ "train_dialogue_records":
+ "week-03-gpt-training/data/smol-smoltalk-10m/train.records",
+ "train_content_hash64": 2988169859519937022,
+ "stored_parameters": 124412160,
+ "schema": "torchlean.gpt-training.passport.v2",
+ "scheduled_training_tokens": 307200,
+ "scalar_type": "Float",
+ "saved_checkpoint": null,
+ "runtime_boundary":
+ "The theorem names refer to specification-level results; device and backend_profile identify the execution path.",
+ "resumed_training_checkpoint": null,
+ "requested_token_budget": null,
+ "preset": "gpt2-small",
+ "peak_learning_rate": 0.00003,
+ "optimizer_steps": 50,
+ "objective": "dialogue-bounded-assistant-next-token",
+ "minimum_learning_rate": 0.000003,
+ "loaded_checkpoint":
+ "week-03-gpt-training/artifacts/gpt2-small-2.5b-continuation-20260806/final-parameters.tlf32",
+ "learning_rate_schedule": "linear-warmup-cosine",
+ "lean_version": "4.33.0",
+ "layers": 12,
+ "heads": 12,
+ "fresh_residual_projection_standard_deviation": 0.004082,
+ "fresh_parameter_standard_deviation": 0.02,
+ "dialogue_record_selector_theorem":
+ "TorchLeanGPT.DialogueRecords.targetRowEnabled_eq_true_iff",
+ "dialogue_record_bound_theorem":
+ "TorchLeanGPT.DialogueRecords.target_index_lt_record_end",
+ "dialogue_padding_theorem":
+ "TorchLeanGPT.DialogueRecords.not_target_row_of_record_end_le",
+ "device": "cuda",
+ "context": 1024,
+ "causal_attention_theorem":
+ "TorchLeanGPT.causal_attention_blocks_future_forward_and_backward",
+ "batch": 6,
+ "backend_profile": "checked_cuda"}

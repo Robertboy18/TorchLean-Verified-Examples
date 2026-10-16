@@ -1,0 +1,20 @@
+[TorchLean] arithmetic: Lean Float (IEEE-754 binary64)
+[TorchLean] execution: eager
+[TorchLean] device: cuda
+TorchLean GPT decoding benchmark
+benchmark_torchlean_gpt_cache: loading BPE tokenizer vocabulary=week-03-gpt-training/data/tinyshakespeare/vocab.json merges=week-03-gpt-training/data/tinyshakespeare/merges.txt
+benchmark_torchlean_gpt_cache: reading BPE vocab.json
+benchmark_torchlean_gpt_cache: parsing BPE vocab.json chars=1042301
+benchmark_torchlean_gpt_cache: parsed BPE vocabulary entries=50257
+benchmark_torchlean_gpt_cache: reading BPE merges.txt
+benchmark_torchlean_gpt_cache: parsed BPE merges=50000
+benchmark_torchlean_gpt_cache: building BPE lookup maps
+benchmark_torchlean_gpt_cache: loaded BPE tokenizer vocabulary=50257 merges=50000
+prompt_tokens=8 requested_tokens=16 generated_tokens=16 top_k=1 repeat_penalty=1.050000 repeat_window=64
+full_prefix_ms=26637.215889 full_prefix_tok_s=0.600663
+cached_prefill_ms=75.348031 cached_generation_ms=333.837375 cached_total_tok_s=39.102079
+end_to_end_speedup=65.098157x
+generated_tokens_equal=true
+full_prefix_ids=[198, 198, 198, 11, 198, 11, 198, 19458, 11, 13753, 13, 20273, 31222, 47381, 28951, 43693]
+cached_ids=[198, 198, 198, 11, 198, 11, 198, 19458, 11, 13753, 13, 20273, 31222, 47381, 28951, 43693]
+exit 0 seconds 358

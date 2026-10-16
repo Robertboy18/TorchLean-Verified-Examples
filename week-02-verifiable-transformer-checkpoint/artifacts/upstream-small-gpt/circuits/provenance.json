@@ -1,0 +1,87 @@
+{
+  "upstream_repo": "https://github.com/neelsomani/verifiable-transformers",
+  "upstream_commit": "8e3c54bad2494c17c91109fdb58cf9e2f1c98efc",
+  "device": "cpu",
+  "python": "3.12.13",
+  "torch": "2.6.0+cu124",
+  "transformers": "4.49.0",
+  "z3": "5.3.0",
+  "sha256": {
+    "checkpoint-final/model.safetensors": "f5b04594e8a0d9f833bd041e3a239bd865fc502819fc2eb0765e8119c3955b07",
+    "smt_weights.json": "ab61ac5dce70292ab9fa4dcd5265d98e04c34c5d89b809384ab297ef9e7abc34"
+  },
+  "tasks": {
+    "quote_close": {
+      "extract_command": [
+        "python",
+        "scripts/small/extract.py",
+        "--model_path",
+        "artifacts/upstream-small-gpt/checkpoint-final",
+        "--task",
+        "quote_close",
+        "--threshold_sweep",
+        "--output_dir",
+        "artifacts/upstream-small-gpt/circuits/quote_close"
+      ],
+      "verify_command": [
+        "python",
+        "scripts/small/verify.py",
+        "--task",
+        "quote_close",
+        "--sanity_check",
+        "--checkpoint",
+        "artifacts/upstream-small-gpt/checkpoint-final",
+        "--weights_path",
+        "artifacts/upstream-small-gpt/smt_weights.json",
+        "--circuit_path",
+        "artifacts/upstream-small-gpt/circuits/quote_close/circuit.json",
+        "--output_dir",
+        "artifacts/upstream-small-gpt/circuits/quote_close/verification",
+        "--properties",
+        "functional_equivalence",
+        "edge_necessity",
+        "continuous_robustness"
+      ],
+      "seconds": {
+        "extract": 95.5,
+        "verify": 913.0
+      }
+    },
+    "bracket_type": {
+      "extract_command": [
+        "python",
+        "scripts/small/extract.py",
+        "--model_path",
+        "artifacts/upstream-small-gpt/checkpoint-final",
+        "--task",
+        "bracket_type",
+        "--threshold_sweep",
+        "--output_dir",
+        "artifacts/upstream-small-gpt/circuits/bracket_type"
+      ],
+      "verify_command": [
+        "python",
+        "scripts/small/verify.py",
+        "--task",
+        "bracket_type",
+        "--sanity_check",
+        "--checkpoint",
+        "artifacts/upstream-small-gpt/checkpoint-final",
+        "--weights_path",
+        "artifacts/upstream-small-gpt/smt_weights.json",
+        "--circuit_path",
+        "artifacts/upstream-small-gpt/circuits/bracket_type/circuit.json",
+        "--output_dir",
+        "artifacts/upstream-small-gpt/circuits/bracket_type/verification",
+        "--properties",
+        "functional_equivalence",
+        "edge_necessity",
+        "continuous_robustness"
+      ],
+      "seconds": {
+        "extract": 133.9,
+        "verify": 926.6
+      }
+    }
+  }
+}

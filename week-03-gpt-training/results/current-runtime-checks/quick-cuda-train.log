@@ -1,0 +1,247 @@
+[TorchLean] arithmetic: Lean Float (IEEE-754 binary64)
+[TorchLean] execution: eager
+[TorchLean] device: cuda
+TorchLean GPT-style training
+preset=quick
+model=context 16, vocab 50257, width 64, heads 4, layers 2
+parameters=3317184
+device=cuda profile=libtorch_cuda
+tokens=train 304223, validation 33803
+schedule=steps 200, tokens/update 64, total 12800
+step=0 validation_loss=10.813918
+step=1 train_loss=10.841890 learning_rate=0.000300 step_ms=98 tokens_per_second=653.061224
+step=2 train_loss=10.839831 learning_rate=0.000300 step_ms=36 tokens_per_second=1777.777778
+step=3 train_loss=10.793398 learning_rate=0.000300 step_ms=37 tokens_per_second=1729.729730
+step=4 train_loss=10.768107 learning_rate=0.000300 step_ms=35 tokens_per_second=1828.571429
+step=5 train_loss=10.737154 learning_rate=0.000300 step_ms=38 tokens_per_second=1684.210526
+step=6 train_loss=10.688306 learning_rate=0.000300 step_ms=37 tokens_per_second=1729.729730
+step=7 train_loss=10.674222 learning_rate=0.000299 step_ms=37 tokens_per_second=1729.729730
+step=8 train_loss=10.710728 learning_rate=0.000299 step_ms=38 tokens_per_second=1684.210526
+step=9 train_loss=10.696656 learning_rate=0.000299 step_ms=37 tokens_per_second=1729.729730
+step=10 train_loss=10.641085 learning_rate=0.000299 step_ms=38 tokens_per_second=1684.210526
+step=11 train_loss=10.602088 learning_rate=0.000298 step_ms=37 tokens_per_second=1729.729730
+step=12 train_loss=10.581525 learning_rate=0.000298 step_ms=35 tokens_per_second=1828.571429
+step=13 train_loss=10.625276 learning_rate=0.000298 step_ms=34 tokens_per_second=1882.352941
+step=14 train_loss=10.543747 learning_rate=0.000297 step_ms=36 tokens_per_second=1777.777778
+step=15 train_loss=10.491828 learning_rate=0.000297 step_ms=35 tokens_per_second=1828.571429
+step=16 train_loss=10.503853 learning_rate=0.000296 step_ms=32 tokens_per_second=2000.000000
+step=17 train_loss=10.466660 learning_rate=0.000296 step_ms=32 tokens_per_second=2000.000000
+step=18 train_loss=10.366812 learning_rate=0.000295 step_ms=35 tokens_per_second=1828.571429
+step=19 train_loss=10.450221 learning_rate=0.000295 step_ms=35 tokens_per_second=1828.571429
+step=20 train_loss=10.385866 learning_rate=0.000294 step_ms=35 tokens_per_second=1828.571429
+step=21 train_loss=10.337395 learning_rate=0.000293 step_ms=36 tokens_per_second=1777.777778
+step=22 train_loss=10.403142 learning_rate=0.000293 step_ms=34 tokens_per_second=1882.352941
+step=23 train_loss=10.341725 learning_rate=0.000292 step_ms=36 tokens_per_second=1777.777778
+step=24 train_loss=10.346518 learning_rate=0.000291 step_ms=35 tokens_per_second=1828.571429
+step=25 train_loss=10.275749 validation_loss=10.308296 learning_rate=0.000291 step_ms=35 tokens_per_second=1828.571429
+step=26 train_loss=10.331462 learning_rate=0.000290 step_ms=33 tokens_per_second=1939.393939
+step=27 train_loss=10.200338 learning_rate=0.000289 step_ms=36 tokens_per_second=1777.777778
+step=28 train_loss=10.349494 learning_rate=0.000288 step_ms=34 tokens_per_second=1882.352941
+step=29 train_loss=10.270349 learning_rate=0.000287 step_ms=37 tokens_per_second=1729.729730
+step=30 train_loss=10.049591 learning_rate=0.000286 step_ms=36 tokens_per_second=1777.777778
+step=31 train_loss=10.253922 learning_rate=0.000285 step_ms=36 tokens_per_second=1777.777778
+step=32 train_loss=10.137665 learning_rate=0.000284 step_ms=30 tokens_per_second=2133.333333
+step=33 train_loss=10.234824 learning_rate=0.000283 step_ms=32 tokens_per_second=2000.000000
+step=34 train_loss=10.058255 learning_rate=0.000282 step_ms=29 tokens_per_second=2206.896552
+step=35 train_loss=10.202686 learning_rate=0.000281 step_ms=30 tokens_per_second=2133.333333
+step=36 train_loss=10.234357 learning_rate=0.000280 step_ms=25 tokens_per_second=2560.000000
+step=37 train_loss=10.054290 learning_rate=0.000279 step_ms=30 tokens_per_second=2133.333333
+step=38 train_loss=10.022802 learning_rate=0.000278 step_ms=28 tokens_per_second=2285.714286
+step=39 train_loss=10.016117 learning_rate=0.000277 step_ms=25 tokens_per_second=2560.000000
+step=40 train_loss=10.092593 learning_rate=0.000275 step_ms=31 tokens_per_second=2064.516129
+step=41 train_loss=9.965114 learning_rate=0.000274 step_ms=33 tokens_per_second=1939.393939
+step=42 train_loss=10.007126 learning_rate=0.000273 step_ms=28 tokens_per_second=2285.714286
+step=43 train_loss=9.847174 learning_rate=0.000272 step_ms=27 tokens_per_second=2370.370370
+step=44 train_loss=9.815296 learning_rate=0.000270 step_ms=28 tokens_per_second=2285.714286
+step=45 train_loss=9.820009 learning_rate=0.000269 step_ms=26 tokens_per_second=2461.538462
+step=46 train_loss=9.870967 learning_rate=0.000268 step_ms=28 tokens_per_second=2285.714286
+step=47 train_loss=9.812630 learning_rate=0.000266 step_ms=25 tokens_per_second=2560.000000
+step=48 train_loss=9.807482 learning_rate=0.000265 step_ms=25 tokens_per_second=2560.000000
+step=49 train_loss=9.679137 learning_rate=0.000263 step_ms=32 tokens_per_second=2000.000000
+step=50 train_loss=9.789306 validation_loss=9.769365 learning_rate=0.000262 step_ms=61 tokens_per_second=1049.180328
+step=51 train_loss=9.849256 learning_rate=0.000260 step_ms=44 tokens_per_second=1454.545455
+step=52 train_loss=9.911645 learning_rate=0.000259 step_ms=32 tokens_per_second=2000.000000
+step=53 train_loss=9.657696 learning_rate=0.000257 step_ms=38 tokens_per_second=1684.210526
+step=54 train_loss=9.642914 learning_rate=0.000256 step_ms=37 tokens_per_second=1729.729730
+step=55 train_loss=9.722410 learning_rate=0.000254 step_ms=36 tokens_per_second=1777.777778
+step=56 train_loss=9.480773 learning_rate=0.000253 step_ms=37 tokens_per_second=1729.729730
+step=57 train_loss=9.654640 learning_rate=0.000251 step_ms=40 tokens_per_second=1600.000000
+step=58 train_loss=9.672518 learning_rate=0.000249 step_ms=38 tokens_per_second=1684.210526
+step=59 train_loss=9.696910 learning_rate=0.000248 step_ms=40 tokens_per_second=1600.000000
+step=60 train_loss=9.484523 learning_rate=0.000246 step_ms=39 tokens_per_second=1641.025641
+step=61 train_loss=9.343798 learning_rate=0.000244 step_ms=39 tokens_per_second=1641.025641
+step=62 train_loss=9.624958 learning_rate=0.000243 step_ms=39 tokens_per_second=1641.025641
+step=63 train_loss=9.453744 learning_rate=0.000241 step_ms=38 tokens_per_second=1684.210526
+step=64 train_loss=9.497443 learning_rate=0.000239 step_ms=39 tokens_per_second=1641.025641
+step=65 train_loss=9.604728 learning_rate=0.000237 step_ms=43 tokens_per_second=1488.372093
+step=66 train_loss=9.461064 learning_rate=0.000236 step_ms=36 tokens_per_second=1777.777778
+step=67 train_loss=9.297292 learning_rate=0.000234 step_ms=37 tokens_per_second=1729.729730
+step=68 train_loss=9.553261 learning_rate=0.000232 step_ms=39 tokens_per_second=1641.025641
+step=69 train_loss=9.528743 learning_rate=0.000230 step_ms=37 tokens_per_second=1729.729730
+step=70 train_loss=9.227836 learning_rate=0.000228 step_ms=41 tokens_per_second=1560.975610
+step=71 train_loss=9.310610 learning_rate=0.000226 step_ms=41 tokens_per_second=1560.975610
+step=72 train_loss=9.481144 learning_rate=0.000224 step_ms=40 tokens_per_second=1600.000000
+step=73 train_loss=9.465470 learning_rate=0.000222 step_ms=42 tokens_per_second=1523.809524
+step=74 train_loss=9.371657 learning_rate=0.000221 step_ms=42 tokens_per_second=1523.809524
+step=75 train_loss=9.324424 validation_loss=9.254026 learning_rate=0.000219 step_ms=42 tokens_per_second=1523.809524
+step=76 train_loss=9.266818 learning_rate=0.000217 step_ms=38 tokens_per_second=1684.210526
+step=77 train_loss=9.340706 learning_rate=0.000215 step_ms=41 tokens_per_second=1560.975610
+step=78 train_loss=9.151824 learning_rate=0.000213 step_ms=38 tokens_per_second=1684.210526
+step=79 train_loss=9.065420 learning_rate=0.000211 step_ms=36 tokens_per_second=1777.777778
+step=80 train_loss=8.970006 learning_rate=0.000209 step_ms=34 tokens_per_second=1882.352941
+step=81 train_loss=9.305233 learning_rate=0.000207 step_ms=36 tokens_per_second=1777.777778
+step=82 train_loss=9.122506 learning_rate=0.000205 step_ms=35 tokens_per_second=1828.571429
+step=83 train_loss=8.847687 learning_rate=0.000203 step_ms=34 tokens_per_second=1882.352941
+step=84 train_loss=9.060351 learning_rate=0.000201 step_ms=34 tokens_per_second=1882.352941
+step=85 train_loss=8.988343 learning_rate=0.000199 step_ms=33 tokens_per_second=1939.393939
+step=86 train_loss=9.019750 learning_rate=0.000197 step_ms=34 tokens_per_second=1882.352941
+step=87 train_loss=9.074044 learning_rate=0.000194 step_ms=35 tokens_per_second=1828.571429
+step=88 train_loss=8.964961 learning_rate=0.000192 step_ms=37 tokens_per_second=1729.729730
+step=89 train_loss=9.213614 learning_rate=0.000190 step_ms=39 tokens_per_second=1641.025641
+step=90 train_loss=9.108368 learning_rate=0.000188 step_ms=37 tokens_per_second=1729.729730
+step=91 train_loss=9.256769 learning_rate=0.000186 step_ms=37 tokens_per_second=1729.729730
+step=92 train_loss=9.008555 learning_rate=0.000184 step_ms=39 tokens_per_second=1641.025641
+step=93 train_loss=8.913537 learning_rate=0.000182 step_ms=38 tokens_per_second=1684.210526
+step=94 train_loss=9.206363 learning_rate=0.000180 step_ms=37 tokens_per_second=1729.729730
+step=95 train_loss=8.946629 learning_rate=0.000178 step_ms=37 tokens_per_second=1729.729730
+step=96 train_loss=8.965421 learning_rate=0.000176 step_ms=36 tokens_per_second=1777.777778
+step=97 train_loss=9.232374 learning_rate=0.000173 step_ms=37 tokens_per_second=1729.729730
+step=98 train_loss=8.807450 learning_rate=0.000171 step_ms=37 tokens_per_second=1729.729730
+step=99 train_loss=9.020087 learning_rate=0.000169 step_ms=39 tokens_per_second=1641.025641
+step=100 train_loss=8.545870 validation_loss=8.844677 learning_rate=0.000167 step_ms=38 tokens_per_second=1684.210526
+step=101 train_loss=8.995744 learning_rate=0.000165 step_ms=37 tokens_per_second=1729.729730
+step=102 train_loss=8.726440 learning_rate=0.000163 step_ms=38 tokens_per_second=1684.210526
+step=103 train_loss=9.014611 learning_rate=0.000161 step_ms=42 tokens_per_second=1523.809524
+step=104 train_loss=8.819521 learning_rate=0.000159 step_ms=40 tokens_per_second=1600.000000
+step=105 train_loss=9.023580 learning_rate=0.000157 step_ms=43 tokens_per_second=1488.372093
+step=106 train_loss=8.742475 learning_rate=0.000154 step_ms=41 tokens_per_second=1560.975610
+step=107 train_loss=8.799554 learning_rate=0.000152 step_ms=41 tokens_per_second=1560.975610
+step=108 train_loss=8.866925 learning_rate=0.000150 step_ms=41 tokens_per_second=1560.975610
+step=109 train_loss=8.554694 learning_rate=0.000148 step_ms=40 tokens_per_second=1600.000000
+step=110 train_loss=8.856855 learning_rate=0.000146 step_ms=40 tokens_per_second=1600.000000
+step=111 train_loss=8.637691 learning_rate=0.000144 step_ms=41 tokens_per_second=1560.975610
+step=112 train_loss=8.672560 learning_rate=0.000142 step_ms=42 tokens_per_second=1523.809524
+step=113 train_loss=8.673769 learning_rate=0.000140 step_ms=43 tokens_per_second=1488.372093
+step=114 train_loss=8.977037 learning_rate=0.000138 step_ms=40 tokens_per_second=1600.000000
+step=115 train_loss=8.612738 learning_rate=0.000136 step_ms=42 tokens_per_second=1523.809524
+step=116 train_loss=8.594647 learning_rate=0.000133 step_ms=40 tokens_per_second=1600.000000
+step=117 train_loss=8.749357 learning_rate=0.000131 step_ms=42 tokens_per_second=1523.809524
+step=118 train_loss=8.835204 learning_rate=0.000129 step_ms=39 tokens_per_second=1641.025641
+step=119 train_loss=8.409116 learning_rate=0.000127 step_ms=41 tokens_per_second=1560.975610
+step=120 train_loss=8.815145 learning_rate=0.000125 step_ms=39 tokens_per_second=1641.025641
+step=121 train_loss=8.639352 learning_rate=0.000123 step_ms=40 tokens_per_second=1600.000000
+step=122 train_loss=8.728551 learning_rate=0.000121 step_ms=40 tokens_per_second=1600.000000
+step=123 train_loss=8.704382 learning_rate=0.000119 step_ms=40 tokens_per_second=1600.000000
+step=124 train_loss=8.316078 learning_rate=0.000117 step_ms=39 tokens_per_second=1641.025641
+step=125 train_loss=8.661022 validation_loss=8.557674 learning_rate=0.000115 step_ms=41 tokens_per_second=1560.975610
+step=126 train_loss=8.820964 learning_rate=0.000113 step_ms=39 tokens_per_second=1641.025641
+step=127 train_loss=8.603713 learning_rate=0.000111 step_ms=52 tokens_per_second=1230.769231
+step=128 train_loss=8.697082 learning_rate=0.000109 step_ms=42 tokens_per_second=1523.809524
+step=129 train_loss=8.668943 learning_rate=0.000108 step_ms=41 tokens_per_second=1560.975610
+step=130 train_loss=8.458692 learning_rate=0.000106 step_ms=42 tokens_per_second=1523.809524
+step=131 train_loss=8.395646 learning_rate=0.000104 step_ms=41 tokens_per_second=1560.975610
+step=132 train_loss=8.780736 learning_rate=0.000102 step_ms=41 tokens_per_second=1560.975610
+step=133 train_loss=8.447063 learning_rate=0.000100 step_ms=41 tokens_per_second=1560.975610
+step=134 train_loss=8.815829 learning_rate=0.000098 step_ms=40 tokens_per_second=1600.000000
+step=135 train_loss=8.361257 learning_rate=0.000096 step_ms=42 tokens_per_second=1523.809524
+step=136 train_loss=8.540575 learning_rate=0.000094 step_ms=42 tokens_per_second=1523.809524
+step=137 train_loss=8.551860 learning_rate=0.000093 step_ms=39 tokens_per_second=1641.025641
+step=138 train_loss=8.697914 learning_rate=0.000091 step_ms=40 tokens_per_second=1600.000000
+step=139 train_loss=8.581218 learning_rate=0.000089 step_ms=42 tokens_per_second=1523.809524
+step=140 train_loss=8.456068 learning_rate=0.000087 step_ms=45 tokens_per_second=1422.222222
+step=141 train_loss=8.754570 learning_rate=0.000086 step_ms=43 tokens_per_second=1488.372093
+step=142 train_loss=8.253157 learning_rate=0.000084 step_ms=40 tokens_per_second=1600.000000
+step=143 train_loss=8.670825 learning_rate=0.000082 step_ms=43 tokens_per_second=1488.372093
+step=144 train_loss=8.513765 learning_rate=0.000081 step_ms=45 tokens_per_second=1422.222222
+step=145 train_loss=8.744468 learning_rate=0.000079 step_ms=41 tokens_per_second=1560.975610
+step=146 train_loss=8.622143 learning_rate=0.000077 step_ms=42 tokens_per_second=1523.809524
+step=147 train_loss=8.371528 learning_rate=0.000076 step_ms=40 tokens_per_second=1600.000000
+step=148 train_loss=8.274634 learning_rate=0.000074 step_ms=42 tokens_per_second=1523.809524
+step=149 train_loss=8.554200 learning_rate=0.000073 step_ms=40 tokens_per_second=1600.000000
+step=150 train_loss=8.525325 validation_loss=8.379757 learning_rate=0.000071 step_ms=42 tokens_per_second=1523.809524
+step=151 train_loss=8.206236 learning_rate=0.000070 step_ms=41 tokens_per_second=1560.975610
+step=152 train_loss=8.441052 learning_rate=0.000068 step_ms=43 tokens_per_second=1488.372093
+step=153 train_loss=8.386448 learning_rate=0.000067 step_ms=43 tokens_per_second=1488.372093
+step=154 train_loss=8.257824 learning_rate=0.000065 step_ms=41 tokens_per_second=1560.975610
+step=155 train_loss=8.515861 learning_rate=0.000064 step_ms=39 tokens_per_second=1641.025641
+step=156 train_loss=8.679381 learning_rate=0.000062 step_ms=38 tokens_per_second=1684.210526
+step=157 train_loss=8.384137 learning_rate=0.000061 step_ms=38 tokens_per_second=1684.210526
+step=158 train_loss=8.238836 learning_rate=0.000060 step_ms=39 tokens_per_second=1641.025641
+step=159 train_loss=8.044380 learning_rate=0.000058 step_ms=39 tokens_per_second=1641.025641
+step=160 train_loss=8.531437 learning_rate=0.000057 step_ms=39 tokens_per_second=1641.025641
+step=161 train_loss=8.209903 learning_rate=0.000056 step_ms=57 tokens_per_second=1122.807018
+step=162 train_loss=8.428624 learning_rate=0.000055 step_ms=40 tokens_per_second=1600.000000
+step=163 train_loss=8.498018 learning_rate=0.000053 step_ms=42 tokens_per_second=1523.809524
+step=164 train_loss=8.319467 learning_rate=0.000052 step_ms=41 tokens_per_second=1560.975610
+step=165 train_loss=8.155551 learning_rate=0.000051 step_ms=42 tokens_per_second=1523.809524
+step=166 train_loss=8.205236 learning_rate=0.000050 step_ms=41 tokens_per_second=1560.975610
+step=167 train_loss=8.575171 learning_rate=0.000049 step_ms=43 tokens_per_second=1488.372093
+step=168 train_loss=8.438136 learning_rate=0.000048 step_ms=43 tokens_per_second=1488.372093
+step=169 train_loss=8.230561 learning_rate=0.000047 step_ms=46 tokens_per_second=1391.304348
+step=170 train_loss=8.482315 learning_rate=0.000046 step_ms=44 tokens_per_second=1454.545455
+step=171 train_loss=8.596256 learning_rate=0.000045 step_ms=47 tokens_per_second=1361.702128
+step=172 train_loss=8.274484 learning_rate=0.000044 step_ms=44 tokens_per_second=1454.545455
+step=173 train_loss=8.483388 learning_rate=0.000043 step_mstrain_torchlean_gpt: loading BPE tokenizer vocabulary=week-03-gpt-training/data/tinyshakespeare/vocab.json merges=week-03-gpt-training/data/tinyshakespeare/merges.txt
+train_torchlean_gpt: reading BPE vocab.json
+train_torchlean_gpt: parsing BPE vocab.json chars=1042301
+train_torchlean_gpt: parsed BPE vocabulary entries=50257
+train_torchlean_gpt: reading BPE merges.txt
+train_torchlean_gpt: parsed BPE merges=50000
+train_torchlean_gpt: building BPE lookup maps
+train_torchlean_gpt: loaded BPE tokenizer vocabulary=50257 merges=50000
+=43 tokens_per_second=1488.372093
+step=174 train_loss=8.067607 learning_rate=0.000042 step_ms=44 tokens_per_second=1454.545455
+step=175 train_loss=8.133788 validation_loss=8.277669 learning_rate=0.000041 step_ms=42 tokens_per_second=1523.809524
+step=176 train_loss=8.200889 learning_rate=0.000040 step_ms=39 tokens_per_second=1641.025641
+step=177 train_loss=8.464846 learning_rate=0.000039 step_ms=40 tokens_per_second=1600.000000
+step=178 train_loss=8.427248 learning_rate=0.000039 step_ms=43 tokens_per_second=1488.372093
+step=179 train_loss=8.335565 learning_rate=0.000038 step_ms=43 tokens_per_second=1488.372093
+step=180 train_loss=8.435503 learning_rate=0.000037 step_ms=46 tokens_per_second=1391.304348
+step=181 train_loss=8.095599 learning_rate=0.000037 step_ms=43 tokens_per_second=1488.372093
+step=182 train_loss=8.094178 learning_rate=0.000036 step_ms=43 tokens_per_second=1488.372093
+step=183 train_loss=8.137430 learning_rate=0.000035 step_ms=42 tokens_per_second=1523.809524
+step=184 train_loss=8.426298 learning_rate=0.000035 step_ms=42 tokens_per_second=1523.809524
+step=185 train_loss=8.132786 learning_rate=0.000034 step_ms=45 tokens_per_second=1422.222222
+step=186 train_loss=7.918491 learning_rate=0.000034 step_ms=43 tokens_per_second=1488.372093
+step=187 train_loss=8.288949 learning_rate=0.000033 step_ms=43 tokens_per_second=1488.372093
+step=188 train_loss=8.438471 learning_rate=0.000033 step_ms=45 tokens_per_second=1422.222222
+step=189 train_loss=8.490213 learning_rate=0.000032 step_ms=45 tokens_per_second=1422.222222
+step=190 train_loss=7.902674 learning_rate=0.000032 step_ms=45 tokens_per_second=1422.222222
+step=191 train_loss=8.135994 learning_rate=0.000032 step_ms=43 tokens_per_second=1488.372093
+step=192 train_loss=8.527492 learning_rate=0.000031 step_ms=43 tokens_per_second=1488.372093
+step=193 train_loss=8.455795 learning_rate=0.000031 step_ms=45 tokens_per_second=1422.222222
+step=194 train_loss=8.359706 learning_rate=0.000031 step_ms=42 tokens_per_second=1523.809524
+step=195 train_loss=8.557282 learning_rate=0.000031 step_ms=47 tokens_per_second=1361.702128
+step=196 train_loss=8.177520 learning_rate=0.000030 step_ms=47 tokens_per_second=1361.702128
+step=197 train_loss=8.171866 learning_rate=0.000030 step_ms=47 tokens_per_second=1361.702128
+step=198 train_loss=8.337956 learning_rate=0.000030 step_ms=40 tokens_per_second=1600.000000
+step=199 train_loss=8.013370 learning_rate=0.000030 step_ms=44 tokens_per_second=1454.545455
+step=200 train_loss=8.684416 validation_loss=8.213568 learning_rate=0.000030 step_ms=55 tokens_per_second=1163.636364
+wrote checkpoint: week-03-gpt-training/artifacts/quick.tlf32
+wrote metrics: week-03-gpt-training/artifacts/training-metrics.json
+wrote passport: week-03-gpt-training/artifacts/run-passport.json
+
+--- completion ---
+To be, or not to be: I
+And
+ itUS my
+------------------
+
+Lean profile: 217 events, 1 threads, window 28.35 s, recorded thread time 28.35 s, 146603835 Lean heartbeats
+Process resources: user CPU 25999 ms, system CPU 2240 ms, peak RSS 2326016 KiB, context switches 706
+Name                                             Self        Total    Calls         Mean          P95      Self HB       %
+---------------------------------------- ------------ ------------ -------- ------------ ------------ ------------ -------
+checkpoint.save [phase=checkpoint, acti…       9.37 s       9.37 s        1       9.37 s       9.37 s     81363514   33.0%
+training.update [phase=training, activi…       7.75 s       7.75 s      200     38.78 ms     45.05 ms      2749682   27.3%
+torchlean-gpt.run                              7.26 s      28.35 s        1      28.35 s      28.35 s     12057733   25.6%
+evaluation.validation [phase=evaluation…       1.55 s       1.55 s        9    172.98 ms       1.10 s       282962    5.4%
+generation.complete [phase=generation, …       1.45 s       1.45 s        1       1.45 s       1.45 s     30223536    5.1%
+tokenizer.load [phase=data, activity=to…    505.68 ms    505.68 ms        1    505.68 ms    505.68 ms      3339217    1.7%
+model.initialize [phase=initialization,…    335.17 ms    335.17 ms        1    335.17 ms    335.17 ms     13269432    1.1%
+optimizer.initialize [phase=initializat…     94.97 ms     94.97 ms        1     94.97 ms     94.97 ms      3317737    0.3%
+dataset.train.read [phase=data, activit…      9.25 ms      9.25 ms        1      9.25 ms      9.25 ms           11    0.0%
+dataset.validation.read [phase=data, ac…      1.22 ms      1.22 ms        1      1.22 ms      1.22 ms           11    0.0%
+Trace: build/leanprofiler-trace.json (open with https://ui.perfetto.dev)
+Summary: build/leanprofiler-summary.json
+exit 0
+wall_seconds 121.569023457

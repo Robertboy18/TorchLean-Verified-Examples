@@ -1,0 +1,137 @@
+[
+  {
+    "edge": [
+      "attn_0",
+      "logits"
+    ],
+    "delta": 0.0,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "attn_1",
+      "logits"
+    ],
+    "delta": 5.816118573420681e-07,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "emb",
+      "logits"
+    ],
+    "delta": 4.257071850588545e-08,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "mlp_0",
+      "logits"
+    ],
+    "delta": 0.912045093056804,
+    "agreement": 0.5,
+    "decision": "kept"
+  },
+  {
+    "edge": [
+      "mlp_1",
+      "logits"
+    ],
+    "delta": 0.024454703358060215,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "attn_0",
+      "mlp_1"
+    ],
+    "delta": 0.0,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "attn_1",
+      "mlp_1"
+    ],
+    "delta": 0.0,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "emb",
+      "mlp_1"
+    ],
+    "delta": 0.0,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "mlp_0",
+      "mlp_1"
+    ],
+    "delta": 0.0,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "attn_0",
+      "attn_1"
+    ],
+    "delta": 0.0,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "emb",
+      "attn_1"
+    ],
+    "delta": 0.0,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "mlp_0",
+      "attn_1"
+    ],
+    "delta": 0.0,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "attn_0",
+      "mlp_0"
+    ],
+    "delta": 0.8180767707526684,
+    "agreement": 0.5,
+    "decision": "kept"
+  },
+  {
+    "edge": [
+      "emb",
+      "mlp_0"
+    ],
+    "delta": -0.009359138086438179,
+    "agreement": 1.0,
+    "decision": "removed"
+  },
+  {
+    "edge": [
+      "emb",
+      "attn_0"
+    ],
+    "delta": 0.7987102251499891,
+    "agreement": 0.5,
+    "decision": "kept"
+  }
+]

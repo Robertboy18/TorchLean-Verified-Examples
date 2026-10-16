@@ -1,0 +1,46 @@
+Runs of 2026-10-15 on the current runtime (Lean 4.35.0, binary64 Float, TorchLean libtorch_cuda
+with the LibTorch of PyTorch 2.13.0+cu130, CUDA 13.0, NVIDIA A100-SXM4-80GB, driver 580.167.08;
+96-core Xeon Platinum 8275CL with load average 55-90 from other jobs). CUDA builds used
+lake -R -Kcuda=true -Klibtorch_home=<torch package dir> -Kcuda_home=<CUDA 13.0 toolkit>.
+Tokenizer files: week-03-gpt-training/data/tinyshakespeare/{vocab,merges} from prepare_dataset.py.
+
+quick-cuda-train.log, quick-cuda-metrics.json, quick-cuda-leanprofiler-summary.json:
+  LEAN_PROFILE=1 lake ... exe train_torchlean_gpt --device cuda --preset quick --steps 200
+    --batch 4 --eval-every 25 --save-params week-03-gpt-training/artifacts/quick.tlf32
+    --tokenizer-vocab ... --tokenizer-merges ... --prompt "To be, or not to be" --generate 8
+
+quick-cpu-train.log, quick-cpu-metrics.json (CPU build, no -Kcuda):
+  lake exe train_torchlean_gpt --device cpu --preset quick --save-params ... --metrics ...
+    --passport ... --tokenizer-vocab ... --tokenizer-merges ... --prompt "To be, or not to be"
+    --generate 8
+
+gpt2-small-one-step-train.log, gpt2-small-checkpoint-sizes.json:
+  LEAN_STACK_SIZE_KB=8388608 lake ... exe train_torchlean_gpt --device cuda --preset gpt2-small
+    --steps 1 --batch 1 --eval-batches 1 --seed 19
+    --checkpoint-dir week-03-gpt-training/artifacts/gpt2-small-one-step/checkpoints
+    --checkpoint-every 1
+    --save-params week-03-gpt-training/artifacts/gpt2-small-one-step/parameters.tlf32
+    --metrics ... --passport ...
+gpt2-small-default-stack-hang.txt: the same command without LEAN_STACK_SIZE_KB.
+
+gpt2-small-cache-check.log (LEAN_STACK_SIZE_KB=8388608):
+  lake ... exe check_torchlean_gpt_cache --device cuda --preset gpt2-small
+    --load-params week-03-gpt-training/artifacts/gpt2-small-one-step/parameters.tlf32
+    --tokenizer-vocab ... --tokenizer-merges ... --system "" --message "Hello!"
+quick-cache-check.log: the same with --preset quick --load-params .../quick.tlf32.
+gpt2-small-cache-memcheck.log, quick-cache-memcheck.log: the same two checks run as
+  compute-sanitizer --tool memcheck .lake/build/bin/check_torchlean_gpt_cache ...
+gpt2-small-load-default-stack.log: generate_torchlean_gpt --device cuda --preset gpt2-small
+  --load-params .../gpt2-small-one-step/parameters.tlf32 ... --system "" --message "hey"
+  --generate 2, without LEAN_STACK_SIZE_KB.
+
+gpt2-small-cache-benchmark-{1,2,3}.log, gpt2-small-cache-benchmark-summary.json
+(three separate processes, LEAN_STACK_SIZE_KB=8388608):
+  lake ... exe benchmark_torchlean_gpt_cache --device cuda --preset gpt2-small
+    --load-params .../gpt2-small-one-step/parameters.tlf32 --tokenizer-vocab ...
+    --tokenizer-merges ... --system "" --message "hey" --generate 16 --seed 0 --top-k 1
+
+fineweb-edu-documents-read.json:
+  python tools/count_stream_documents.py --max-tokens 1020000000 <first two Parquet files>,
+  once for sample/10BT and once for the default configuration (data/CC-MAIN-2013-20), both at
+  revision 87f09149ef4734204d70ed1d046ddc9ca3f2b8f9.

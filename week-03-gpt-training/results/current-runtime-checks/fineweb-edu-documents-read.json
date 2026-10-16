@@ -1,0 +1,24 @@
+{
+  "source": "HuggingFaceFW/fineweb-edu at revision 87f09149ef4734204d70ed1d046ddc9ca3f2b8f9, Parquet files downloaded from the Hub and read in streaming order by tools/count_stream_documents.py",
+  "max_tokens": 1020000000,
+  "sample-10BT": {
+    "max_tokens": 1020000000,
+    "documents_read": 988690,
+    "tokens_written": 1020000000,
+    "files": [
+      "sample/10BT/000_00000.parquet",
+      "sample/10BT/001_00000.parquet"
+    ],
+    "tiktoken": "0.12.0"
+  },
+  "default": {
+    "max_tokens": 1020000000,
+    "documents_read": 964788,
+    "tokens_written": 1020000000,
+    "files": [
+      "data/CC-MAIN-2013-20/train-00000-of-00014.parquet",
+      "data/CC-MAIN-2013-20/train-00001-of-00014.parquet"
+    ],
+    "tiktoken": "0.12.0"
+  }
+}

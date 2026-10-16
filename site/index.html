@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Notes from Robert Joseph George's PhD work on the formal foundations of ML and AI, with model experiments, numerical calculations, and Lean proofs.">
+  <title>TorchLean Verified Examples</title>
+  <link rel="stylesheet" href="assets/site.css">
+  <link rel="stylesheet" href="week-04-kimi-k3-specification/site/vendor/katex/katex.min.css">
+  <script defer src="week-04-kimi-k3-specification/site/vendor/katex/katex.min.js"></script>
+  <script defer src="week-04-kimi-k3-specification/site/vendor/katex/auto-render.min.js"></script>
+  <script defer src="assets/article.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the examples</a>
+  <header class="site-header">
+    <a class="wordmark" href="./" aria-current="page">TorchLean <span>Verified Examples</span></a>
+    <nav aria-label="Main navigation"><a href="https://lean-dojo.github.io/TorchLean/">Library ↗</a>
+      <a href="https://github.com/Robertboy18/TorchLean-Verified-Examples">Code ↗</a></nav>
+  </header>
+  <main id="main" class="home">
+    <header class="intro">
+      <h1>Notes on verified ML</h1>
+      <p class="byline">Robert Joseph George
+        <sup><a href="#writing-note" aria-label="Note about writing and AI assistance">*</a></sup></p>
+      <p>Here's <a href="https://www.robertj1.com/ai4science/vision/">my vision for
+        verification in AI</a>. Some examples I've been working&nbsp;on&nbsp;:)</p>
+      <p id="writing-note" class="writing-note">* I wrote most of these posts, with some AI
+        assistance in the prose and Lean code.</p>
+    </header>
+    <section id="examples" class="essay-index" aria-label="Experiments and annotated reports">
+      <article class="essay-entry">
+        <p class="entry-kind">01 / Inference</p>
+        <div class="entry-copy">
+          <h2><a href="week-01-batch-invariant-inference/">Thinking Machines Lab’s batch-invariance problem, formalized</a></h2>
+          <p>The same prompt can get a different answer when the batch changes, even with
+            sampling turned off! I wanted to understand why. So we start with three numbers, follow
+            the rounding through the calculation, and prove when a change in the scores still leaves
+            the same winning token.</p>
+          <a class="text-link" href="week-01-batch-invariant-inference/">Try the two addition orders →</a>
+        </div>
+      </article>
+      <article class="essay-entry">
+        <p class="entry-kind">02 / Circuit verification</p>
+        <div class="entry-copy">
+          <h2><a href="week-02-verifiable-transformer-checkpoint/">Checking a small transformer in Lean</a></h2>
+          <p>Neel Somani checks a small transformer with circuits and an SMT solver.
+            I trained his model with his own code and brought the checkpoint into Lean, so we
+            can check its exported decisions
+            on all 256 task inputs and then recompute them from the weights.</p>
+          <a class="text-link" href="week-02-verifiable-transformer-checkpoint/">Follow the model, circuits, and checks →</a>
+        </div>
+      </article>
+      <article class="essay-entry">
+        <p class="entry-kind">03 / Training</p>
+        <div class="entry-copy">
+          <h2><a href="week-03-gpt-training/">Training a GPT-2-style model in Lean</a></h2>
+          <p>Let's train a GPT in Lean :) I trained a 124.4-million-parameter model on one
+            A100 and compared fifty matched updates with PyTorch. The loss went down, but
+            getting a dependable assistant out of it was harder.</p>
+          <p>Along the way we prove results about next-token targets, resuming training,
+            and reusing the attention cache during generation.</p>
+          <a class="text-link" href="week-03-gpt-training/">Read the experiment →</a>
+        </div>
+      </article>
+      <article class="essay-entry">
+        <p class="entry-kind">04 / Tensor programming</p>
+        <div class="entry-copy">
+          <h2><a href="torchlean-tensor-programming/">Writing tensor programs in Lean</a></h2>
+          <p>I'd like to write a tensor calculation in Lean and choose the device when I run
+            it. So we try the custom-function API, build attention with <code>einsum</code>,
+            and look at the measured performance. Higher derivatives and binary128
+            arithmetic let us try other calculations too.</p>
+          <a class="text-link" href="torchlean-tensor-programming/">Write a tensor function →</a>
+        </div>
+      </article>
+      <article class="essay-entry">
+        <p class="entry-kind">05 / Kimi K3</p>
+        <div class="entry-copy">
+          <h2><a href="week-04-kimi-k3-specification/site/">Kimi K3: the paper and proofs side by side</a></h2>
+          <p>I wanted to bring the paper-and-proof approach from research mathematics to ML.
+            With K3's report open beside us, we work through its memory, attention, and
+            experts and prove that streaming preserves the logits. We also find a slip at one
+            endpoint of the expert-balancing argument.</p>
+          <a class="text-link" href="week-04-kimi-k3-specification/site/">Open the annotated report →</a>
+        </div>
+      </article>
+      <article class="essay-entry">
+        <p class="entry-kind">06 / Nemotron</p>
+        <div class="entry-copy">
+          <h2><a href="week-05-nemotron-specification/site/">Nemotron 3 Ultra: replaying a rounded state</a></h2>
+          <p>After K3, I wanted to look at NVIDIA's Nemotron and its recurrent memory, which
+            could save its state less often by recomputing recent inputs. We prove when
+            that replay preserves the state, and then check a case where fewer rounded writes
+            leave a larger final error.</p>
+          <a class="text-link" href="week-05-nemotron-specification/site/">Read the state-cache experiment →</a>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

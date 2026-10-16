@@ -1,0 +1,9 @@
+# Python packages for regenerating the Week 2 checkpoint, circuits, and certificates.
+# transformers is the version pinned by upstream verifiable-transformers at 8e3c54b;
+# with it, upstream's sparsemax patch runs as written.
+torch==2.6.0
+transformers==4.49.0
+accelerate==1.4.0
+numpy==2.2.6
+safetensors==0.8.0
+z3-solver==5.3.0.0

@@ -1,0 +1,18 @@
+[TorchLean] arithmetic: Lean Float (IEEE-754 binary64)
+[TorchLean] execution: eager
+[TorchLean] device: cuda
+TorchLean GPT-style training
+preset=gpt2-small
+model=context 1024, vocab 50257, width 768, heads 12, layers 12
+parameters=124412160
+device=cuda profile=libtorch_cuda
+tokens=train 304223, validation 33803
+schedule=steps 1, tokens/update 1024, total 1024
+step=0 validation_loss=11.010667
+step=1 train_loss=11.006534 validation_loss=9.483809 learning_rate=0.000600 step_ms=305 tokens_per_second=3357.377049
+wrote resumable checkpoint: week-03-gpt-training/artifacts/gpt2-small-one-step/checkpoints/step-1
+wrote checkpoint: week-03-gpt-training/artifacts/gpt2-small-one-step/parameters.tlf32
+wrote metrics: week-03-gpt-training/artifacts/gpt2-small-one-step/training-metrics.json
+wrote passport: week-03-gpt-training/artifacts/gpt2-small-one-step/run-passport.json
+exit 0
+wall_seconds 691.132476681

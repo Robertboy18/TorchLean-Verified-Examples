@@ -1,0 +1,27 @@
+Same one-update gpt2-small command as gpt2-small-one-step-train.log, without LEAN_STACK_SIZE_KB.
+The update and both validation passes finished; writing the resumable checkpoint never did. After
+26 minutes the process was idle (0% CPU), checkpoints/.step-1.tmp was still empty, and it was
+killed. Thread stacks from eu-stack (abridged):
+
+TID 718973 (main):
+  __futex_abstimed_wait_common / __pthread_clockjoin_ex / lean::run_with_thread_stack / lean_run_main
+TID 719191 (Lean main thread):
+  #0 __lll_lock_wait_private
+  #1 __libc_calloc
+  #2 __pthread_attr_extension
+  #3 pthread_attr_setaffinity_np
+  #4 pthread_getattr_np
+  #5 segv_handler
+  #6 __restore_rt
+  #7 _int_malloc
+  #8 __libc_malloc
+  #9 __gmp_default_allocate
+  #10 __gmpz_init_set_ui
+  #11 lean::mpz::mpz(unsigned long)
+  #12 lean_big_uint64_to_nat
+  #13 lp_TorchLean_TorchLean_Checkpoint_Encoding_instFloat___lam__0___boxed
+  #14.. lean_apply_1 / lean_apply_4 repeated, under Array.mapMUnsafe
+
+A fault inside malloc while encoding the 64-bit patterns entered Lean's stack-overflow handler,
+which then waited forever on the malloc lock. With LEAN_STACK_SIZE_KB=8388608 the same command
+wrote both checkpoint files (gpt2-small-checkpoint-sizes.json).

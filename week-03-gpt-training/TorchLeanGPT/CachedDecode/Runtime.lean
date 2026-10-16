@@ -1,0 +1,452 @@
+/-
+Copyright (c) 2026 Robert Joseph George
+Released under the MIT license.
+-/
+
+module
+
+public import TorchLeanGPT.Model
+public import TorchLeanGPT.CachedDecode.Native
+
+/-!
+# Checkpoint-compatible cached decoder
+
+The decoder reads the live CUDA parameter buffers owned by a TorchLean GPT module. It checks every
+parameter position and shape before construction, multiplies each weight according to its stored
+layout, and then evaluates one token at a time.
+
+It is written for the tied-token model that `TorchLeanGPT.buildModel` assembles: pre-normalized
+blocks, bias-free Q/K/V projections, a biased attention output projection, tanh-approximate GELU,
+and a shared token embedding/output matrix. A checkpoint with any other shape or parameter count is
+rejected before execution.
+
+Shape and layout checks guard the foreign-function boundary, but nothing here proves that the CUDA
+code refines `CachedDecode.Semantics`. `CachedDecode.Check` tests it numerically against the
+full-prefix TorchLean model.
+-/
+
+@[expose] public section
+
+open TorchLean
+
+namespace TorchLeanGPT
+namespace CachedDecode
+namespace Runtime
+
+open _root_.Runtime.Autograd.LibTorch
+
+/-- A borrowed parameter buffer together with the shape checked by TorchLean. -/
+structure ParameterBuffer where
+  shape : Shape
+  buffer : Buffer
+
+/--
+Return a parameter's CUDA mirror, uploading the host value first if there is none.
+
+Ownership stays with the TorchLean module: the cached decoder borrows the mirror and never
+releases it.
+-/
+def parameterBuffer {shape : Shape}
+    (parameter : _root_.Runtime.Autograd.Torch.Param Float shape) :
+    IO ParameterBuffer := do
+  let any ←
+    match ← parameter.cudaValue.get with
+    | some value =>
+        if value.s = shape then
+          pure value
+        else
+          throw <| IO.userError <|
+            "cached decoder: parameter CUDA shape mismatch (expected " ++
+              Spec.Shape.pretty shape ++ ", got " ++ Spec.Shape.pretty value.s ++ ")"
+    | none =>
+        let host ← parameter.value.get
+        let uploaded ←
+          _root_.Runtime.Autograd.Torch.Internal.CudaBridge.toAnyBuffer
+            (α := Float) (s := shape) host
+        parameter.cudaValue.set (some uploaded)
+        parameter.hostCurrent.set true
+        pure uploaded
+  let actualSize ← Buffer.sizeIO any.buf
+  let expectedSize := UInt32.ofNat (Shape.size shape)
+  if expectedSize.toNat != Shape.size shape then
+    throw <| IO.userError
+      "cached decoder: parameter is too large for the native UInt32 buffer ABI"
+  if actualSize != expectedSize then
+    throw <| IO.userError <|
+      "cached decoder: parameter buffer length mismatch for " ++ Spec.Shape.pretty shape
+  pure { shape, buffer := any.buf }
+
+/-- Flatten TorchLean's heterogeneous parameter list without discarding shape metadata. -/
+def collectParameterBuffers :
+    {shapes : List Shape} →
+      _root_.Runtime.Autograd.Torch.ParamList Float shapes →
+      IO (Array ParameterBuffer) :=
+  let rec go :
+      {shapes : List Shape} →
+        _root_.Runtime.Autograd.Torch.ParamList Float shapes →
+        Array ParameterBuffer → IO (Array ParameterBuffer)
+    | List.nil, .nil, result => pure result
+    | List.cons _ _, .cons parameter parameters, result => do
+        let head ← parameterBuffer parameter
+        go parameters (result.push head)
+  fun parameters => go parameters #[]
+
+/-- Checked conversion used for every dimension passed through the native ABI. -/
+def natToUInt32 (label : String) (value : Nat) : IO UInt32 := do
+  let result := UInt32.ofNat value
+  if result.toNat = value then
+    pure result
+  else
+    throw <| IO.userError s!"cached decoder: {label} does not fit in UInt32"
+
+/-- Diagnostic labels and shapes for the tied-token model's fixed parameter order. -/
+def expectedLayout
+    (cfg : nn.models.CausalTransformer.Config) : Array (String × Shape) := Id.run do
+  let width := cfg.modelWidth
+  let mut result := #[
+    ("token_embedding", ([cfg.vocabularySize, width] : Shape)),
+    ("position_embedding", ([cfg.sequenceLength, width] : Shape))
+  ]
+  for layer in [0:cfg.layerCount] do
+    let stem := s!"blocks.{layer}"
+    result := result ++ #[
+      (stem ++ ".norm1.gamma", ([width] : Shape)),
+      (stem ++ ".norm1.beta", ([width] : Shape)),
+      (stem ++ ".attention.wq", ([width, width] : Shape)),
+      (stem ++ ".attention.wk", ([width, width] : Shape)),
+      (stem ++ ".attention.wv", ([width, width] : Shape)),
+      (stem ++ ".attention.wo", ([width, width] : Shape)),
+      (stem ++ ".attention.bo", ([width] : Shape))
+    ]
+    if cfg.attentionDropout?.isSome then
+      result := result.push (stem ++ ".attention.dropout", [])
+    if cfg.dropout?.isSome then
+      result := result.push (stem ++ ".attention_residual.dropout", [])
+    result := result ++ #[
+      (stem ++ ".norm2.gamma", ([width] : Shape)),
+      (stem ++ ".norm2.beta", ([width] : Shape)),
+      (stem ++ ".ffn.w1", ([cfg.feedForwardWidth, width] : Shape)),
+      (stem ++ ".ffn.b1", ([cfg.feedForwardWidth] : Shape))
+    ]
+    if cfg.feedForwardDropout?.isSome then
+      result := result.push (stem ++ ".ffn.hidden_dropout", [])
+    result := result ++ #[
+      (stem ++ ".ffn.w2", ([width, cfg.feedForwardWidth] : Shape)),
+      (stem ++ ".ffn.b2", ([width] : Shape))
+    ]
+    if cfg.dropout?.isSome then
+      result := result.push (stem ++ ".ffn.residual_dropout", [])
+  result := result ++ #[
+    ("final_norm.gamma", ([width] : Shape)),
+    ("final_norm.beta", ([width] : Shape))
+  ]
+  return result
+
+/-- Validate every parameter position and shape before interpreting the flat pack. -/
+def validateLayout
+    (cfg : nn.models.CausalTransformer.Config)
+    (parameters : Array ParameterBuffer) : IO Unit := do
+  let expected := expectedLayout cfg
+  if parameters.size != expected.size then
+    throw <| IO.userError <|
+      s!"cached decoder: parameter count mismatch (got {parameters.size}, expected {expected.size})"
+  for index in [0:expected.size] do
+    match expected[index]?, parameters[index]? with
+    | some (name, shape), some actual =>
+        if actual.shape != shape then
+          throw <| IO.userError <|
+            s!"cached decoder: {name} has shape {Spec.Shape.pretty actual.shape}; " ++
+              s!"expected {Spec.Shape.pretty shape}"
+    | _, _ =>
+        throw <| IO.userError
+          s!"cached decoder: internal layout index {index} disappeared during validation"
+
+/-- Parameter at `index`, still bounds-checked even after `validateLayout`. -/
+def parameterAt
+    (parameters : Array ParameterBuffer) (index : Nat) : IO ParameterBuffer :=
+  match parameters[index]? with
+  | some parameter => pure parameter
+  | none =>
+      throw <| IO.userError s!"cached decoder: missing parameter at index {index}"
+
+/-- Runtime buffers for one pre-normalized Transformer block. -/
+structure Layer where
+  norm1Gamma : Buffer
+  norm1Beta : Buffer
+  queryWeight : Buffer
+  keyWeight : Buffer
+  valueWeight : Buffer
+  outputWeight : Buffer
+  outputBias : Buffer
+  norm2Gamma : Buffer
+  norm2Beta : Buffer
+  ffnInputWeight : Buffer
+  ffnInputBias : Buffer
+  ffnOutputWeight : Buffer
+  ffnOutputBias : Buffer
+
+/--
+State needed for one incremental decoding stream.
+
+Parameter buffers are borrowed from the TorchLean module. `nativeCache` is owned by the decoder.
+The `closed` flag makes repeated cleanup harmless and rejects later use.
+-/
+structure Decoder where
+  config : nn.models.CausalTransformer.Config
+  tokenEmbedding : Buffer
+  positionEmbedding : Buffer
+  tokenOutputWeight : Buffer
+  layers : Array Layer
+  finalNormGamma : Buffer
+  finalNormBeta : Buffer
+  nativeCache : Native.Cache
+  nextPosition : IO.Ref Nat
+  closed : IO.Ref Bool
+  widthU32 : UInt32
+  hiddenU32 : UInt32
+  vocabU32 : UInt32
+  contextU32 : UInt32
+
+/-- Obtain a borrowed buffer from a validated flat parameter pack. -/
+def bufferAt (parameters : Array ParameterBuffer) (index : Nat) : IO Buffer := do
+  pure (← parameterAt parameters index).buffer
+
+/-- Reject model variants whose parameterization differs from the decoder equations. -/
+def validateModelConfig (cfg : nn.models.CausalTransformer.Config) : IO Unit := do
+  if cfg.sequenceLength = 0 || cfg.vocabularySize = 0 || cfg.headCount = 0 ||
+      cfg.headWidth = 0 || cfg.layerCount = 0 || cfg.feedForwardWidth = 0 then
+    throw <| IO.userError "cached decoder: all model dimensions must be positive"
+  if cfg.attentionInputBias then
+    throw <| IO.userError "cached decoder: this executable expects bias-free Q/K/V projections"
+  if !cfg.normalizeFirst then
+    throw <| IO.userError "cached decoder: this executable expects pre-normalized blocks"
+  if !cfg.attentionOutputBias then
+    throw <| IO.userError "cached decoder: this executable expects attention output biases"
+  match cfg.activation with
+  | .gelu => pure ()
+  | _ =>
+      throw <| IO.userError "cached decoder: this executable expects GELU feed-forward blocks"
+
+/--
+Construct a decoder from a live TorchLean parameter list.
+
+The model module must remain alive until `close` because most buffers are borrowed from it.
+-/
+def Decoder.initialize
+    (cfg : nn.models.CausalTransformer.Config)
+    {parameterShapes : List Shape}
+    (parameterList : _root_.Runtime.Autograd.Torch.ParamList Float parameterShapes) :
+    IO Decoder := do
+  validateModelConfig cfg
+  let parameters ← collectParameterBuffers parameterList
+  validateLayout cfg parameters
+  -- Dropout probabilities remain in the model state even in evaluation mode. Resolve named
+  -- weights against the complete layout rather than treating every state entry as a weight.
+  let layout := expectedLayout cfg
+  let getBuffer (name : String) : IO Buffer := do
+    match layout.findIdx? (fun entry => entry.1 == name) with
+    | some index => bufferAt parameters index
+    | none => throw <| IO.userError s!"cached decoder: missing layout entry {name}"
+
+  let widthU32 ← natToUInt32 "model width" cfg.modelWidth
+  let hiddenU32 ← natToUInt32 "feed-forward width" cfg.feedForwardWidth
+  let vocabU32 ← natToUInt32 "vocabulary size" cfg.vocabularySize
+  let contextU32 ← natToUInt32 "context length" cfg.sequenceLength
+  let headsU32 ← natToUInt32 "attention head count" cfg.headCount
+  let headDimU32 ← natToUInt32 "attention head width" cfg.headWidth
+  let layersU32 ← natToUInt32 "layer count" cfg.layerCount
+
+  let tokenEmbedding ← getBuffer "token_embedding"
+  let positionEmbedding ← getBuffer "position_embedding"
+  let tokenOutputWeight := tokenEmbedding
+
+  let mut layers := #[]
+  for layerIndex in [0:cfg.layerCount] do
+    let stem := s!"blocks.{layerIndex}"
+    let layer : Layer :=
+      { norm1Gamma := ← getBuffer (stem ++ ".norm1.gamma")
+        norm1Beta := ← getBuffer (stem ++ ".norm1.beta")
+        queryWeight := ← getBuffer (stem ++ ".attention.wq")
+        keyWeight := ← getBuffer (stem ++ ".attention.wk")
+        valueWeight := ← getBuffer (stem ++ ".attention.wv")
+        outputWeight := ← getBuffer (stem ++ ".attention.wo")
+        outputBias := ← getBuffer (stem ++ ".attention.bo")
+        norm2Gamma := ← getBuffer (stem ++ ".norm2.gamma")
+        norm2Beta := ← getBuffer (stem ++ ".norm2.beta")
+        ffnInputWeight := ← getBuffer (stem ++ ".ffn.w1")
+        ffnInputBias := ← getBuffer (stem ++ ".ffn.b1")
+        ffnOutputWeight := ← getBuffer (stem ++ ".ffn.w2")
+        ffnOutputBias := ← getBuffer (stem ++ ".ffn.b2") }
+    layers := layers.push layer
+
+  let finalNormGamma ← getBuffer "final_norm.gamma"
+  let finalNormBeta ← getBuffer "final_norm.beta"
+  let nativeCache ← Native.create layersU32 headsU32 contextU32 headDimU32 tokenEmbedding
+  let nextPosition ← IO.mkRef 0
+  let closed ← IO.mkRef false
+  pure
+    { config := cfg
+      tokenEmbedding
+      positionEmbedding
+      tokenOutputWeight
+      layers
+      finalNormGamma
+      finalNormBeta
+      nativeCache
+      nextPosition
+      closed
+      widthU32
+      hiddenU32
+      vocabU32
+      contextU32 }
+
+/-- Ensure an operation is not attempted after `close`. -/
+def Decoder.requireOpen (decoder : Decoder) : IO Unit := do
+  if ← decoder.closed.get then
+    throw <| IO.userError "cached decoder: decoder is closed"
+
+/-- Release a list of owned temporary buffers after an effectful native call has consumed them. -/
+def releaseBuffers (buffers : List Buffer) : IO Unit := do
+  for buffer in buffers do
+    let _ ← Buffer.releaseIO buffer
+
+/-- Multiply one row by a stored affine weight whose layout is `(outputWidth, inputWidth)`. -/
+def Decoder.matmul
+    (_decoder : Decoder) (input weight : Buffer)
+    (inputWidth outputWidth : UInt32) : Buffer :=
+  Buffer.bmmRightTranspose input weight 1 1 inputWidth outputWidth
+
+/--
+Apply an attention projection stored in `(inputWidth, outputWidth)` order.
+
+In `CausalTransformer` the query, key, value, and attention output weights follow this layout,
+so each projection computes `input @ weight`. The feed-forward layers
+and tied vocabulary projection use the opposite layout and go through `Decoder.matmul`.
+Both attention dimensions equal the model width, so a transposed weight would pass every shape
+check and still change the decoder's predictions.
+-/
+def Decoder.attentionProjection (decoder : Decoder) (input weight : Buffer) : Buffer :=
+  Buffer.bmm input weight 1 1 decoder.widthU32 decoder.widthU32
+
+/-- Look up a single row from a row-major table. -/
+def gatherRow
+    (table : Buffer) (rows columns : UInt32) (row : Nat) : Buffer :=
+  Buffer.gatherRows table rows columns #[row] 1
+
+/-- Reset position and native storage before decoding an unrelated prompt. -/
+def Decoder.reset (decoder : Decoder) : IO Unit := do
+  decoder.requireOpen
+  Native.reset decoder.nativeCache
+  decoder.nextPosition.set 0
+
+/--
+Consume one token and, if `produceLogits`, return the vocabulary logits for the resulting prefix.
+
+Prefill passes `produceLogits := false` on every prompt token but the last, which skips the
+expensive tied vocabulary projection on rows that no sample is drawn from.
+-/
+def Decoder.push
+    (decoder : Decoder) (token : Nat) (produceLogits : Bool := true) :
+    IO (Option (Array Float)) := do
+  decoder.requireOpen
+  let position ← decoder.nextPosition.get
+  if position >= decoder.config.sequenceLength then
+    throw <| IO.userError <|
+      s!"cached decoder: context exhausted at {position} tokens"
+  if token >= decoder.config.vocabularySize then
+    throw <| IO.userError <|
+      s!"cached decoder: token id {token} is outside vocabulary {decoder.config.vocabularySize}"
+
+  let tokenRow :=
+    gatherRow decoder.tokenEmbedding decoder.vocabU32 decoder.widthU32 token
+  let positionRow :=
+    gatherRow decoder.positionEmbedding decoder.contextU32 decoder.widthU32 position
+  let hidden0 := Buffer.add tokenRow positionRow
+  let mut hidden := Buffer.releaseManyThen #[tokenRow, positionRow] hidden0
+
+  for layerIndex in [0:decoder.layers.size] do
+    let layer ←
+      match decoder.layers[layerIndex]? with
+      | some layer => pure layer
+      | none =>
+          throw <| IO.userError
+            s!"cached decoder: missing layer {layerIndex} during execution"
+    let norm1 ← Native.layerNorm hidden layer.norm1Gamma layer.norm1Beta
+      decoder.widthU32 (Context.ofRat (TorchLeanGPT.normalizationEpsilon true) : Float)
+    -- Attention weights are input-by-output, affine feed-forward weights output-by-input.
+    let query := decoder.attentionProjection norm1 layer.queryWeight
+    let key := decoder.attentionProjection norm1 layer.keyWeight
+    let value := decoder.attentionProjection norm1 layer.valueWeight
+    let attended ← Native.attention decoder.nativeCache query key value
+      (← natToUInt32 "layer index" layerIndex)
+      (← natToUInt32 "cache position" position)
+    releaseBuffers [norm1, query, key, value]
+
+    let projected0 :=
+      decoder.attentionProjection attended layer.outputWeight
+    let projected := Buffer.releaseThen attended projected0
+    let biased0 := Buffer.add projected layer.outputBias
+    let biased := Buffer.releaseThen projected biased0
+    let afterAttention0 := Buffer.add hidden biased
+    let afterAttention := Buffer.releaseManyThen #[hidden, biased] afterAttention0
+
+    let norm2 ← Native.layerNorm afterAttention layer.norm2Gamma layer.norm2Beta
+      decoder.widthU32 (Context.ofRat (TorchLeanGPT.normalizationEpsilon true) : Float)
+    let expanded0 :=
+      decoder.matmul norm2 layer.ffnInputWeight decoder.widthU32 decoder.hiddenU32
+    let expanded1 := Buffer.add expanded0 layer.ffnInputBias
+    let expanded := Buffer.releaseThen expanded0 expanded1
+    let activated ← Native.gelu expanded decoder.hiddenU32
+    releaseBuffers [norm2, expanded]
+    let contracted0 :=
+      decoder.matmul activated layer.ffnOutputWeight decoder.hiddenU32 decoder.widthU32
+    let contracted := Buffer.releaseThen activated contracted0
+    let shifted0 := Buffer.add contracted layer.ffnOutputBias
+    let shifted := Buffer.releaseThen contracted shifted0
+    let nextHidden0 := Buffer.add afterAttention shifted
+    hidden := Buffer.releaseManyThen #[afterAttention, shifted] nextHidden0
+
+  decoder.nextPosition.set (position + 1)
+  if produceLogits then
+    let normalized ← Native.layerNorm hidden decoder.finalNormGamma decoder.finalNormBeta
+      decoder.widthU32 (Context.ofRat (TorchLeanGPT.normalizationEpsilon true) : Float)
+    let _ ← Buffer.releaseIO hidden
+    let logits :=
+      decoder.matmul normalized decoder.tokenOutputWeight decoder.widthU32 decoder.vocabU32
+    let host ← Buffer.toFloatArrayIO logits
+    releaseBuffers [normalized, logits]
+    pure (some host.data)
+  else
+    let _ ← Buffer.releaseIO hidden
+    pure none
+
+/-- Current number of cached tokens. -/
+def Decoder.length (decoder : Decoder) : IO Nat :=
+  decoder.nextPosition.get
+
+/--
+Reset the decoder, consume a nonempty prefix, and return the logits of its final row.
+-/
+def Decoder.prefill (decoder : Decoder) (tokens : List Nat) : IO (Array Float) := do
+  if tokens.isEmpty then
+    throw <| IO.userError "cached decoder: cannot prefill an empty token sequence"
+  decoder.reset
+  let mut finalLogits : Option (Array Float) := none
+  for (token, index) in tokens.zipIdx do
+    finalLogits ← decoder.push token (index + 1 = tokens.length)
+  match finalLogits with
+  | some logits => pure logits
+  | none =>
+      throw <| IO.userError "cached decoder: final prefill row produced no logits"
+
+/-- Release native cache storage. Borrowed module parameters are left untouched. -/
+def Decoder.close (decoder : Decoder) : IO Unit := do
+  if ← decoder.closed.get then
+    pure ()
+  else
+    Native.close decoder.nativeCache
+    decoder.closed.set true
+
+end Runtime
+end CachedDecode
+end TorchLeanGPT

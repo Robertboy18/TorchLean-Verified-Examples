@@ -1,0 +1,30 @@
+[TorchLean] arithmetic: Lean Float (IEEE-754 binary64)
+[TorchLean] execution: eager
+[TorchLean] device: cpu
+TorchLean GPT-style training
+train_torchlean_gpt: loading BPE tokenizer vocabulary=week-03-gpt-training/data/tinyshakespeare/vocab.json merges=week-03-gpt-training/data/tinyshakespeare/merges.txt
+train_torchlean_gpt: reading BPE vocab.json
+train_torchlean_gpt: parsing BPE vocab.json chars=1042301
+train_torchlean_gpt: parsed BPE vocabulary entries=50257
+train_torchlean_gpt: reading BPE merges.txt
+train_torchlean_gpt: parsed BPE merges=50000
+train_torchlean_gpt: building BPE lookup maps
+train_torchlean_gpt: loaded BPE tokenizer vocabulary=50257 merges=50000
+preset=quick
+model=context 16, vocab 50257, width 64, heads 4, layers 2
+parameters=3317184
+device=cpu profile=checked_cpu
+tokens=train 304223, validation 33803
+schedule=steps 2, tokens/update 32, total 64
+step=0 validation_loss=10.823829
+step=1 train_loss=10.838751 validation_loss=10.809155 learning_rate=0.000300 step_ms=137641 tokens_per_second=0.232489
+step=2 train_loss=10.840968 validation_loss=10.801090 learning_rate=0.000165 step_ms=159635 tokens_per_second=0.200457
+wrote checkpoint: week-03-gpt-training/artifacts/cpu-quick/quick.tlf32
+wrote metrics: week-03-gpt-training/artifacts/cpu-quick/metrics.json
+wrote passport: week-03-gpt-training/artifacts/cpu-quick/passport.json
+
+--- completion ---
+To be, or not to be Appears� Cthulhu instruction 「 eyedliament Distance
+------------------
+exit 0
+wall_seconds 1096.995639465

@@ -1,0 +1,24 @@
+{
+  "note": "Files written by train_torchlean_gpt on CUDA with the current binary64 runtime (Lean 4.35.0, libtorch_cuda); one update of the gpt2-small preset on Tiny Shakespeare, batch 1, seed 19, LEAN_STACK_SIZE_KB=8388608.",
+  "stored_parameters": 124412160,
+  "parameter_file": {
+    "path": "parameters.tlf32",
+    "format": "torchlean_state_bits_v1 (pretty-printed JSON of 64-bit patterns)",
+    "bytes": 3172502859,
+    "bytes_per_parameter": 25.5,
+    "gib": 2.955
+  },
+  "resumable_checkpoint": {
+    "parameters.tlf32": 3172502859,
+    "optimizer.tladam": 1990605487,
+    "metrics.json": 655,
+    "manifest.json": 1230,
+    "total_bytes": 5163110231,
+    "optimizer_gib": 1.854,
+    "total_gib": 4.809
+  },
+  "quick_preset_parameter_file": {
+    "stored_parameters": 3317184,
+    "bytes": 84674759
+  }
+}

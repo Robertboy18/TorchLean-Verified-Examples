@@ -1,0 +1,19 @@
+{
+  "cubin": "week-01-batch-invariant-inference/cuda/build/tiny_attn_one_row.cubin",
+  "cubinSha256": "133bdfbabea2900ca504e838d48248729ad606ccbfa90f17328b6f0497b4584c",
+  "device": "NVIDIA A100-SXM4-80GB",
+  "computeCapability": "8.0",
+  "cudaDriverVersion": 13000,
+  "inputs": "uniform binary32 in [-4, 4), std::mt19937 seed 1234",
+  "reference": "std::fmaf chain over keys 0..7, starting from +0.0",
+  "launch": {"blocks": "B + 3", "threadsPerBlock": 32},
+  "batches": [
+    {"B": 0, "outputs": 0, "bitwiseMismatchesVsFmaChain": 0, "mulThenAddDiffers": 0, "guardRowWrites": 0},
+    {"B": 1, "outputs": 4, "bitwiseMismatchesVsFmaChain": 0, "mulThenAddDiffers": 2, "guardRowWrites": 0},
+    {"B": 2, "outputs": 8, "bitwiseMismatchesVsFmaChain": 0, "mulThenAddDiffers": 4, "guardRowWrites": 0},
+    {"B": 7, "outputs": 28, "bitwiseMismatchesVsFmaChain": 0, "mulThenAddDiffers": 15, "guardRowWrites": 0},
+    {"B": 33, "outputs": 132, "bitwiseMismatchesVsFmaChain": 0, "mulThenAddDiffers": 73, "guardRowWrites": 0},
+    {"B": 129, "outputs": 516, "bitwiseMismatchesVsFmaChain": 0, "mulThenAddDiffers": 266, "guardRowWrites": 0}
+  ],
+  "total": {"outputs": 688, "bitwiseMismatchesVsFmaChain": 0, "mulThenAddDiffers": 360, "guardRowWrites": 0}
+}

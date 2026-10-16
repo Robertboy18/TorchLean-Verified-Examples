@@ -1,0 +1,18 @@
+[TorchLean] arithmetic: Lean Float (IEEE-754 binary64)
+[TorchLean] execution: eager
+[TorchLean] device: cuda
+TorchLean GPT cached-decoder check
+check_torchlean_gpt_cache: loading BPE tokenizer vocabulary=week-03-gpt-training/data/tinyshakespeare/vocab.json merges=week-03-gpt-training/data/tinyshakespeare/merges.txt
+check_torchlean_gpt_cache: reading BPE vocab.json
+check_torchlean_gpt_cache: parsing BPE vocab.json chars=1042301
+check_torchlean_gpt_cache: parsed BPE vocabulary entries=50257
+check_torchlean_gpt_cache: reading BPE merges.txt
+check_torchlean_gpt_cache: parsed BPE merges=50000
+check_torchlean_gpt_cache: building BPE lookup maps
+check_torchlean_gpt_cache: loaded BPE tokenizer vocabulary=50257 merges=50000
+repeat_penalty=1.050000 repeat_window=64 (argmax and margin are for the penalized scores the decoder ranks)
+prefix=1 max_abs=5.329071e-15 mean_abs=3.864271e-16 argmax=198/198 margin=3.138543 margin_stable=true full_ms=2019.619841 cached_ms=14.252581
+prefix=4 max_abs=4.440892e-15 mean_abs=3.807857e-16 argmax=198/198 margin=3.222950 margin_stable=true full_ms=1689.120169 cached_ms=31.086094
+prefix=9 max_abs=3.552714e-15 mean_abs=3.763216e-16 argmax=198/198 margin=2.264812 margin_stable=true full_ms=1728.384571 cached_ms=72.446834
+cached/full-prefix comparison passed
+exit 0 seconds 347

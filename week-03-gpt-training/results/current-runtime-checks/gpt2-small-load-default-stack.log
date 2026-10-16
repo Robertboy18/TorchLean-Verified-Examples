@@ -1,0 +1,15 @@
+[TorchLean] arithmetic: Lean Float (IEEE-754 binary64)
+[TorchLean] execution: eager
+[TorchLean] device: cuda
+TorchLean GPT text generation
+generate_torchlean_gpt: loading BPE tokenizer vocabulary=week-03-gpt-training/data/tinyshakespeare/vocab.json merges=week-03-gpt-training/data/tinyshakespeare/merges.txt
+generate_torchlean_gpt: reading BPE vocab.json
+generate_torchlean_gpt: parsing BPE vocab.json chars=1042301
+generate_torchlean_gpt: parsed BPE vocabulary entries=50257
+generate_torchlean_gpt: reading BPE merges.txt
+generate_torchlean_gpt: parsed BPE merges=50000
+generate_torchlean_gpt: building BPE lookup maps
+generate_torchlean_gpt: loaded BPE tokenizer vocabulary=50257 merges=50000
+loaded 124412160 parameters on cuda
+
+exit 0 seconds 313

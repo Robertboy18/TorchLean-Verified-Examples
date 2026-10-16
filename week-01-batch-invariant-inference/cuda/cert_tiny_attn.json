@@ -1,0 +1,272 @@
+{
+  "arch": "sm_80",
+  "counts": {
+    "ptxFmaRnF32": 8,
+    "ptxGlobalLoadF32": 16,
+    "ptxGlobalStoreF32": 1
+  },
+  "cubinPath": "week-01-batch-invariant-inference/cuda/build/tiny_attn_one_row.cubin",
+  "cubinSha256": "133bdfbabea2900ca504e838d48248729ad606ccbfa90f17328b6f0497b4584c",
+  "guardPathsNoMemoryAccess": true,
+  "program": {
+    "instructions": [
+      {
+        "address": {
+          "buffer": "values",
+          "laneStrideBytes": 4,
+          "offsetBytes": 0,
+          "rowStrideBytes": 128
+        },
+        "dst": "%f1",
+        "op": "load"
+      },
+      {
+        "address": {
+          "buffer": "weights",
+          "laneStrideBytes": 0,
+          "offsetBytes": 0,
+          "rowStrideBytes": 32
+        },
+        "dst": "%f2",
+        "op": "load"
+      },
+      {
+        "acc": "0f00000000",
+        "dst": "%f3",
+        "lhs": "%f2",
+        "op": "fma",
+        "rhs": "%f1"
+      },
+      {
+        "address": {
+          "buffer": "values",
+          "laneStrideBytes": 4,
+          "offsetBytes": 16,
+          "rowStrideBytes": 128
+        },
+        "dst": "%f4",
+        "op": "load"
+      },
+      {
+        "address": {
+          "buffer": "weights",
+          "laneStrideBytes": 0,
+          "offsetBytes": 4,
+          "rowStrideBytes": 32
+        },
+        "dst": "%f5",
+        "op": "load"
+      },
+      {
+        "acc": "%f3",
+        "dst": "%f6",
+        "lhs": "%f5",
+        "op": "fma",
+        "rhs": "%f4"
+      },
+      {
+        "address": {
+          "buffer": "values",
+          "laneStrideBytes": 4,
+          "offsetBytes": 32,
+          "rowStrideBytes": 128
+        },
+        "dst": "%f7",
+        "op": "load"
+      },
+      {
+        "address": {
+          "buffer": "weights",
+          "laneStrideBytes": 0,
+          "offsetBytes": 8,
+          "rowStrideBytes": 32
+        },
+        "dst": "%f8",
+        "op": "load"
+      },
+      {
+        "acc": "%f6",
+        "dst": "%f9",
+        "lhs": "%f8",
+        "op": "fma",
+        "rhs": "%f7"
+      },
+      {
+        "address": {
+          "buffer": "values",
+          "laneStrideBytes": 4,
+          "offsetBytes": 48,
+          "rowStrideBytes": 128
+        },
+        "dst": "%f10",
+        "op": "load"
+      },
+      {
+        "address": {
+          "buffer": "weights",
+          "laneStrideBytes": 0,
+          "offsetBytes": 12,
+          "rowStrideBytes": 32
+        },
+        "dst": "%f11",
+        "op": "load"
+      },
+      {
+        "acc": "%f9",
+        "dst": "%f12",
+        "lhs": "%f11",
+        "op": "fma",
+        "rhs": "%f10"
+      },
+      {
+        "address": {
+          "buffer": "values",
+          "laneStrideBytes": 4,
+          "offsetBytes": 64,
+          "rowStrideBytes": 128
+        },
+        "dst": "%f13",
+        "op": "load"
+      },
+      {
+        "address": {
+          "buffer": "weights",
+          "laneStrideBytes": 0,
+          "offsetBytes": 16,
+          "rowStrideBytes": 32
+        },
+        "dst": "%f14",
+        "op": "load"
+      },
+      {
+        "acc": "%f12",
+        "dst": "%f15",
+        "lhs": "%f14",
+        "op": "fma",
+        "rhs": "%f13"
+      },
+      {
+        "address": {
+          "buffer": "values",
+          "laneStrideBytes": 4,
+          "offsetBytes": 80,
+          "rowStrideBytes": 128
+        },
+        "dst": "%f16",
+        "op": "load"
+      },
+      {
+        "address": {
+          "buffer": "weights",
+          "laneStrideBytes": 0,
+          "offsetBytes": 20,
+          "rowStrideBytes": 32
+        },
+        "dst": "%f17",
+        "op": "load"
+      },
+      {
+        "acc": "%f15",
+        "dst": "%f18",
+        "lhs": "%f17",
+        "op": "fma",
+        "rhs": "%f16"
+      },
+      {
+        "address": {
+          "buffer": "values",
+          "laneStrideBytes": 4,
+          "offsetBytes": 96,
+          "rowStrideBytes": 128
+        },
+        "dst": "%f19",
+        "op": "load"
+      },
+      {
+        "address": {
+          "buffer": "weights",
+          "laneStrideBytes": 0,
+          "offsetBytes": 24,
+          "rowStrideBytes": 32
+        },
+        "dst": "%f20",
+        "op": "load"
+      },
+      {
+        "acc": "%f18",
+        "dst": "%f21",
+        "lhs": "%f20",
+        "op": "fma",
+        "rhs": "%f19"
+      },
+      {
+        "address": {
+          "buffer": "values",
+          "laneStrideBytes": 4,
+          "offsetBytes": 112,
+          "rowStrideBytes": 128
+        },
+        "dst": "%f22",
+        "op": "load"
+      },
+      {
+        "address": {
+          "buffer": "weights",
+          "laneStrideBytes": 0,
+          "offsetBytes": 28,
+          "rowStrideBytes": 32
+        },
+        "dst": "%f23",
+        "op": "load"
+      },
+      {
+        "acc": "%f21",
+        "dst": "%f24",
+        "lhs": "%f23",
+        "op": "fma",
+        "rhs": "%f22"
+      }
+    ],
+    "store": {
+      "address": {
+        "buffer": "out",
+        "laneStrideBytes": 4,
+        "offsetBytes": 0,
+        "rowStrideBytes": 16
+      },
+      "src": "%f24"
+    }
+  },
+  "ptxChecks": {
+    "hasBlockIdx": true,
+    "hasEightFmas": true,
+    "hasEntry": true,
+    "hasExpectedLoads": true,
+    "hasNoAtomics": true,
+    "hasNoBarrier": true,
+    "hasNoSharedMemory": true,
+    "hasSingleStore": true,
+    "hasThreadIdx": true
+  },
+  "ptxPath": "week-01-batch-invariant-inference/cuda/build/tiny_attn_one_row.ptx",
+  "ptxSha256": "82b35918c8fe625c01291723d9d70ffd9d58b34b4b868440f0affc0a4abe1be5",
+  "sassChecks": {
+    "hasCodeForKernel": true,
+    "hasGlobalLoads": true,
+    "hasGlobalStore": true,
+    "hasNoAtomics": true,
+    "hasNoBarrier": true
+  },
+  "sassPath": "week-01-batch-invariant-inference/cuda/build/tiny_attn_one_row.sass",
+  "sassSha256": "226dac4785b9f0184b6cb83c8488bbdc8a8697eb8bdd40bed939de46098dcf0a",
+  "sourceChecks": {
+    "hasBatchGuard": true,
+    "hasFixedKVLoop": true,
+    "hasKernel": true,
+    "hasOwnedWrite": true,
+    "hasThreadGuard": true
+  },
+  "sourcePath": "week-01-batch-invariant-inference/cuda/tiny_attn_one_row.cu",
+  "sourceSha256": "6adede204f0326bb66359692782329a8789a08b09f67dd217858ed0821c0e02f",
+  "toolkit": "Cuda compilation tools, release 13.2, V13.2.78"
+}

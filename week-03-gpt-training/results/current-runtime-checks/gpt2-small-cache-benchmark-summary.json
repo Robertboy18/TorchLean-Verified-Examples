@@ -1,0 +1,44 @@
+{
+  "command": "benchmark_torchlean_gpt_cache --device cuda --preset gpt2-small --load-params gpt2-small-one-step/parameters.tlf32 --system \"\" --message \"hey\" --generate 16 --seed 0 --top-k 1 (default repeat penalty 1.05 over 64 ids)",
+  "checkpoint": "GPT-2-small preset initialized with seed 19 and trained for one update on Tiny Shakespeare (gpt2-small-one-step-train.log)",
+  "environment": {
+    "gpu": "NVIDIA A100-SXM4-80GB",
+    "driver": "580.167.08",
+    "cuda": "13.0",
+    "libtorch": "PyTorch 2.13.0+cu130",
+    "lean": "4.35.0",
+    "arithmetic": "binary64"
+  },
+  "runs": [
+    {
+      "log": "gpt2-small-cache-benchmark-1.log",
+      "full_prefix_ms": 26637.215889,
+      "cached_prefill_ms": 75.348031,
+      "cached_generation_ms": 333.837375,
+      "cached_total_ms": 409.185,
+      "end_to_end_speedup": 65.098157,
+      "generated_tokens": 16,
+      "generated_tokens_equal": true
+    },
+    {
+      "log": "gpt2-small-cache-benchmark-2.log",
+      "full_prefix_ms": 26570.491426,
+      "cached_prefill_ms": 59.123326,
+      "cached_generation_ms": 356.332504,
+      "cached_total_ms": 415.456,
+      "end_to_end_speedup": 63.955033,
+      "generated_tokens": 16,
+      "generated_tokens_equal": true
+    },
+    {
+      "log": "gpt2-small-cache-benchmark-3.log",
+      "full_prefix_ms": 25494.349263,
+      "cached_prefill_ms": 57.928163,
+      "cached_generation_ms": 324.74954,
+      "cached_total_ms": 382.678,
+      "end_to_end_speedup": 66.620943,
+      "generated_tokens": 16,
+      "generated_tokens_equal": true
+    }
+  ]
+}
