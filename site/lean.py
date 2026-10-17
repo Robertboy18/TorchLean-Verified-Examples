@@ -19,6 +19,11 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "site" / "Examples.lean"
 RECORD = ROOT / "site" / "assets" / "lean.json"
 IMPORTS = {
+    "sharedExpectation": "HeuristicEstimation",
+    "discardedSignal": "HeuristicEstimation",
+    "attentionMoments": "HeuristicEstimation",
+    "sensitiveSketch": "HeuristicEstimation",
+    "encodedSketch": "HeuristicEstimation",
     "rounding": "BatchInvariantInference.Core",
     "prompts": "VerifiableTransformers.Certificate.FiniteEval",
     "resume": "TorchLeanGPT.TrainingCorrectness",
@@ -230,6 +235,9 @@ def check_document(server, text, version=1, path=SOURCE, gpu_check=False):
         "textDocument": {"uri": uri},
         "position": {"line": len(lines) - 1, "character": 8},
     })
+    # Elaboration may finish before its diagnostics are published, especially after an edit.
+    # Wait for the reporter too, so a fast #eval cannot lose its recorded output.
+    server.request("textDocument/waitForDiagnostics", {"uri": uri, "version": version})
     failures = [d["message"] for d in server.diagnostics.get(uri, []) if d["severity"] == 1]
     if failures:
         raise ValueError(f"{path.relative_to(ROOT)} did not check:\n" + "\n".join(failures))

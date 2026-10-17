@@ -35,6 +35,7 @@ PROJECTS = (
     ("torchlean-tensor-programming", "Writing tensor programs in Lean", "CPU and GPU programming"),
     ("week-04-kimi-k3-specification", "Kimi K3: the paper and proofs side by side", "Annotated report"),
     ("week-05-nemotron-specification", "Nemotron 3 Ultra: replaying a rounded state", "Recurrent state"),
+    ("week-06-heuristic-estimators", "Estimating model behavior from its structure", "Heuristic estimation"),
 )
 TEXT_SUFFIXES = {".lean", ".md", ".py", ".sh", ".cpp", ".c", ".h", ".cu", ".json", ".svg", ".toml"}
 LEAN_LEXER = get_lexer_by_name('lean4')

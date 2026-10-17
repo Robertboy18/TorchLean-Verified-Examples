@@ -88,6 +88,31 @@ function setupLeanInfo() {
 
 setupLeanInfo();
 
+// Exact formulas for the four equally weighted sign pairs in the heuristic-estimation article.
+// No random draws or empirical timing are represented by this illustration.
+const dependencyEstimate = document.querySelector('#dependency-estimate');
+if (dependencyEstimate) {
+  const shared = dependencyEstimate.querySelector('input');
+  const samples = dependencyEstimate.querySelector('select');
+  const update = () => {
+    const c = Number(shared.value) / 100;
+    const n = Number(samples.value);
+    dependencyEstimate.querySelector('[data-shared-label]').textContent = `c = ${c.toFixed(2)}`;
+    const values = [1, 2 * c - 1, 2 * c - 1, 1];
+    dependencyEstimate.querySelectorAll('[data-sign-output]').forEach((element, i) => {
+      element.textContent = values[i].toFixed(2);
+    });
+    dependencyEstimate.querySelector('[data-estimate-summary]').textContent =
+      `The true mean is ${c.toFixed(2)}; the mean-only estimate is 0.`;
+    dependencyEstimate.querySelector('[data-naive-error]').textContent = (c * c).toFixed(6);
+    dependencyEstimate.querySelector('[data-sampling-error]').textContent =
+      ((1 - c) ** 2 / n).toFixed(6);
+  };
+  shared.addEventListener('input', update);
+  samples.addEventListener('change', update);
+  update();
+}
+
 // Add color inside the existing tokens, preserving their types, focus targets, and source text.
 function colorLean(root, ranges, start = 0) {
   if (!ranges?.length) return;

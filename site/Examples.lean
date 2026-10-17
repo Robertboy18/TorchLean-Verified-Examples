@@ -10,9 +10,90 @@ import NN.Tactic.Autograd
 import NN.Proofs.Tensor.Algebra
 import TorchLeanGPT.TrainingCorrectness
 import VerifiableTransformers.Certificate.FiniteEval
+import HeuristicEstimation
 
 /-! Small runnable calculations embedded in the articles. The website records Lean's types
 and command output from this file; editing a calculation requires refreshing that recording. -/
+
+-- ANCHOR: sharedExpectation
+open TorchLean HeuristicEstimation
+
+-- All four sign pairs, equally weighted. These are exact rational computations.
+def signX : Tensor Rat [4] := signs
+def signZ : Tensor Rat [4] := independentSigns
+
+#eval response (1 / 2 : Rat) signX signZ
+#eval Tensor.mean (response (1 / 2 : Rat) signX signZ)
+
+-- Multiplying the two input means loses their shared dependence.
+#eval Tensor.mean signX * Tensor.mean
+  (signX.scale (1 / 2 : Rat) + signZ.scale (1 / 2 : Rat))
+-- ANCHOR_END: sharedExpectation
+
+-- ANCHOR: discardedSignal
+open TorchLean HeuristicEstimation
+
+def signal : Tensor Rat [4] := signs
+
+-- Replacing this mean-zero intermediate by zero changes the later product's mean.
+#eval Tensor.mean signal
+#eval Tensor.mean (signal * signal)
+#eval Tensor.mean (signal * Tensor.zeros [4])
+-- ANCHOR_END: discardedSignal
+
+-- ANCHOR: attentionMoments
+open TorchLean HeuristicEstimation
+
+-- Four equally likely inputs. Each key reuses both coordinates of its query.
+def queries : Tensor Rat [4, 2] := [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+def keys : Tensor Rat [4, 2] :=
+  [[-1 / 2, -1 / 4], [-1 / 2, 1 / 4], [1 / 2, -1 / 4], [1 / 2, 1 / 4]]
+
+#eval Tensor.mean (Tensor.ofFn fun (c : Fin 4) =>
+  Attention.score (Tensor.unstack queries c) (Tensor.unstack keys c))
+
+-- The query and key means vanish. Their cross-covariance diagonal does not.
+#eval Attention.score (Tensor.zeros [2] : Tensor Rat [2]) (Tensor.zeros [2])
+#eval Attention.estimate ([0, 0] : Tensor Rat [2]) [0, 0] [[1 / 2, 0], [0, 1 / 4]]
+-- ANCHOR_END: attentionMoments
+
+-- ANCHOR: sensitiveSketch
+namespace SketchExample
+
+open TorchLean HeuristicEstimation.Sketch
+
+def values : Tensor Rat [2] := [100, 1]
+def probabilities : Tensor Rat [2] := [1 / 2, 1 / 2]
+def tails : Tensor Rat [2, 2] := [[0, 1], [0, 2]]
+def keepLargest : Tensor Bool [2] := [true, false]
+def keepUseful : Tensor Bool [2] := [false, true]
+
+-- The larger coefficient wins at reconstruction, but loses at the downstream task.
+#eval (energy (residual keepLargest values), error probabilities tails (residual keepLargest values))
+#eval (energy (residual keepUseful values), error probabilities tails (residual keepUseful values))
+
+-- Check the matrix, including off-diagonal entries, rather than only this vector.
+#eval gram probabilities tails
+#eval check (gram probabilities tails) 2
+#eval check (gram probabilities tails) (5 / 2)
+#eval check (restrict keepUseful (gram probabilities tails)) 0
+
+end SketchExample
+-- ANCHOR_END: sensitiveSketch
+
+-- ANCHOR: encodedSketch
+open TorchLean HeuristicEstimation
+
+def coefficients : Tensor Rat [2] := [1 / 3, 1 / 7]
+
+-- Store on a grid of eighths, using FloatLib's nearest-even encoder.
+#eval Tensor.map (Encoding.round (1 / 8)) coefficients
+#eval Sketch.energy (Tensor.ofFn fun (i : Fin 2) =>
+  Encoding.round (1 / 8) (coefficients.getScalar i) - coefficients.getScalar i)
+
+-- Two coefficients, each with error at most half an eighth.
+#eval (2 : Rat) * ((1 / 8) / 2) ^ 2
+-- ANCHOR_END: encodedSketch
 
 -- ANCHOR: rounding
 open BatchInvariantInference.IEEE32
