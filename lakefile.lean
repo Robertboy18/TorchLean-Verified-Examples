@@ -149,6 +149,12 @@ lean_lib Nemotron where
   roots := #[`Nemotron]
   defaultFacets := #[LeanLib.staticFacet]
 
+@[default_target]
+lean_lib HeuristicEstimation where
+  srcDir := "week-06-heuristic-estimators"
+  roots := #[`HeuristicEstimation]
+  defaultFacets := #[LeanLib.staticFacet]
+
 lean_exe train_torchlean_gpt where
   srcDir := "week-03-gpt-training"
   root := `TorchLeanGPT.Train

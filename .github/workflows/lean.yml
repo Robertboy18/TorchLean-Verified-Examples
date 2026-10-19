@@ -27,9 +27,10 @@ jobs:
       - name: Download the Mathlib cache
         run: lake exe cache get
 
-      - name: Build the five developments and native commands
+      - name: Build the six developments and native commands
         run: |
           lake --wfail build BatchInvariantInference VerifiableTransformers TorchLeanGPT KimiK3 Nemotron \
+            HeuristicEstimation \
             verify_upstream_forward train_torchlean_gpt check_torchlean_gpt_data \
             generate_torchlean_gpt \
             generate_torchlean_gpt_cached check_torchlean_gpt_cache \

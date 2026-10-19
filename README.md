@@ -25,6 +25,10 @@ Some examples I've been working on :)
 - [Nemotron 3 Ultra: replaying a rounded state](week-05-nemotron-specification/site/).
   Prove replay and rollback results, then follow checkpoint-rounding errors. Fewer
   rounded writes can leave a larger actual error, even with a smaller worst-case budget!
+- [Estimating model behavior from its structure](week-06-heuristic-estimators/).
+  Study shared inputs and attention, then use the existing backward pass to bound the
+  expected error from averaging away input randomness. Check finite examples and numerical
+  error bounds, motivated by MAISI and ARC's research.
 
 For K3 and Nemotron, the proofs cover the equations and state transformations described in the
 essays (not complete released checkpoints). Each development links its theorem statements,
@@ -56,7 +60,7 @@ the previous SDK. You'll find the native build in the
 
 ## Build the Lean developments
 
-All five weeks share one Lake project and one pinned TorchLean dependency.
+All six weeks share one Lake project and one pinned TorchLean dependency.
 
 On a fresh checkout:
 
@@ -69,6 +73,7 @@ lake build VerifiableTransformers
 lake build TorchLeanGPT
 lake build KimiK3
 lake build Nemotron
+lake build HeuristicEstimation
 ```
 
 Week 2's executable replay is a separate command:

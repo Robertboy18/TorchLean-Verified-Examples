@@ -1,0 +1,553 @@
+{
+  "scope": "Constructed exact-rational networks; no trained-model or speedup claim.",
+  "execution": "Python Fraction checks, not kernel-produced proofs of these artifacts.",
+  "bound": "mean over retained cells of sum_l,i abs(suffix_l,i)*max(0,delta_l,i-abs(pre_l,i))",
+  "centering": "Independent discarded signs have zero mean conditional on retained signs.",
+  "cases": [
+    {
+      "name": "small_exhaustive",
+      "input_signs": 8,
+      "retained_signs": 4,
+      "discarded_signs": 4,
+      "distribution": "All input signs are mutually independent and uniform on {-1,+1}.",
+      "hidden_widths": [
+        3,
+        2,
+        2
+      ],
+      "surrogate_states": 16,
+      "summary_excludes_readout": true,
+      "summary_bytes": 23278,
+      "summary_sha256": "16c4e3690128348260730b42b4d54dac40dccc14e95764a84587c5996f63dc08",
+      "nonzero_discarded_first_layer_weights": 12,
+      "positive_ramp_units_across_cells": 33,
+      "reference": {
+        "method": "all independent sign inputs",
+        "full_inputs_enumerated": 256,
+        "pointwise_error_identities_checked": 768
+      },
+      "readouts": [
+        {
+          "readout": [
+            {
+              "exact": "1",
+              "decimal": 1.0
+            },
+            {
+              "exact": "-1/2",
+              "decimal": -0.5
+            }
+          ],
+          "bias": {
+            "exact": "1/7",
+            "decimal": 0.14285714285714285
+          },
+          "surrogate_expectation": {
+            "exact": "521/10752",
+            "decimal": 0.04845610119047619
+          },
+          "true_expectation": {
+            "exact": "36487/688128",
+            "decimal": 0.05302356538318452
+          },
+          "difference": {
+            "exact": "449/98304",
+            "decimal": 0.004567464192708333
+          },
+          "absolute_error_bound": {
+            "exact": "599/3072",
+            "decimal": 0.19498697916666666
+          },
+          "signed_error_interval": [
+            {
+              "exact": "-337/6144",
+              "decimal": -0.054850260416666664
+            },
+            {
+              "exact": "287/2048",
+              "decimal": 0.14013671875
+            }
+          ],
+          "uniform_remainder_bound": {
+            "exact": "3943/6144",
+            "decimal": 0.6417643229166666
+          }
+        },
+        {
+          "readout": [
+            {
+              "exact": "0",
+              "decimal": 0.0
+            },
+            {
+              "exact": "1",
+              "decimal": 1.0
+            }
+          ],
+          "bias": {
+            "exact": "0",
+            "decimal": 0.0
+          },
+          "surrogate_expectation": {
+            "exact": "87/256",
+            "decimal": 0.33984375
+          },
+          "true_expectation": {
+            "exact": "5749/16384",
+            "decimal": 0.35089111328125
+          },
+          "difference": {
+            "exact": "181/16384",
+            "decimal": 0.01104736328125
+          },
+          "absolute_error_bound": {
+            "exact": "27/256",
+            "decimal": 0.10546875
+          },
+          "signed_error_interval": [
+            {
+              "exact": "-1/128",
+              "decimal": -0.0078125
+            },
+            {
+              "exact": "25/256",
+              "decimal": 0.09765625
+            }
+          ],
+          "uniform_remainder_bound": {
+            "exact": "591/1024",
+            "decimal": 0.5771484375
+          }
+        },
+        {
+          "readout": [
+            {
+              "exact": "-2",
+              "decimal": -2.0
+            },
+            {
+              "exact": "1",
+              "decimal": 1.0
+            }
+          ],
+          "bias": {
+            "exact": "-1/5",
+            "decimal": -0.2
+          },
+          "surrogate_expectation": {
+            "exact": "-43/3840",
+            "decimal": -0.011197916666666667
+          },
+          "true_expectation": {
+            "exact": "-4997/245760",
+            "decimal": -0.020332845052083333
+          },
+          "difference": {
+            "exact": "-449/49152",
+            "decimal": -0.009134928385416666
+          },
+          "absolute_error_bound": {
+            "exact": "599/1536",
+            "decimal": 0.3899739583333333
+          },
+          "signed_error_interval": [
+            {
+              "exact": "-287/1024",
+              "decimal": -0.2802734375
+            },
+            {
+              "exact": "337/3072",
+              "decimal": 0.10970052083333333
+            }
+          ],
+          "uniform_remainder_bound": {
+            "exact": "3943/3072",
+            "decimal": 1.2835286458333333
+          }
+        }
+      ],
+      "wall_seconds_including_reference": 0.14142645290121436
+    },
+    {
+      "name": "large_stable",
+      "input_signs": 64,
+      "retained_signs": 4,
+      "discarded_signs": 60,
+      "distribution": "All input signs are mutually independent and uniform on {-1,+1}.",
+      "hidden_widths": [
+        3,
+        3,
+        2
+      ],
+      "surrogate_states": 16,
+      "summary_excludes_readout": true,
+      "summary_bytes": 27022,
+      "summary_sha256": "1d82057d6c186a8a791b4c0d216c6c94b8e23969f42ca7e2d03eb5ff76eee3bd",
+      "nonzero_discarded_first_layer_weights": 180,
+      "positive_ramp_units_across_cells": 0,
+      "reference": {
+        "method": "global stable-gate affine collapse",
+        "gate_patterns": [
+          [
+            true,
+            true,
+            false
+          ],
+          [
+            true,
+            false,
+            true
+          ],
+          [
+            true,
+            true
+          ]
+        ],
+        "full_inputs_enumerated": 0
+      },
+      "readouts": [
+        {
+          "readout": [
+            {
+              "exact": "1",
+              "decimal": 1.0
+            },
+            {
+              "exact": "-1/2",
+              "decimal": -0.5
+            }
+          ],
+          "bias": {
+            "exact": "1/7",
+            "decimal": 0.14285714285714285
+          },
+          "surrogate_expectation": {
+            "exact": "437/168",
+            "decimal": 2.6011904761904763
+          },
+          "true_expectation": {
+            "exact": "437/168",
+            "decimal": 2.6011904761904763
+          },
+          "difference": {
+            "exact": "0",
+            "decimal": 0.0
+          },
+          "absolute_error_bound": {
+            "exact": "0",
+            "decimal": 0.0
+          },
+          "signed_error_interval": [
+            {
+              "exact": "0",
+              "decimal": 0.0
+            },
+            {
+              "exact": "0",
+              "decimal": 0.0
+            }
+          ],
+          "uniform_remainder_bound": {
+            "exact": "2145/1024",
+            "decimal": 2.0947265625
+          }
+        },
+        {
+          "readout": [
+            {
+              "exact": "0",
+              "decimal": 0.0
+            },
+            {
+              "exact": "1",
+              "decimal": 1.0
+            }
+          ],
+          "bias": {
+            "exact": "0",
+            "decimal": 0.0
+          },
+          "surrogate_expectation": {
+            "exact": "15/4",
+            "decimal": 3.75
+          },
+          "true_expectation": {
+            "exact": "15/4",
+            "decimal": 3.75
+          },
+          "difference": {
+            "exact": "0",
+            "decimal": 0.0
+          },
+          "absolute_error_bound": {
+            "exact": "0",
+            "decimal": 0.0
+          },
+          "signed_error_interval": [
+            {
+              "exact": "0",
+              "decimal": 0.0
+            },
+            {
+              "exact": "0",
+              "decimal": 0.0
+            }
+          ],
+          "uniform_remainder_bound": {
+            "exact": "615/512",
+            "decimal": 1.201171875
+          }
+        },
+        {
+          "readout": [
+            {
+              "exact": "-2",
+              "decimal": -2.0
+            },
+            {
+              "exact": "1",
+              "decimal": 1.0
+            }
+          ],
+          "bias": {
+            "exact": "-1/5",
+            "decimal": -0.2
+          },
+          "surrogate_expectation": {
+            "exact": "-307/60",
+            "decimal": -5.116666666666666
+          },
+          "true_expectation": {
+            "exact": "-307/60",
+            "decimal": -5.116666666666666
+          },
+          "difference": {
+            "exact": "0",
+            "decimal": 0.0
+          },
+          "absolute_error_bound": {
+            "exact": "0",
+            "decimal": 0.0
+          },
+          "signed_error_interval": [
+            {
+              "exact": "0",
+              "decimal": 0.0
+            },
+            {
+              "exact": "0",
+              "decimal": 0.0
+            }
+          ],
+          "uniform_remainder_bound": {
+            "exact": "2145/512",
+            "decimal": 4.189453125
+          }
+        }
+      ],
+      "wall_seconds_including_reference": 0.06256837723776698
+    },
+    {
+      "name": "large_nonlinear",
+      "input_signs": 64,
+      "retained_signs": 4,
+      "discarded_signs": 60,
+      "distribution": "All input signs are mutually independent and uniform on {-1,+1}.",
+      "hidden_widths": [
+        3,
+        2,
+        2
+      ],
+      "surrogate_states": 16,
+      "summary_excludes_readout": true,
+      "summary_bytes": 23279,
+      "summary_sha256": "68b9d9412fd1bbbe8dcdebc027c48544a6564fd25cfabaf79c62225e4e77542a",
+      "nonzero_discarded_first_layer_weights": 180,
+      "positive_ramp_units_across_cells": 33,
+      "reference": {
+        "method": "identical discarded columns and exact binomial weights",
+        "grouped_states_evaluated": 976,
+        "full_inputs_enumerated": 0,
+        "represented_input_count": 18446744073709551616
+      },
+      "readouts": [
+        {
+          "readout": [
+            {
+              "exact": "1",
+              "decimal": 1.0
+            },
+            {
+              "exact": "-1/2",
+              "decimal": -0.5
+            }
+          ],
+          "bias": {
+            "exact": "1/7",
+            "decimal": 0.14285714285714285
+          },
+          "surrogate_expectation": {
+            "exact": "521/10752",
+            "decimal": 0.04845610119047619
+          },
+          "true_expectation": {
+            "exact": "1211389088855702470951/24792424035065637371904",
+            "decimal": 0.04886126048595939
+          },
+          "difference": {
+            "exact": "478327669303234379/1180591620717411303424",
+            "decimal": 0.00040515929548319893
+          },
+          "absolute_error_bound": {
+            "exact": "599/3072",
+            "decimal": 0.19498697916666666
+          },
+          "signed_error_interval": [
+            {
+              "exact": "-337/6144",
+              "decimal": -0.054850260416666664
+            },
+            {
+              "exact": "287/2048",
+              "decimal": 0.14013671875
+            }
+          ],
+          "uniform_remainder_bound": {
+            "exact": "3943/6144",
+            "decimal": 0.6417643229166666
+          }
+        },
+        {
+          "readout": [
+            {
+              "exact": "0",
+              "decimal": 0.0
+            },
+            {
+              "exact": "1",
+              "decimal": 1.0
+            }
+          ],
+          "bias": {
+            "exact": "0",
+            "decimal": 0.0
+          },
+          "surrogate_expectation": {
+            "exact": "87/256",
+            "decimal": 0.33984375
+          },
+          "true_expectation": {
+            "exact": "202201350450317832001/590295810358705651712",
+            "decimal": 0.3425424116214647
+          },
+          "difference": {
+            "exact": "1593008648726458177/590295810358705651712",
+            "decimal": 0.0026986616214647245
+          },
+          "absolute_error_bound": {
+            "exact": "27/256",
+            "decimal": 0.10546875
+          },
+          "signed_error_interval": [
+            {
+              "exact": "-1/128",
+              "decimal": -0.0078125
+            },
+            {
+              "exact": "25/256",
+              "decimal": 0.09765625
+            }
+          ],
+          "uniform_remainder_bound": {
+            "exact": "591/1024",
+            "decimal": 0.5771484375
+          }
+        },
+        {
+          "readout": [
+            {
+              "exact": "-2",
+              "decimal": -2.0
+            },
+            {
+              "exact": "1",
+              "decimal": 1.0
+            }
+          ],
+          "bias": {
+            "exact": "-1/5",
+            "decimal": -0.2
+          },
+          "surrogate_expectation": {
+            "exact": "-43/3840",
+            "decimal": -0.011197916666666667
+          },
+          "true_expectation": {
+            "exact": "-106326164435737355621/8854437155380584775680",
+            "decimal": -0.012008235257633065
+          },
+          "difference": {
+            "exact": "-478327669303234379/590295810358705651712",
+            "decimal": -0.0008103185909663979
+          },
+          "absolute_error_bound": {
+            "exact": "599/1536",
+            "decimal": 0.3899739583333333
+          },
+          "signed_error_interval": [
+            {
+              "exact": "-287/1024",
+              "decimal": -0.2802734375
+            },
+            {
+              "exact": "337/3072",
+              "decimal": 0.10970052083333333
+            }
+          ],
+          "uniform_remainder_bound": {
+            "exact": "3943/3072",
+            "decimal": 1.2835286458333333
+          }
+        }
+      ],
+      "wall_seconds_including_reference": 0.3073760336264968
+    }
+  ],
+  "correlated_counterexample": {
+    "network": "ReLU(2*A + R)",
+    "joint_distribution": "A=R, each sign equally likely",
+    "marginal_discarded_mean": {
+      "exact": "0",
+      "decimal": 0.0
+    },
+    "conditional_discarded_means": [
+      {
+        "exact": "-1",
+        "decimal": -1.0
+      },
+      {
+        "exact": "1",
+        "decimal": 1.0
+      }
+    ],
+    "conditional_centering_satisfied": false,
+    "surrogate_expectation": {
+      "exact": "1",
+      "decimal": 1.0
+    },
+    "true_expectation": {
+      "exact": "3/2",
+      "decimal": 1.5
+    },
+    "incorrectly_applied_boundary_bound": {
+      "exact": "0",
+      "decimal": 0.0
+    },
+    "actual_error": {
+      "exact": "1/2",
+      "decimal": 0.5
+    },
+    "reason": "The fixed-gate input-linear term has nonzero conditional expectation."
+  },
+  "source_sha256": "5b1d45cbc08bba66888810643f61a61a8b1832b50a75f76d41d634f8065edeab"
+}
