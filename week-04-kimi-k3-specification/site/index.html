@@ -37,12 +37,10 @@
         parameters and a context window of up to one million tokens. It mixes attention
         with recurrent memory and picks a subset of its experts for each token.
         <a class="paper-cite" href="https://arxiv.org/pdf/2607.24653v2#page=1">Kimi K3 technical report ↗</a></p>
-      <p class="hero-introduction">Mathematicians have spent years
-        <a href="https://github.com/teorth/pfr">formalizing research papers in Lean</a>.
-        I think it's time we did the same for ML papers. We now have TorchLean for
-        tensor programs and model definitions, and FloatLib for floating-point arithmetic
-        and its proofs, so I wanted to use them to work through K3's equations and understand
-        how the model fits together.</p>
+      <p class="hero-introduction">I wanted to work through K3's equations with the model
+        and its proofs side by side. TorchLean gives us tensor programs and model definitions;
+        FloatLib lets us specify their arithmetic. We'll start with one expert, then follow
+        the recurrent state, attention, routing, and the sequence as a whole.</p>
       <details class="article-toc">
         <summary>Read by chapter</summary>
         <nav aria-label="Article contents">

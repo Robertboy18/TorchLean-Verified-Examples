@@ -830,6 +830,22 @@ that graph. The importer, the numerical execution and the graph property each ne
 evidence. A successful sample comparison is a good start, but it doesn't prove the
 translation correct for every input.
 
+For a trained example, we've added an
+[MNIST walkthrough](https://lean-dojo.github.io/TorchLean/examples/jaxpr/#try-a-trained-mnist-classifier).
+It trains a small JAX classifier with float32 master parameters and explicit bfloat16
+rounding in the forward pass. We then evaluate the same checkpoint with float32,
+float16 and bfloat16 forward tensors, capture the learned weights and one held-out
+image, and replay that graph in Lean's reference arithmetic. The script saves the
+weights and each check report, so we can inspect the computation after training.
+
+In our three-epoch bfloat16-forward run, all three evaluation settings classified
+9,351 of the 10,000 test images correctly. All three captured graphs passed their
+structure, type and reference-execution checks. On the captured image, float16 and
+bfloat16 matched JAX's output words; float32 differed by at most $2^{-21}$ per logit,
+and both calculations predicted the digit 7. These are measurements, not a proof
+of training correctness or accuracy on unseen data. The useful next question is
+whether we can bound the numerical difference over more than this one image.
+
 ### Bounds and model verification
 
 On the proof side, the updated FloatLib `interval` tactic handles more real expressions

@@ -178,10 +178,9 @@ poor choice can lead it to a prefix unlike anything in the validation examples. 
 the prompt suite inspect different behavior, and that's before we even consider that a numeric
 answer or a valid Python function may require several correct tokens in a row.
 
-I don't know yet which changes would fix each failed answer, because this experiment doesn't
-isolate their causes. What I do know is that the curves improved and the model still got `7 + 5`
-wrong. So... I'd keep the actual answers beside the loss plot, rather than treat either one as
-the whole evaluation.
+I don't yet know which changes would fix each failed answer; this experiment doesn't
+isolate their causes. The model still got `7 + 5` wrong after its losses improved.
+I want those answers beside the loss plot when we decide what to try next.
 
 <div id="next-token-targets-and-assistant-only-loss"></div>
 
