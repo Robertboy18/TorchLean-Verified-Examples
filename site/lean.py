@@ -20,6 +20,7 @@ SOURCE = ROOT / "site" / "Examples.lean"
 RECORD = ROOT / "site" / "assets" / "lean.json"
 IMPORTS = {
     "sharedExpectation": "HeuristicEstimation",
+    "programTable": "ProgramEquilibrium.Bots",
     "discardedSignal": "HeuristicEstimation",
     "attentionMoments": "HeuristicEstimation",
     "sensitiveSketch": "HeuristicEstimation",

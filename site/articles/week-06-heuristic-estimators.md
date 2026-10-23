@@ -769,3 +769,6 @@ That's the contribution I'd like to explore with people working on this agenda. 
 to work with MAISI or ARC researchers on a concrete family where a formally specified
 structural estimator would teach us something new. We'll be adding more examples as we
 develop this direction :)
+
+The [next post](../week-07-program-equilibrium/) follows another MAISI direction, from Jacob
+Tsimerman's talk: programs that prove things about each other's code.
