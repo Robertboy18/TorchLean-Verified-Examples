@@ -100,7 +100,8 @@ columns. -/
 theorem orthogonalize_hasExactColumnGram {α : Type} [Storage α] [Context α]
     {heads rows columns : Nat}
     (orthogonalizer : Orthogonalizer α [rows, columns])
-    (hExact : ExactMatrixOrthogonalizer orthogonalizer)
+    (hExact : ∀ buffer : MatrixTensor α rows columns,
+      ExactOrthogonalizesBuffer orthogonalizer buffer)
     (momentum : MatrixTensor α rows (heads * columns)) :
     ∀ head, HasExactColumnGram (split (orthogonalize orthogonalizer momentum) head) := by
   intro head
@@ -111,7 +112,8 @@ theorem orthogonalize_hasExactColumnGram {α : Type} [Storage α] [Context α]
 theorem orthogonalize_hasApproxColumnGram {α : Type} [Storage α] [Context α]
     {heads rows columns : Nat} (epsilon : α)
     (orthogonalizer : Orthogonalizer α [rows, columns])
-    (hApprox : ApproxMatrixOrthogonalizer epsilon orthogonalizer)
+    (hApprox : ∀ buffer : MatrixTensor α rows columns,
+      ApproxOrthogonalizesBuffer epsilon orthogonalizer buffer)
     (momentum : MatrixTensor α rows (heads * columns)) :
     ∀ head, HasApproxColumnGram epsilon
       (split (orthogonalize orthogonalizer momentum) head) := by

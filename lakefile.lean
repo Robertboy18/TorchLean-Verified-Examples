@@ -67,7 +67,8 @@ private def buildCachedDecoder (pkg : Package) : FetchM (Job FilePath) := do
         s!"-DTORCHLEAN_OUTPUT_DIR={buildDir}", "-DCMAKE_BUILD_TYPE=Release",
         s!"-DCMAKE_CXX_COMPILER={compiler}"]
       if let some cudaHome := get_config? cuda_home then
-        args := args.push s!"-DCUDAToolkit_ROOT={cudaHome}"
+        args := args ++ #[s!"-DCUDAToolkit_ROOT={cudaHome}",
+          s!"-DCUDA_TOOLKIT_ROOT_DIR={cudaHome}"]
       if let some extra := ← IO.getEnv "TORCHLEAN_LIBTORCH_CMAKE_ARGS" then
         let parsed := Json.parse extra >>= Json.getArr? >>= fun xs => xs.mapM Json.getStr?
         match parsed with
@@ -103,6 +104,8 @@ package TorchLeanVerifiedExamples where
   version := v!"0.1.0"
   description := "Weekly TorchLean examples with checked Lean developments."
   moreLinkArgs := nativeLinkArgs
+  -- Imported tensor operations also use the packed CPU helper during `#eval`.
+  dynlibs := #[`@TorchLean/torchlean_tensor_cpu_shared]
 
 /-- Week 3's stateful key/value cache; this is not part of the TorchLean core runtime. -/
 extern_lib torchlean_gpt_cached_decode (pkg) :=
@@ -183,8 +186,7 @@ require TorchLean from git
   "https://github.com/lean-dojo/TorchLean.git" @ "main" with torchLeanOptions
 
 require LeanProfiler from git
-  "https://github.com/lean-dojo/LeanProfiler.git" @
-    "8a4a02657ce3dd1f58eb7d505e46bdc1d97f6bb5"
+  "https://github.com/lean-dojo/LeanProfiler.git" @ "main"
 
 -- Share TorchLean's mathematical environment rather than resolving a separate Mathlib version.
 require mathlib from git "https://github.com/leanprover-community/mathlib4" @ "v4.35.0"

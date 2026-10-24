@@ -305,7 +305,7 @@ def shortConvTerm {Γ : List Shape} (heads convWidth modelDim channels : Nat)
     NN.GraphSpec.DAG.PrimOp.matmul_specFwd,
     NN.GraphSpec.DAG.PrimOp.mul_specFwd, NN.GraphSpec.DAG.PrimOp.reduceSum_specFwd,
     NN.GraphSpec.DAG.PrimOp.add_specFwd]
-  simp [Tensor.matmulSpec,
+  simp [Tensor.batchMatmulSpec,
     Tensor.LinearAlgebra.Internal.matmulCommonBatchSpec, Spec.get,
     Tensor.reduceSum, Tensor.reduceDim, Tensor.Reduction.Internal.reduceDimCore,
     Tensor.mulSpec, Tensor.map2Spec, Tensor.unstack,
@@ -352,7 +352,7 @@ def normalizedProjectionTerm {Γ : List Shape}
     Term Γ [heads, channels] :=
   let activated := activatedProjectionTerm heads convWidth modelDim channels hHeads hWidth
     hChannels window projection kernel bias
-  Term.op (NN.GraphSpec.DAG.PrimOp.l2Normalize [heads] channels hChannels)
+  Term.op (NN.GraphSpec.DAG.PrimOp.normalizeL2Regularized [heads] channels hChannels)
     (.cons activated (.cons epsilon .nil))
 
 /-- Evaluation of the normalized projection normalizes each head along its channel axis. -/
@@ -371,7 +371,8 @@ def normalizedProjectionTerm {Γ : List Shape}
             hHeads hWidth hChannels window projection kernel bias)) head)
         (Tensor.item (Term.eval env epsilon)) := by
   simp [normalizedProjectionTerm, Term.eval_op, Term.evalArgs,
-    NN.GraphSpec.DAG.PrimOp.l2Normalize, NN.GraphSpec.DAG.PrimOp.l2NormalizeSpec,
+    NN.GraphSpec.DAG.PrimOp.normalizeL2Regularized,
+    NN.GraphSpec.DAG.PrimOp.normalizeL2RegularizedLastAxisSpec,
     PrimOp.Internal.mapFinalAxis, Tensor.mapLeading,
     Spec.get]
 

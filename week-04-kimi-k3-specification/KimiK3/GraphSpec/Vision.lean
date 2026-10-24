@@ -117,28 +117,28 @@ end
 /-! ## Small bridges between graph nodes and reference operations -/
 
 /-- A matmul node without batch axes is the reference matrix product. -/
-private theorem matmulSpec_plain {α : Type} [Storage α] [Context α] {m n p : Nat}
+private theorem batchMatmulSpec_plain {α : Type} [Storage α] [Context α] {m n p : Nat}
     (left : Tensor α [m, n]) (right : Tensor α [n, p]) :
-    Tensor.matmulSpec (Shape.CanBroadcastTo.refl []) (Shape.CanBroadcastTo.refl [])
+    Tensor.batchMatmulSpec (Shape.CanBroadcastTo.refl []) (Shape.CanBroadcastTo.refl [])
       left right = Spec.matMulSpec left right := by
-  simp [Tensor.matmulSpec]
+  simp [Tensor.batchMatmulSpec]
 
 /-- A matmul node with one shared batch axis multiplies slice by slice. -/
-private theorem matmulSpec_batched {α : Type} [Storage α] [Context α] {batch m n p : Nat}
+private theorem batchMatmulSpec_batched {α : Type} [Storage α] [Context α] {batch m n p : Nat}
     (left : Tensor α [batch, m, n]) (right : Tensor α [batch, n, p]) :
-    Tensor.matmulSpec (Shape.CanBroadcastTo.refl [batch]) (Shape.CanBroadcastTo.refl [batch])
+    Tensor.batchMatmulSpec (Shape.CanBroadcastTo.refl [batch]) (Shape.CanBroadcastTo.refl [batch])
       left right =
       Tensor.dim fun index =>
         Spec.matMulSpec (Tensor.unstack left index) (Tensor.unstack right index) := by
-  simp [Tensor.matmulSpec, Tensor.LinearAlgebra.Internal.matmulCommonBatchSpec]
+  simp [Tensor.batchMatmulSpec, Tensor.LinearAlgebra.Internal.matmulCommonBatchSpec]
 
 /-- A matmul node whose left matrix is shared across a batch axis. -/
-private theorem matmulSpec_sharedLeft {α : Type} [Storage α] [Context α] {batch m n p : Nat}
+private theorem batchMatmulSpec_sharedLeft {α : Type} [Storage α] [Context α] {batch m n p : Nat}
     (left : Tensor α [m, n]) (right : Tensor α [batch, n, p]) :
-    Tensor.matmulSpec (Shape.CanBroadcastTo.scalarTo [batch]) (Shape.CanBroadcastTo.refl [batch])
+    Tensor.batchMatmulSpec (Shape.CanBroadcastTo.scalarTo [batch]) (Shape.CanBroadcastTo.refl [batch])
       left right =
       Tensor.dim fun index => Spec.matMulSpec left (Tensor.unstack right index) := by
-  simp [Tensor.matmulSpec, Tensor.LinearAlgebra.Internal.matmulCommonBatchSpec]
+  simp [Tensor.batchMatmulSpec, Tensor.LinearAlgebra.Internal.matmulCommonBatchSpec]
 
 /-- Multiplying by a broadcast scalar is `scaleSpec`. -/
 private theorem mulSpec_broadcast_scalar {α : Type} [Storage α] [Context α] {s : Shape}
@@ -208,10 +208,10 @@ private theorem attention_heads {tokens heads headDim : Nat} (hTokens : tokens �
     (queries keys values : Tensor ℝ [heads, tokens, headDim]) (scale : Tensor ℝ [])
     (hScale : scale = Tensor.scalar (1 / Spec.attentionScaleDenom headDim))
     (hBroadcast : Shape.CanBroadcastTo [] [heads, tokens, tokens]) :
-    Tensor.matmulSpec (Shape.CanBroadcastTo.refl [heads]) (Shape.CanBroadcastTo.refl [heads])
+    Tensor.batchMatmulSpec (Shape.CanBroadcastTo.refl [heads]) (Shape.CanBroadcastTo.refl [heads])
         (Activation.softmaxSpec 2
           (Tensor.mulSpec
-            (Tensor.matmulSpec (Shape.CanBroadcastTo.refl [heads])
+            (Tensor.batchMatmulSpec (Shape.CanBroadcastTo.refl [heads])
               (Shape.CanBroadcastTo.refl [heads]) queries (Tensor.swapAdjacentAxes keys 1))
             (Tensor.broadcastTo hBroadcast scale)))
         values =
@@ -221,8 +221,8 @@ private theorem attention_heads {tokens heads headDim : Nat} (hTokens : tokens �
              K := Tensor.unstack keys head
              V := Tensor.unstack values head
              mask := none } : Spec.AttentionContext ℝ tokens tokens headDim hTokens hTokens) := by
-  rw [mulSpec_broadcast_scalar, matmulSpec_batched, scaleSpec_slices, softmaxSpec_slices,
-    matmulSpec_batched]
+  rw [mulSpec_broadcast_scalar, batchMatmulSpec_batched, scaleSpec_slices, softmaxSpec_slices,
+    batchMatmulSpec_batched]
   subst hScale
   simp only [Tensor.unstack_dim, Tensor.item_scalar, Spec.scaledDotProductAttention,
     unstack_swapAdjacentAxes_succ]
@@ -338,12 +338,12 @@ theorem eval_embedTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
         (Term.eval env rowWeights) (Term.eval env columnWeights) (Term.eval env frameRows)
         (Term.eval env patches) := by
   simp [embedTerm, Term.eval, Term.evalArgs, NN.GraphSpec.DAG.PrimOp.broadcast,
-    MoonViT.embedPatches, MoonViT.resizeTable, matmulSpec_plain, matmulSpec_sharedLeft]
+    MoonViT.embedPatches, MoonViT.resizeTable, batchMatmulSpec_plain, batchMatmulSpec_sharedLeft]
   have contraction := @einsum_patches_eq_matMul
   simp only [TorchLean.Tensor.Internal.Lowering.einsumTensorKernel_correct] at contraction ⊢
   dsimp only [id, TorchLean.Tensor.Internal.Rep.castShape] at contraction ⊢
   grw (transparency := all) [contraction]
-  simp [Tensor.matmulSpec, Tensor.LinearAlgebra.Internal.matmulCommonBatchSpec,
+  simp [Tensor.batchMatmulSpec, Tensor.LinearAlgebra.Internal.matmulCommonBatchSpec,
     Tensor.broadcastTo_expand, Shape.rank]
 
 /-- With the released resize matrices and frame rows bound, the embedding graph is `Model.embed`. -/
@@ -501,7 +501,7 @@ theorem eval_blockTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
     NN.GraphSpec.DAG.PrimOp.matmul_specFwd,
     NN.GraphSpec.DAG.PrimOp.gelu_specFwd,
     softmax_specFwd, select_zero_specFwd, broadcast_specFwd,
-    matmulSpec_plain, hRotation]
+    batchMatmulSpec_plain, hRotation]
   rw [attention_heads (Nat.ne_of_gt hTokens) _ _ _ _ hScale]
   simp only [MoonViT.Block.forward, MoonViT.Block.attention, MoonViT.Block.feedForwardPass,
     MoonViT.Block.splitQKV, MoonViT.applyRope, Spec.splitHeadsSpec, Spec.combineHeadsSpec]
@@ -593,7 +593,7 @@ theorem eval_mergeTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
     NN.GraphSpec.DAG.PrimOp.reduceMean_specFwd,
     NN.GraphSpec.DAG.PrimOp.reshape_specFwd,
     NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth_specFwd,
-    Term.eval_cast, NN.GraphSpec.DAG.PrimOp.matmul_specFwd, matmulSpec_plain]
+    Term.eval_cast, NN.GraphSpec.DAG.PrimOp.matmul_specFwd, batchMatmulSpec_plain]
 
 /-- Second projector matrix and final RMSNorm (`ε = 10⁻⁵`, TorchLean's standard node). -/
 def projectTerm {Γ : List Shape} (tokens mergedDim textDim : ℕ) (hText : 0 < textDim)
@@ -619,7 +619,7 @@ theorem eval_projectTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
         (Term.eval env outputNormScale) := by
   simp only [projectTerm, Term.eval_op, Term.evalArgs,
     NN.GraphSpec.DAG.PrimOp.matmul_specFwd,
-    NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd, matmulSpec_plain]
+    NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd, batchMatmulSpec_plain]
   rfl
 
 /-- The two projector graphs with the exact GELU between them compute `Model.mergeAndProject`. -/

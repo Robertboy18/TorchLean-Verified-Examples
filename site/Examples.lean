@@ -509,7 +509,7 @@ def model :=
 
 def trainer := Trainer.new model
   { objective := Trainer.Objective.mse
-    optimizer := optim.adam { learningRate := 0.03 }
+    optimizer := optim.adam { lr := 0.03 }
     device := cpu }
 -- ANCHOR_END: tensorModel
 

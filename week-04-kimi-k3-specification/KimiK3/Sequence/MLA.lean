@@ -149,18 +149,18 @@ def stepFixed (pastTokens : Nat)
           (Shape.CanBroadcastTo.dim_eq
             (Shape.CanBroadcastTo.scalarTo [])))) sharedBatchSource
   let sameBatch := Shape.CanBroadcastTo.refl [heads]
-  let queryContent := Tensor.matmulSpec sameBatch sameBatch queryBatch layer.queryContentUp
-  let queryShared := Tensor.matmulSpec sameBatch sameBatch queryBatch layer.querySharedUp
-  let keys := Tensor.matmulSpec sameBatch sameBatch latentBatch layer.keyUp
-  let values := Tensor.matmulSpec sameBatch sameBatch latentBatch layer.valueUp
-  let contentScores := Tensor.matmulSpec sameBatch sameBatch queryContent
+  let queryContent := Tensor.batchMatmulSpec sameBatch sameBatch queryBatch layer.queryContentUp
+  let queryShared := Tensor.batchMatmulSpec sameBatch sameBatch queryBatch layer.querySharedUp
+  let keys := Tensor.batchMatmulSpec sameBatch sameBatch latentBatch layer.keyUp
+  let values := Tensor.batchMatmulSpec sameBatch sameBatch latentBatch layer.valueUp
+  let contentScores := Tensor.batchMatmulSpec sameBatch sameBatch queryContent
     (Tensor.swapAdjacentAxes keys 1)
   let sharedScores :=
-    Tensor.matmulSpec sameBatch sameBatch queryShared (Tensor.swapAdjacentAxes sharedBatch 1)
+    Tensor.batchMatmulSpec sameBatch sameBatch queryShared (Tensor.swapAdjacentAxes sharedBatch 1)
   let scoreShape : Shape := [heads, 1, pastTokens + 1]
   let scores := Tensor.mulSpec (Tensor.full scoreShape scoreScale)
     (Tensor.addSpec contentScores sharedScores)
-  let headOutput3 := Tensor.matmulSpec sameBatch sameBatch
+  let headOutput3 := Tensor.batchMatmulSpec sameBatch sameBatch
     (Activation.softmaxSpec 2 scores) values
   let headOutput : Tensor α [heads, valueDim] :=
     Tensor.reshapeSpec headOutput3 (by simp [Shape.size])

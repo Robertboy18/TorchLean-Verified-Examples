@@ -772,14 +772,15 @@ mask, and dialogue-record shards, enough to catch ordinary accidental changes (t
 the dataset manifest provide the stronger archival identity). Checkpoints also record the device,
 backend profile, Lean version, and optimizer label. Random windows are derived from the seed and
 step number, so resuming at the recorded step restores the data-stream position too. The current
-optimizer payload also saves the eager session's random-operation counter, and restoring it
-continues dropout with the next mask instead of restarting the mask sequence. Older optimizer
-payloads are still readable, but they lack that counter, produce a warning, and can't reproduce a
-stochastic continuation exactly.
+version-5 optimizer payload also saves the session's random-operation counter, and restoring it
+continues dropout with the next mask instead of restarting the mask sequence. Optimizer payloads
+from versions 2–4 are rejected. To use their model weights with the current runtime, pass the
+parameter file to `--load-params`; this starts fresh optimizer moments and is not an exact resume.
 
 My completed 2.319B-token continuation used the earlier `resume.v1` format, whose manifests bind
-paths and training options but not content hashes or runtime identity. The loader can still read
-them for recovery (with a warning). New checkpoints use `resume.v2`.
+paths and training options but not content hashes or runtime identity. The manifest reader still
+recognizes it with a warning, but continuing its older optimizer state requires the runtime that
+wrote that payload. New checkpoints use `resume.v2` with version-5 optimizer payloads.
 
 [`Training.resume_eq_uninterrupted`](TorchLeanGPT/TrainingCorrectness.lean) proves the corresponding
 pure training statement: for any step-indexed update rule, running `first` steps and then

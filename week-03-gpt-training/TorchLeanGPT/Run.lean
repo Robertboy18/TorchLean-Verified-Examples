@@ -1134,7 +1134,7 @@ def setAdamWLearningRate {shapes : List Shape} (learningRate : Float) :
       (fun _ _ => _root_.Optim.AdamW.State Float) Float shapes
   | .nil => .nil
   | .cons state rest =>
-      .cons { state with learningRate } (setAdamWLearningRate learningRate rest)
+      .cons { state with lr := learningRate } (setAdamWLearningRate learningRate rest)
 
 /--
 Train either the ordinary next-token objective or its masked variant and return the parameters.
@@ -1491,8 +1491,6 @@ def runFloatCommand
   if selection.arithmetic != .native then
     throw <| IO.userError s!"{commandName}: this program only supports `--arithmetic native`"
   IO.println "[TorchLean] arithmetic: Lean Float (IEEE-754 binary64)"
-  IO.println <|
-    s!"[TorchLean] execution: {TorchLean.Runtime.ExecutionMode.cliName selection.execution}"
   IO.println s!"[TorchLean] device: {selection.device.cliName}"
   let runtime ← IO.ofExcept (Module.RuntimeSelection.toConfig selection seed)
   runtime.validateForExecution

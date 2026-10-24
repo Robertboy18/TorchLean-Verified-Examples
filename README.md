@@ -60,7 +60,7 @@ the previous SDK. You'll find the native build in the
 
 ## Build the Lean developments
 
-All six weeks share one Lake project and one pinned TorchLean dependency.
+All six weeks share one Lake project and follow TorchLean's `main` branch.
 
 On a fresh checkout:
 

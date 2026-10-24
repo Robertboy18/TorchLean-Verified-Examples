@@ -49,7 +49,7 @@ releases it.
 def parameterBuffer {shape : Shape}
     (parameter : _root_.Runtime.Autograd.Torch.Param Float shape) :
     IO ParameterBuffer := do
-  let any ←
+  let deviceValue ←
     match ← parameter.cudaValue.get with
     | some value =>
         if value.s = shape then
@@ -61,12 +61,12 @@ def parameterBuffer {shape : Shape}
     | none =>
         let host ← parameter.value.get
         let uploaded ←
-          _root_.Runtime.Autograd.Torch.Internal.CudaBridge.toAnyBuffer
+          _root_.Runtime.Autograd.Torch.Internal.CudaBridge.toSomeBuffer
             (α := Float) (s := shape) host
         parameter.cudaValue.set (some uploaded)
         parameter.hostCurrent.set true
         pure uploaded
-  let actualSize ← Buffer.sizeIO any.buf
+  let actualSize ← Buffer.sizeIO deviceValue.buf
   let expectedSize := UInt32.ofNat (Shape.size shape)
   if expectedSize.toNat != Shape.size shape then
     throw <| IO.userError
@@ -74,7 +74,7 @@ def parameterBuffer {shape : Shape}
   if actualSize != expectedSize then
     throw <| IO.userError <|
       "cached decoder: parameter buffer length mismatch for " ++ Spec.Shape.pretty shape
-  pure { shape, buffer := any.buf }
+  pure { shape, buffer := deviceValue.buf }
 
 /-- Flatten TorchLean's heterogeneous parameter list without discarding shape metadata. -/
 def collectParameterBuffers :
