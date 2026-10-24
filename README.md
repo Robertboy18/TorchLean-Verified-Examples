@@ -29,6 +29,10 @@ Some examples I've been working on :)
   Study shared inputs and attention, then use the existing backward pass to bound the
   expected error from averaging away input randomness. Check finite examples and numerical
   error bounds, motivated by MAISI and ARC's research.
+- [Programs that read each other's code](week-07-program-equilibrium/).
+  Prisoner's dilemmas between programs that prove things about each other's source. Compute the
+  outcomes in provability logic, prove Löb's axiom on the chain of worlds and the classic
+  matchups, and work out idealized versions of the agents from Jacob Tsimerman's MAISI talk.
 
 For K3 and Nemotron, the proofs cover the equations and state transformations described in the
 essays (not complete released checkpoints). Each development links its theorem statements,
@@ -60,7 +64,7 @@ the previous SDK. You'll find the native build in the
 
 ## Build the Lean developments
 
-All six weeks share one Lake project and follow TorchLean's `main` branch.
+The examples share one Lake project and follow TorchLean's `main` branch.
 
 On a fresh checkout:
 
@@ -74,6 +78,7 @@ lake build TorchLeanGPT
 lake build KimiK3
 lake build Nemotron
 lake build HeuristicEstimation
+lake build ProgramEquilibrium
 ```
 
 Week 2's executable replay is a separate command:

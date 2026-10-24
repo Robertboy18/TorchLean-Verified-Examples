@@ -158,6 +158,11 @@ lean_lib HeuristicEstimation where
   roots := #[`HeuristicEstimation]
   defaultFacets := #[LeanLib.staticFacet]
 
+@[default_target]
+lean_lib ProgramEquilibrium where
+  srcDir := "week-07-program-equilibrium"
+  globs := #[.submodules `ProgramEquilibrium]
+
 lean_exe train_torchlean_gpt where
   srcDir := "week-03-gpt-training"
   root := `TorchLeanGPT.Train

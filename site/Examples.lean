@@ -11,6 +11,7 @@ import NN.Proofs.Tensor.Algebra
 import TorchLeanGPT.TrainingCorrectness
 import VerifiableTransformers.Certificate.FiniteEval
 import HeuristicEstimation
+import ProgramEquilibrium.Bots
 
 /-! Small runnable calculations embedded in the articles. The website records Lean's types
 and command output from this file; editing a calculation requires refreshing that recording. -/
@@ -518,3 +519,23 @@ example (x : ℝ) : HasDerivAt (fun y : ℝ => Real.exp (y * y))
     (2 * x * Real.exp (x * x)) x := by
   autograd
 -- ANCHOR_END: tensorChainRule
+
+-- ANCHOR: programTable
+namespace ProgramTable
+
+open ProgramEquilibrium
+
+-- Whether the first agent cooperates with the second, at worlds 0, 1, 2 and 3.
+def moves (a b : Bot) : String :=
+  String.join ((List.range 4).map fun n => if bots.play n a b then "C" else "D")
+
+#eval moves .fair .fair
+#eval moves .fair .defect
+#eval moves .prudent .cooperate
+#eval moves .prudent .fair
+#eval moves .fair .cupod
+#eval moves .cupod .fair
+#eval moves .cupod .cupod
+
+end ProgramTable
+-- ANCHOR_END: programTable
