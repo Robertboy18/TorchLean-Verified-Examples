@@ -12,6 +12,7 @@ import TorchLeanGPT.TrainingCorrectness
 import VerifiableTransformers.Certificate.FiniteEval
 import HeuristicEstimation
 import ProgramEquilibrium.Bots
+import ProgramEquilibrium.Bounded
 
 /-! Small runnable calculations embedded in the articles. The website records Lean's types
 and command output from this file; editing a calculation requires refreshing that recording. -/
@@ -539,3 +540,23 @@ def moves (a b : Bot) : String :=
 
 end ProgramTable
 -- ANCHOR_END: programTable
+
+-- ANCHOR: boundedSelfPlay
+namespace BoundedSelfPlay
+
+open ProgramEquilibrium.Bounded
+
+-- Every name resolves to a searcher with this budget; no agent tests for an identical name.
+def programs (budget : Nat) : String → Program :=
+  fun _ => .search budget false
+
+-- These are actual terminating moves, not values at modal worlds.
+#eval ([15, 16, 64] : List Nat).map fun budget =>
+  (budget, run (programs budget) "self" "self")
+
+-- The successful search returns the certificate it used. Its literal text occupies 16 bytes.
+#eval (findCertificate (programs 16) 16 false "self" "self").map fun p =>
+  (p.encode, p.bytes)
+
+end BoundedSelfPlay
+-- ANCHOR_END: boundedSelfPlay

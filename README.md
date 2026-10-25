@@ -31,8 +31,9 @@ Some examples I've been working on :)
   error bounds, motivated by MAISI and ARC's research.
 - [Programs that read each other's code](week-07-program-equilibrium/).
   Prisoner's dilemmas between programs that prove things about each other's source. Compute the
-  outcomes in provability logic, prove Löb's axiom on the chain of worlds and the classic
-  matchups, and work out idealized versions of the agents from Jacob Tsimerman's MAISI talk.
+  outcomes in provability logic and prove the classic matchups. Then ask Inkling to propose
+  policies, train with checked feedback, and test what survives a change of opponents.
+  A separate bounded-search prototype runs self-play with an explicit certificate budget.
 
 For K3 and Nemotron, the proofs cover the equations and state transformations described in the
 essays (not complete released checkpoints). Each development links its theorem statements,
