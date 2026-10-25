@@ -30,7 +30,7 @@ jobs:
       - name: Build the Lean developments and native commands
         run: |
           lake --wfail build BatchInvariantInference VerifiableTransformers TorchLeanGPT KimiK3 Nemotron \
-            HeuristicEstimation ProgramEquilibrium \
+            HeuristicEstimation ProgramEquilibrium BoundedLob play_dupoc \
             verify_upstream_forward train_torchlean_gpt check_torchlean_gpt_data \
             generate_torchlean_gpt \
             generate_torchlean_gpt_cached check_torchlean_gpt_cache \

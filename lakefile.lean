@@ -163,6 +163,11 @@ lean_lib ProgramEquilibrium where
   srcDir := "week-07-program-equilibrium"
   globs := #[.submodules `ProgramEquilibrium]
 
+@[default_target]
+lean_lib BoundedLob where
+  srcDir := "week-08-bounded-lob"
+  globs := #[.submodules `BoundedLob]
+
 /-- Fixed data-only checker for Week 7's exported policy certificates. -/
 lean_exe check_program_policy where
   srcDir := "week-07-program-equilibrium"
@@ -172,6 +177,11 @@ lean_exe check_program_policy where
 lean_exe play_bounded_agents where
   srcDir := "week-07-program-equilibrium"
   root := `ProgramEquilibrium.Bounded.Run
+
+/-- DUPOC and the other agents of Critch, Dennis and Russell, searching for real proofs. -/
+lean_exe play_dupoc where
+  srcDir := "week-08-bounded-lob"
+  root := `Play
 
 lean_exe train_torchlean_gpt where
   srcDir := "week-03-gpt-training"

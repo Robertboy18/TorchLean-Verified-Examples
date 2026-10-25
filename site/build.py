@@ -37,6 +37,7 @@ PROJECTS = (
     ("week-05-nemotron-specification", "Nemotron 3 Ultra: replaying a rounded state", "Recurrent state"),
     ("week-06-heuristic-estimators", "Estimating model behavior from its structure", "Heuristic estimation"),
     ("week-07-program-equilibrium", "Programs that read each other's code", "Program equilibrium"),
+    ("week-08-bounded-lob", "Löb's theorem with a budget", "Bounded proofs"),
 )
 TEXT_SUFFIXES = {".lean", ".md", ".py", ".sh", ".cpp", ".c", ".h", ".cu", ".json", ".svg", ".toml"}
 LEAN_LEXER = get_lexer_by_name('lean4')

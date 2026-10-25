@@ -275,7 +275,7 @@ runs and populations, not a general result about training: both studies reuse th
 
 FairBot scored 36.27% on those populations, above every trained arm. No admitted final
 proposal beat FairBot on its original population. The unrestricted arms also proposed
-39 and 46 exploitable policies in their final evaluations. Those were rejected, not deployed.
+39 and 46 exploitable policies in their final evaluations. Those were rejected and never deployed.
 The shielded arms proposed none, as their fixed wrapper theorem predicts. I wouldn't call
 that learned alignment.
 
@@ -355,8 +355,8 @@ we can inspect the proposed programs, reject the ones that fail the criterion, a
 some apparently different answers are the same policy.
 
 The [experiment notes and replay commands](../week-07-program-equilibrium/experiments/)
-give the training settings, protocol amendments, selection rules and exclusions. The export
-contains programs and certificates, not credentials, private checkpoints or raw API traces.
+give the training settings, protocol amendments, selection rules and exclusions. The export contains programs and certificates. It leaves out credentials, private checkpoints
+and raw API traces.
 
 ## What Lean checks here
 
@@ -429,8 +429,8 @@ To run self-play, the two search orders and the failure cases together:
 lake exe play_bounded_agents 16
 ```
 
-This is a first bounded experiment, **not a solution to Open Problem 4**. The certificates are
-references to two specialized proved rules, not arbitrary arithmetic proofs. Their byte counts
+This is a first bounded experiment, **not a solution to Open Problem 4**. The certificates refer to two specialized rules that Lean proves sound, and none of them is
+an arithmetic proof. Their byte counts
 don't include expanded Lean proof terms. Names resolve through a fixed program registry;
 they aren't source-code fingerprints. The two different search orders cooperate, but this
 doesn't establish cooperation between arbitrary implementations of DUPOC.
@@ -444,7 +444,9 @@ $$
 $$
 
 leads to a proof of $\forall k > k_2,\ p(k)$ for some $k_2$. Here $\Box_{f(k)}$ means an actual
-arithmetic proof with a length bound. Connecting that theorem to the executable search needs
-an arithmetic proof encoding and checked length bounds, not a reinterpretation of modal
-worlds. That part remains open in this repository. For now, we have a terminating example
-with explicit budgets and proved operational guarantees to build on :)
+arithmetic proof with a length bound. Connecting that theorem to the executable search needs a
+real proof encoding and checked length bounds. Reinterpreting modal worlds won't do it. The
+[next post](../week-08-bounded-lob/) proves that theorem in Lean from the properties it needs,
+builds a proof checker that has all of them, and runs two copies of DUPOC that find a proof and
+cooperate. For now, this prototype is a terminating example with explicit budgets and proved
+operational guarantees to build on :)

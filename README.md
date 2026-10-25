@@ -34,6 +34,11 @@ Some examples I've been working on :)
   outcomes in provability logic and prove the classic matchups. Then ask Inkling to propose
   policies, train with checked feedback, and test what survives a change of opponents.
   A separate bounded-search prototype runs self-play with an explicit certificate budget.
+- [Löb's theorem with a budget](week-08-bounded-lob/).
+  Prove Critch's parametric bounded Löb theorem, build a proof checker that has every property
+  it needs, and run DUPOC on it: two copies find a 3,007-character proof and cooperate. Also
+  mutual defection for DUPOC against DIMCID (Open Problem 6) and differently written agents
+  that still cooperate. `lake exe play_dupoc 500000` plays the tournament.
 
 For K3 and Nemotron, the proofs cover the equations and state transformations described in the
 essays (not complete released checkpoints). Each development links its theorem statements,
@@ -80,6 +85,7 @@ lake build KimiK3
 lake build Nemotron
 lake build HeuristicEstimation
 lake build ProgramEquilibrium
+lake build BoundedLob
 ```
 
 Week 2's executable replay is a separate command:

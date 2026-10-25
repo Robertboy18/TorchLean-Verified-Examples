@@ -12,6 +12,9 @@ import TorchLeanGPT.TrainingCorrectness
 import VerifiableTransformers.Certificate.FiniteEval
 import HeuristicEstimation
 import ProgramEquilibrium.Bots
+import BoundedLob.Theory.Dupoc
+import BoundedLob.Agents.Search
+import BoundedLob.Agents.Sources
 import ProgramEquilibrium.Bounded
 
 /-! Small runnable calculations embedded in the articles. The website records Lean's types
@@ -560,3 +563,34 @@ def programs (budget : Nat) : String → Program :=
 
 end BoundedSelfPlay
 -- ANCHOR_END: boundedSelfPlay
+
+-- ANCHOR: boundedCoverage
+namespace BoundedCoverage
+
+open BoundedLob BoundedLob.Example
+
+-- One cooperating program and two proofs of size zero; only `true` checks.
+-- Trying only the template `false` defects:
+#eval missChecker.decision [false] 0 () ()
+-- The template in front of the complete list of proofs of size zero cooperates:
+#eval missChecker.decision ([false] ++ [false, true]) 0 () ()
+
+end BoundedCoverage
+-- ANCHOR_END: boundedCoverage
+
+-- ANCHOR: boundedRun
+namespace BoundedRun
+
+open BoundedLob BoundedLob.Agent
+
+-- `true` is cooperation. Two copies of DUPOC at budget 17880 find their proof and cooperate:
+#eval (run 17880 dupoc dupoc, run 17880 dupoc dupoc)
+-- At budget 500000, DUPOC against CUPOD, then DIMCID against CooperateBot and against DUPOC:
+#eval (run 500000 dupoc cupod, run 500000 cupod dupoc)
+#eval (run 500000 dimcid cooperate, run 500000 cooperate dimcid)
+#eval (run 500000 dupoc dimcid, run 500000 dimcid dupoc)
+-- DUPOC and CIMCIC are written differently and still cooperate:
+#eval (run 500000 dupoc cimcic, run 500000 cimcic dupoc)
+
+end BoundedRun
+-- ANCHOR_END: boundedRun

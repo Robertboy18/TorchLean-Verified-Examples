@@ -21,6 +21,8 @@ RECORD = ROOT / "site" / "assets" / "lean.json"
 IMPORTS = {
     "sharedExpectation": "HeuristicEstimation",
     "programTable": "ProgramEquilibrium.Bots",
+    "boundedCoverage": "BoundedLob.Theory.Dupoc",
+    "boundedRun": "BoundedLob.Agents.Outcomes",
     "boundedSelfPlay": "ProgramEquilibrium.Bounded",
     "discardedSignal": "HeuristicEstimation",
     "attentionMoments": "HeuristicEstimation",
