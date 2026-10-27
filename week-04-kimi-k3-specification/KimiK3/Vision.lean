@@ -10,7 +10,7 @@ public import KimiK3.Common
 public import KimiK3.Config
 public import NN.Spec.Models.Transformer
 public import NN.Tensor
-public import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
+public import NN.Spec.Core.Erf
 import NN.Proofs.Tensor.Basic.Folds
 import NN.Proofs.Tensor.Basic.LinearAlgebra
 
@@ -82,21 +82,19 @@ def encoderNormEpsilon {α : Type} [RatCast α] : α :=
 
 /-- A scalar error function.
 
-PyTorch's default `nn.GELU()` is `x * (1 + erf (x / √2)) / 2`. TorchLean's `Context` has no `erf`,
-so code that needs the exact GELU asks for this capability separately. -/
+PyTorch's default `nn.GELU()` is `x * (1 + erf (x / √2)) / 2`. The scalar specification asks for
+this total operation separately from `Context`'s error-reporting pointwise interface. -/
 class Erf (α : Type) where
   /-- The error function. -/
   erf : α → α
 
 /-- Real error function `erf x = 2 / √π * ∫₀ˣ exp (-t²) dt`. -/
-noncomputable def realErf (x : ℝ) : ℝ :=
-  2 / Real.sqrt Real.pi * ∫ t in (0 : ℝ)..x, Real.exp (-(t ^ 2))
+noncomputable abbrev realErf (x : ℝ) : ℝ := Spec.erf x
 
 noncomputable instance : Erf ℝ := ⟨realErf⟩
 
 /-- `erf 0 = 0`. -/
-@[simp] theorem realErf_zero : realErf 0 = 0 := by
-  simp [realErf]
+@[simp] theorem realErf_zero : realErf 0 = 0 := Spec.erf_zero
 
 /-- PyTorch's default GELU, `nn.GELU()` with `approximate='none'`. -/
 def geluExact {α : Type} [Context α] [Erf α] (x : α) : α :=

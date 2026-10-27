@@ -1319,8 +1319,8 @@
           <code>GraphSpec/Vision.lean</code> builds patch embedding, one encoder block with its RoPE
           attention, and merge/project from typed graph primitives. Its encoder RMSNorm node passes
           PyTorch's default epsilon, 2<sup>−23</sup>, to TorchLean's own norm. Denotation theorems
-          then identify their graph evaluations with the reference equations. TorchLean has no erf, so
-          the projector graph stops before the exact GELU and starts again after it. And a
+          then identify their graph evaluations with the reference equations. The real error function
+          comes from TorchLean; the projector graph leaves exact GELU as an explicit boundary. A
           checkpoint-sized graph still needs the concrete list of 162 released block tensors
           (six per block).</p></div>
         <div class="assumption-box"><strong>Report claim outside Lean.</strong><p>Figure 6's gradient-norm

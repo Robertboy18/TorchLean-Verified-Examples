@@ -8,6 +8,7 @@ module
 public import TorchLeanGPT.Model
 public import NN.Proofs.Models.Attention.CausalMask
 public import Mathlib.Algebra.BigOperators.Fin
+import NN.Proofs.Analysis.Softmax
 
 /-!
 # Weighted rows and causal attention
@@ -49,33 +50,23 @@ theorem weighted_rows_eq_of_eq_on_support
   · simp [hWeight]
   · rw [hEqual i hWeight]
 
-/--
-A coordinate with zero softmax weight has zero score derivative under TorchLean's softmax backward
-equation.
-
-This local fact carries hard masking from the forward pass over to the backward pass.
--/
-private theorem softmax_backward_zero_at_zero_weight
-    {n : Nat}
-    (weights dWeights : Tensor ℝ (.dim n .scalar))
-    (j : Fin n)
-    (hWeight : Tensor.getScalar weights j = 0) :
-    Tensor.getScalar
-      (Spec.softmaxBackwardFromWeightsSpec weights dWeights) j = 0 := by
-  simp only [Spec.softmaxBackwardFromWeightsSpec, Tensor.mulSpec,
-    Tensor.getScalar_map2Spec, hWeight, zero_mul]
-
 /-- Row-wise version for matrices: a zero weight coordinate has zero score derivative. -/
 private theorem softmax_backward_get2_zero_at_zero_weight
     {m n : Nat}
-    (weights dWeights : Tensor ℝ (.dim m (.dim n .scalar)))
+    (weights dWeights : Tensor ℝ [m, n])
     (i : Fin m) (j : Fin n)
     (hWeight : Spec.get2 weights i j = 0) :
     Spec.get2
       (Spec.softmaxBackwardFromWeightsSpec weights dWeights) i j = 0 := by
-  simpa only [Spec.get2_eq_getScalar_get, Spec.softmaxBackwardFromWeightsSpec,
-    Spec.get_dim] using
-    softmax_backward_zero_at_zero_weight (weights.unstack i) (dWeights.unstack i) j hWeight
+  cases m with
+  | zero => exact Fin.elim0 i
+  | succ m =>
+    have hrow := Proofs.getScalar_softmaxBackwardFromWeightsSpec
+      (weights.unstack i) (dWeights.unstack i) j
+    have hzero : (weights.unstack i).getScalar j = 0 := hWeight
+    rw [hzero, zero_mul] at hrow
+    simpa only [Spec.get2_eq_getScalar_get, Spec.softmaxBackwardFromWeightsSpec,
+      Spec.get_dim] using hrow
 
 /--
 Strict-future attention coordinates carry neither forward weight nor backward score gradient.
@@ -85,7 +76,7 @@ not from the values of any trained checkpoint.
 -/
 theorem causal_attention_blocks_future_forward_and_backward
     {context : Nat}
-    (scores dWeights : Tensor ℝ (.dim context (.dim context .scalar)))
+    (scores dWeights : Tensor ℝ [context, context])
     (i j : Fin context)
     (future : i.val < j.val) :
     let weights :=

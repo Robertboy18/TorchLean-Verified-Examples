@@ -21,9 +21,9 @@ attention as a batched matrix product, a scale, a softmax and a second batched p
 
 Two operations need care. The encoder's RMSNorm uses PyTorch's default epsilon `2⁻²³`, while
 TorchLean's DAG RMSNorm node fixes `10⁻⁵`, so `rmsNormRows` is the same node with the epsilon
-passed to TorchLean's runtime `Norm.rmsNorm`. The projector uses the exact erf GELU, and TorchLean
-has no `erf`, so the projector graph is cut at that activation: `mergeTerm` ends at the first
-projector matrix and `projectTerm` starts at the second.
+passed to TorchLean's runtime `Norm.rmsNorm`. The projector uses the exact erf GELU. This graph
+leaves that activation as an explicit boundary: `mergeTerm` ends at the first projector matrix
+and `projectTerm` starts at the second.
 
 The rotary tables, the pair rotation, the resize matrices, the frame rows and the attention scale
 are fixed tensors. They enter the graphs as inputs, and the theorems say which values they must
@@ -226,6 +226,7 @@ private theorem attention_heads {tokens heads headDim : Nat} (hTokens : tokens �
   subst hScale
   simp only [Tensor.unstack_dim, Tensor.item_scalar, Spec.scaledDotProductAttention,
     unstack_swapAdjacentAxes_succ]
+  rfl
 
 /-! ## Encoder RMSNorm with an explicit epsilon -/
 
