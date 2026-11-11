@@ -77,13 +77,13 @@ end Nemotron.Cache.Speculation
 
 namespace Nemotron.SSM.Sequence
 
-open Spec TorchLean KimiK3
+open TorchLean KimiK3
 
 /-- Every draft state packed along a leading axis, with the initial state in row zero. -/
 def snapshots {α : Type} [Storage α] [Add α] [Mul α] [Zero α]
     {tokens valueDim stateDim : Nat} (inputs : Sequence α tokens valueDim stateDim)
     (initial : State α valueDim stateDim) : Tensor α [tokens + 1, valueDim, stateDim] :=
-  Tensor.stackLeading fun accepted =>
+  Tensor.dim fun accepted =>
     Cache.Speculation.restore step initial inputs.toList
       ⟨accepted.val, by simpa using accepted.isLt⟩
 
@@ -93,6 +93,6 @@ theorem snapshots_unstack {α : Type} [Storage α] [Add α] [Mul α] [Zero α]
     (initial : State α valueDim stateDim) (accepted : Fin (tokens + 1)) :
     Tensor.unstack (inputs.snapshots initial) accepted =
       (CausalScan.run step initial (inputs.toList.take accepted.val)).1 := by
-  simp only [snapshots, Tensor.unstack_stackLeading, Cache.Speculation.restore_eq_prefix]
+  simp only [snapshots, Tensor.unstack_dim, Cache.Speculation.restore_eq_prefix]
 
 end Nemotron.SSM.Sequence

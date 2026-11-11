@@ -78,14 +78,7 @@ On a fresh checkout:
 git clone https://github.com/Robertboy18/TorchLean-Verified-Examples.git
 cd TorchLean-Verified-Examples
 
-lake build BatchInvariantInference
-lake build VerifiableTransformers
-lake build TorchLeanGPT
-lake build KimiK3
-lake build Nemotron
-lake build HeuristicEstimation
-lake build ProgramEquilibrium
-lake build BoundedLob
+lake build
 ```
 
 Week 2's executable replay is a separate command:
@@ -126,11 +119,11 @@ The pages go to `build/site`. Building needs no Lean compiler and starts no serv
 
 Types, proof states, and command output on the pages were recorded from Lean in
 `site/assets/lean.json`, and `site/build.py` stops if the Lean sources changed after that
-recording. So after you change Lean code, build the developments above and TorchLean's `NN`
-library, then record again:
+recording. After editing Lean code, build the developments above and refresh the recordings from
+the repository root:
 
 ```bash
-lake build NN
+lake build @TorchLean/TorchLean.Tensor @TorchLean/TorchLean.NN
 python3 site/lean.py
 python3 site/build.py
 ```

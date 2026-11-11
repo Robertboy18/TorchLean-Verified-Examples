@@ -22,14 +22,12 @@ Reference: https://arxiv.org/abs/2607.24653, Section 2.2, Eq. 10.
 namespace KimiK3
 namespace GraphSpec
 
-open Spec TorchLean NN.GraphSpec.DAG
+open TorchLean
 
 namespace DepthSchedule
 
-open Spec TorchLean
+open TorchLean
 open TorchLean.Tensor
-open NN.GraphSpec.DAG
-open Runtime.Autograd.Torch
 
 /-- Number of completed AttnRes sources after `processedLayers` decoder layers.
 
@@ -86,7 +84,7 @@ def advance (blockSize processedLayers modelDim : Nat) (hBlockSize : 0 < blockSi
     TorchLean.TensorPack ℝ (Shapes blockSize (processedLayers + 1) modelDim) :=
   if hBoundary : (processedLayers + 1) % blockSize = 0 then
     let row : Tensor ℝ [1, modelDim] :=
-      Tensor.reshapeSpec nextPartial (by simp [Shape.size])
+      Tensor.reshape nextPartial _ (by simp [Shape.size])
     let appended := Tensor.concat completed row
     have hCount := completedCount_succ_of_boundary hBlockSize hBoundary
     have hShape :
@@ -117,7 +115,7 @@ def advanceBlock {Γ : List Shape} (blockSize processedLayers modelDim : Nat)
     Block Γ (Shapes blockSize (processedLayers + 1) modelDim) :=
   if hBoundary : (processedLayers + 1) % blockSize = 0 then
     let row : Term Γ [1, modelDim] :=
-      Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
+      Term.op (KimiK3.GraphSpec.PrimOp.reshape _ _ (by simp [Shape.size]))
         (.cons nextPartial .nil)
     let appended : Term Γ
         [completedCount blockSize processedLayers + 1, modelDim] :=
@@ -129,7 +127,7 @@ def advanceBlock {Γ : List Shape} (blockSize processedLayers modelDim : Nat)
       Term.cast appended
         (congrArg (fun rows => [rows, modelDim]) hCount.symm)
     let zeroPartial : Term Γ [modelDim] :=
-      Term.op (NN.GraphSpec.DAG.PrimOp.zero [modelDim]) .nil
+      Term.op (KimiK3.GraphSpec.PrimOp.zero [modelDim]) .nil
     .ret (.cons nextCompleted (.cons zeroPartial .nil))
   else
     have hCount := completedCount_succ_of_not_boundary hBlockSize hBoundary
@@ -151,17 +149,14 @@ theorem eval_advanceBlock {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
         (Term.eval env nextPartial) := by
   by_cases hBoundary : (processedLayers + 1) % blockSize = 0
   · rw [advanceBlock.eq_def, dite_eq_left hBoundary]
-    simp only [Block.eval, Term.evalArgs, Term.eval_cast]
+    simp only [Block.eval_ret, Term.evalArgs, Term.eval_cast]
     rw [GraphSpec.eval_concatLeadingTerm]
-    simp only [Term.eval_op, Term.evalArgs, NN.GraphSpec.DAG.PrimOp.reshape_specFwd,
-      NN.GraphSpec.DAG.PrimOp.zero_specFwd]
+    simp only [Term.eval_op, Term.evalArgs, KimiK3.GraphSpec.PrimOp.reshape_specFwd,
+      KimiK3.GraphSpec.PrimOp.zero_specFwd]
     rw [advance.eq_def, dite_eq_left hBoundary]
-    rw [Tensor.eqRec_eq_cast_shape]
-    rfl
   · rw [advanceBlock.eq_def, dite_eq_right hBoundary]
-    simp only [Block.eval, Term.evalArgs, Term.eval_cast]
+    simp only [Block.eval_ret, Term.evalArgs, Term.eval_cast]
     rw [advance.eq_def, dite_eq_right hBoundary]
-    rw [Tensor.eqRec_eq_cast_shape]
 
 end DepthSchedule
 

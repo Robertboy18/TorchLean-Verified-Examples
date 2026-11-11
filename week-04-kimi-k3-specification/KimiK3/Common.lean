@@ -6,12 +6,10 @@ Authors: Robert Joseph George
 
 module
 
-public import NN.Spec.Core.Sequence
-public import NN.Spec.Core.Context.Real
-public import NN.Spec.Core.Tensor.Numerics
-public import NN.Spec.Core.TensorReductionShape
-public import NN.Spec.Layers.Normalization
-public import NN.Tensor.Operations
+public import TorchLean.Tensor.Context.Real
+public import TorchLean.Tensor.Layers.Normalization
+public import TorchLean.Tensor.LinearAlgebra.Algorithms
+public import TorchLean.Tensor.Operations
 
 /-!
 # Shared Kimi K3 operations
@@ -24,18 +22,16 @@ experts and vision encoder all refer to these definitions instead of carrying lo
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
 open Tensor
 
 namespace RMSNorm
 
 /-- Scale-only RMS normalization when the vector width is known to be positive. -/
-def scalePositive {α : Type} [Storage α] [Context α] {n : Nat} (h : 0 < n)
+def scalePositive {α : Type} [Storage α] [Context α] {n : Nat} (_h : 0 < n)
     (x gamma : Tensor α [n])
     (epsilon : α := normalizationEpsilon) : Tensor α [n] :=
-  let rows : Tensor α [1, n] := Tensor.stackLeading fun _ => x
-  Spec.get (Spec.rmsNorm rows gamma (by positivity) h epsilon)
-    ⟨0, by positivity⟩
+  Tensor.rmsNorm x [⟨0, Nat.zero_lt_one⟩] gamma epsilon
 
 /-- Scale-only RMS normalization of a vector.
 
@@ -43,9 +39,7 @@ For `x, gamma : R^n`, coordinate `i` of the result is
 
 `x_i / sqrt((sum_j x_j^2) / n + epsilon) * gamma_i`.
 
-A vector wrapper around TorchLean's matrix `Spec.rmsNorm`: a nonempty vector becomes a single row,
-is normalized along the final axis, and is read back. An empty vector is returned as is (it is the
-only tensor of that shape).
+A nonempty vector is normalized along its sole axis. An empty vector is returned as is.
 -/
 def scale {α : Type} [Storage α] [Context α] {n : Nat}
     (x gamma : Tensor α [n])
@@ -72,8 +66,9 @@ def rows {α : Type} [Storage α] [Context α] {rowCount width : Nat}
 @[simp] theorem get_rows {α : Type} [Storage α] [Context α] {rowCount width : Nat}
     (hWidth : 0 < width) (input : Tensor α [rowCount, width])
     (gamma : Tensor α [width]) (row : Fin rowCount) :
-    Spec.get (rows hWidth input gamma) row = scalePositive hWidth (Spec.get input row) gamma := by
-  simp [rows, Tensor.mapLeading, Spec.get]
+    Tensor.unstack (rows hWidth input gamma) row =
+      scalePositive hWidth (Tensor.unstack input row) gamma := by
+  simp [rows]
 
 /-- RMS normalization without a learned scale.
 
@@ -93,7 +88,7 @@ namespace Normalize
 otherwise. The fallback also covers empty routes and totals that are not positive after rounding. -/
 def probabilities {α : Type} [Storage α] [Context α] {n : Nat}
     (weights : Tensor α [n]) : Tensor α [n] :=
-  let total := Tensor.sumSpec weights
+  let total := Tensor.sum weights
   if 0 < total then
     Tensor.map (fun weight => weight / total) weights
   else
@@ -105,14 +100,14 @@ def l2Epsilon {α : Type} [Context α] : α :=
 
 /-- Positive total mass selects ordinary normalization. -/
 theorem probabilities_of_sum_pos {α : Type} [Storage α] [Context α] {n : Nat}
-    (weights : Tensor α [n]) (hTotal : 0 < Tensor.sumSpec weights) :
+    (weights : Tensor α [n]) (hTotal : 0 < Tensor.sum weights) :
     probabilities weights =
-      Tensor.map (fun weight => weight / Tensor.sumSpec weights) weights := by
+      Tensor.map (fun weight => weight / Tensor.sum weights) weights := by
   simp [probabilities, hTotal]
 
 /-- Nonpositive total mass selects the uniform fallback. -/
 theorem probabilities_of_sum_nonpos {α : Type} [Storage α] [Context α] {n : Nat}
-    (weights : Tensor α [n]) (hTotal : ¬ 0 < Tensor.sumSpec weights) :
+    (weights : Tensor α [n]) (hTotal : ¬ 0 < Tensor.sum weights) :
     probabilities weights =
       Tensor.full [n] ((1 : α) / ((n : Nat) : α)) := by
   simp [probabilities, hTotal]

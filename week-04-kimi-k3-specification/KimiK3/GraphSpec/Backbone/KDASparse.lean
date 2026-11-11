@@ -23,10 +23,8 @@ output tensor.
 namespace KimiK3
 namespace GraphSpec
 
-open Spec TorchLean
+open TorchLean
 open TorchLean.Tensor
-open NN.GraphSpec.DAG
-open Runtime.Autograd.Torch
 
 namespace Backbone
 
@@ -60,7 +58,7 @@ def model (completedCount modelDim heads keyDim valueDim convWidth decayRank lat
     (hCompleted : 0 < completedCount) (hModel : 0 < modelDim) (hHeads : 0 < heads)
     (hKey : 0 < keyDim) (hValue : 0 < valueDim) (hWidth : 0 < convWidth)
     (hLatent : 0 < latentDim) :
-    NN.GraphSpec.DAG.MultiModel
+    KimiK3.GraphSpec.MultiModel
       (Params modelDim heads keyDim valueDim convWidth decayRank latentDim expertHidden
         numShared numRouted)
       (Inputs completedCount modelDim heads keyDim valueDim convWidth)
@@ -129,9 +127,9 @@ def model (completedCount modelDim heads keyDim valueDim convWidth decayRank lat
   let nextPartial := PackedDepth.finishPartialTerm modelDim (original partialState)
     sequenceOutput channelOutput
   { initParams :=
-      TorchLean.TensorPack.append
+      TorchLean.Pack.append
         (KDA.initialLayerParams modelDim heads keyDim valueDim convWidth decayRank)
-        (TorchLean.TensorPack.append (initialDepthParams modelDim)
+        (TorchLean.Pack.append (initialDepthParams modelDim)
           (StableLatentMoE.initialParams modelDim latentDim expertHidden expertHidden numShared
             numRouted))
     body := mixerBlock.andThen <| Block.ret <|
@@ -179,8 +177,8 @@ def parameters
       (Params cfg.hiddenDim cfg.numHeads cfg.kdaHeadDim cfg.kdaValueDim cfg.shortConvWidth
         decayRank cfg.routedLatentDim cfg.routedExpertHiddenDim cfg.numSharedExperts
         cfg.numRoutedExperts) :=
-  TorchLean.TensorPack.append (KDA.layerParameters kda)
-    (TorchLean.TensorPack.append (depthParameters layer)
+  TorchLean.Pack.append (KDA.layerParameters kda)
+    (TorchLean.Pack.append (depthParameters layer)
       (StableLatentMoE.parameters moe))
 
 /-- Package one sparse KDA decoder state in graph order. -/
@@ -194,7 +192,7 @@ def inputs
     TorchLean.TensorPack ℝ
       (Inputs completedCount cfg.hiddenDim cfg.numHeads cfg.kdaHeadDim cfg.kdaValueDim
         cfg.shortConvWidth) :=
-  TorchLean.TensorPack.append (depthInputs completed partialState) <|
+  TorchLean.Pack.append (depthInputs completed partialState) <|
     .cons previousWindow <| .cons previousState <| .cons (Tensor.scalar logFloor) <|
       .cons (Tensor.scalar epsilon) <| .cons (Tensor.scalar gateCap) <| .cons (Tensor.scalar upCap) .nil
 
@@ -229,16 +227,16 @@ theorem model_specFwd_eq_specStep
         layer.sequenceNormScale layer.channelQuery layer.channelNormScale completed partialState
         previousWindow previousState logFloor gateCap upCap := by
   subst epsilon
-  simp only [NN.GraphSpec.DAG.MultiModel.specFwd, model]
+  simp only [KimiK3.GraphSpec.MultiModel.specFwd, model]
   rw [Block.eval_andThen]
-  rw [NN.GraphSpec.DAG.MultiModel.eval_inline]
+  rw [KimiK3.GraphSpec.MultiModel.eval_inline]
   simp only [parameters, inputs]
   simp only [Args.get_rename, Args.get_vars, Term.evalArgs_rename_inLeft,
     Term.evalArgs_vars, Term.eval_rename_inRight, Term.evalArgs]
-  simp only [depthParameters, depthInputs, Term.eval, Env.tget,
+  simp only [depthParameters, depthInputs, Term.eval_var, Env.tget,
     PackedDepth.eval_sequenceInputTerm, KDA.eval_rollWindowTerm]
   simp only [Term.eval_rename_inLeft, Term.eval_rename_inRight]
-  simp only [Term.eval, Env.tget]
+  simp only [Term.eval_var, Env.tget]
   let sequenceInput := PackedDepth.sequenceInput partialPresent hCompleted hModel
     layer.sequenceQuery layer.sequenceNormScale completed partialState
   let nextWindow := KDA.Layer.rollWindow hWidth sequenceInput previousWindow
@@ -268,10 +266,10 @@ theorem model_specFwd_eq_specStep
         gateCap upCap
   change Block.eval _ _ = _
   rw [hMixer]
-  simp only [Block.eval, Term.evalArgs, Term.eval_weakenAppend, Term.eval,
+  simp only [Block.eval_ret, Term.evalArgs, Term.eval_weakenAppend, Term.eval_var,
     Env.tget_append_inRight, KDA.eval_rollWindowTerm,
     PackedDepth.eval_sequenceInputTerm, PackedDepth.eval_channelInputTerm,
-    PackedDepth.eval_finishPartialTerm, NN.GraphSpec.DAG.Model.eval_inline,
+    PackedDepth.eval_finishPartialTerm, KimiK3.GraphSpec.Model.eval_inline,
     Term.evalArgs_rename_inLeft, Term.evalArgs_rename_inRight, Term.evalArgs_vars,
     Term.eval_rename_inLeft, Term.eval_rename_inRight, Env.tget, specStep]
   rw [hChannel]

@@ -9,7 +9,7 @@ module
 public import KimiK3.Common
 public import KimiK3.Sequence.Scan
 public import KimiK3.Config
-public import NN.Spec.Layers.Activation
+public import TorchLean.Tensor.Layers.Activation
 public import Mathlib.Analysis.SpecialFunctions.Sigmoid
 
 /-!
@@ -28,7 +28,8 @@ https://arxiv.org/abs/2607.24653.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
+open FloatLib.Numerics (MathFunctions)
 open Tensor
 
 /-- Parameters of one causal depthwise short convolution. -/
@@ -50,9 +51,9 @@ padded, so the definition is causal for every history length.
 def forward (conv : ShortConv α width channels)
     (history : List (Tensor α [channels])) : Tensor α [channels] :=
   let zero : Tensor α [channels] := Tensor.zeros [channels]
-  Tensor.stackLeading (fun channel => Tensor.scalar <|
+  Tensor.dim (fun channel => Tensor.scalar <|
     (List.finRange width).foldl (fun total tap =>
-      total + Tensor.getScalar (history.getD tap.val zero) channel * get2 conv.weight tap channel)
+      total + Tensor.getScalar (history.getD tap.val zero) channel * Tensor.get2 conv.weight tap channel)
       (Tensor.getScalar conv.bias channel))
 
 /-- A short convolution never reads beyond its window. Truncating the history keeps the addition
@@ -61,7 +62,7 @@ theorem forward_take (conv : ShortConv α width channels)
     (history : List (Tensor α [channels])) :
     conv.forward (history.take width) = conv.forward history := by
   unfold forward
-  apply congrArg Tensor.stackLeading
+  apply congrArg Tensor.dim
   funext channel
   apply congrArg Tensor.scalar
   apply List.foldl_ext
@@ -75,12 +76,11 @@ successively older tokens. Streaming code keeps this fixed-size window, while th
 `forward` serves the zero-padded causal specification. Here the bias is added after the tap sum
 (`forward` starts its fold from the bias), so rounded results need not agree with `forward`.
 -/
-def forwardWindow (conv : ShortConv α width channels) (hWidth : 0 < width)
+def forwardWindow (conv : ShortConv α width channels) (_hWidth : 0 < width)
     (window : Tensor α [width, channels]) :
     Tensor α [channels] :=
-  Tensor.addSpec
-    (Tensor.reduceSum 0 (Tensor.mulSpec window conv.weight)
-      (Shape.hasNonemptyAxisZeroOfPos hWidth).proof) conv.bias
+  Tensor.zipWith (· + ·)
+    (Tensor.reduce .sum (window * conv.weight) [⟨0, Nat.zero_lt_succ 1⟩] false) conv.bias
 
 end ShortConv
 
@@ -117,17 +117,17 @@ write.
 -/
 def update (state : State α keyDim valueDim) (input : KDA.Input α keyDim valueDim) :
     State α keyDim valueDim :=
-  let decayed := Tensor.stackLeading fun row => Tensor.stackLeading fun column => Tensor.scalar <|
-    Tensor.getScalar input.retention row * get2 state row column
-  let correction := vecMatMulSpec input.key decayed
-  Tensor.addSpec
-    (Tensor.subSpec decayed
-      (Tensor.mulSpec
+  let decayed := Tensor.dim fun row => Tensor.dim fun column => Tensor.scalar <|
+    Tensor.getScalar input.retention row * Tensor.get2 state row column
+  let correction := Tensor.vecmat input.key decayed
+  Tensor.zipWith (· + ·)
+    (Tensor.zipWith (· - ·) decayed
+      (Tensor.zipWith (· * ·)
         (Tensor.full [keyDim, valueDim] input.writeStrength)
-        (outerProductSpec input.key correction)))
-    (Tensor.mulSpec
+        (Tensor.matrix fun row col => input.key.getScalar row * correction.getScalar col)))
+    (Tensor.zipWith (· * ·)
       (Tensor.full [keyDim, valueDim] input.writeStrength)
-      (outerProductSpec input.key input.value))
+      (Tensor.matrix fun row col => input.key.getScalar row * input.value.getScalar col))
 
 /-- Coordinate form of the factorized KDA update.
 
@@ -136,21 +136,21 @@ delta correction.
 -/
 theorem update_get2 (state : State ℝ keyDim valueDim)
     (input : KDA.Input ℝ keyDim valueDim) (row : Fin keyDim) (column : Fin valueDim) :
-  let decayed := Tensor.stackLeading fun source => Tensor.stackLeading fun target => Tensor.scalar
-    (Tensor.getScalar input.retention source * get2 state source target)
-  get2 (update state input) row column =
-      Tensor.getScalar input.retention row * get2 state row column -
+  let decayed := Tensor.dim fun source => Tensor.dim fun target => Tensor.scalar
+    (Tensor.getScalar input.retention source * Tensor.get2 state source target)
+  Tensor.get2 (update state input) row column =
+      Tensor.getScalar input.retention row * Tensor.get2 state row column -
         input.writeStrength * Tensor.getScalar input.key row *
-          Tensor.getScalar (vecMatMulSpec input.key decayed) column +
+          Tensor.getScalar (Tensor.vecmat input.key decayed) column +
         input.writeStrength * Tensor.getScalar input.key row *
           Tensor.getScalar input.value column := by
-  simp [update, Tensor.stackLeading, Tensor.addSpec, Tensor.subSpec, Tensor.mulSpec]
+  simp [update, Tensor.matrix, Tensor.get2_eq_getScalar_unstack]
   ring
 
 /-- Read the current output after the state update: `o_t = S_tᵀ q_t`. -/
 def read (state : State α keyDim valueDim) (query : Tensor α [keyDim]) :
     Tensor α [valueDim] :=
-  vecMatMulSpec query state
+  Tensor.vecmat query state
 
 /-- One recurrence step returns the updated state and its current-token output. -/
 def step (state : State α keyDim valueDim) (input : KDA.Input α keyDim valueDim) :
@@ -243,18 +243,18 @@ def activate (head : KDA.Head α modelDim keyDim valueDim convWidth decayRank)
     (logFloor : α) (current : Tensor α [modelDim])
     (qPre kPre : Tensor α [keyDim]) (vPre : Tensor α [valueDim]) :
     KDA.Input α keyDim valueDim :=
-  let query := Spec.normalizeL2RegularizedSpec (Tensor.map Activation.Math.swishSpec qPre)
+  let query := Tensor.normalizeL2 (Tensor.map Activation.silu qPre)
     Normalize.l2Epsilon
-  let key := Spec.normalizeL2RegularizedSpec (Tensor.map Activation.Math.swishSpec kPre)
+  let key := Tensor.normalizeL2 (Tensor.map Activation.silu kPre)
     Normalize.l2Epsilon
-  let value := Tensor.map Activation.Math.swishSpec vPre
+  let value := Tensor.map Activation.silu vPre
   let decayLogit :=
-    Tensor.addSpec (vecMatMulSpec (vecMatMulSpec current head.decayDown) head.decayUp)
+    Tensor.zipWith (· + ·) (Tensor.vecmat (Tensor.vecmat current head.decayDown) head.decayUp)
       head.decayBias
   let scale := MathFunctions.exp head.decayLogScale
   let retention := Tensor.map
-    (fun z => MathFunctions.exp (logFloor * Activation.Math.sigmoidSpec (scale * z))) decayLogit
-  let beta := Activation.Math.sigmoidSpec (Tensor.dotSpec current head.betaWeight)
+    (fun z => MathFunctions.exp (logFloor * Context.sigmoid (scale * z))) decayLogit
+  let beta := Context.sigmoid (Tensor.dot current head.betaWeight)
   { query, key, value, retention, writeStrength := beta }
 
 /-- Prepare one recurrence step, projecting only the tokens read by the convolution window. -/
@@ -263,9 +263,9 @@ def prepare (head : KDA.Head α modelDim keyDim valueDim convWidth decayRank)
     (history : List (Tensor α [modelDim])) : KDA.Input α keyDim valueDim :=
   let window := (current :: history).take convWidth
   head.activate logFloor current
-    (head.queryConv.forward (window.map (vecMatMulSpec · head.queryWeight)))
-    (head.keyConv.forward (window.map (vecMatMulSpec · head.keyWeight)))
-    (head.valueConv.forward (window.map (vecMatMulSpec · head.valueWeight)))
+    (head.queryConv.forward (window.map (Tensor.vecmat · head.queryWeight)))
+    (head.keyConv.forward (window.map (Tensor.vecmat · head.keyWeight)))
+    (head.valueConv.forward (window.map (Tensor.vecmat · head.valueWeight)))
 
 /-- Projecting only the convolution window agrees with projecting the complete history, with no
 associativity or real-arithmetic assumption. -/
@@ -273,9 +273,9 @@ theorem prepare_eq_full_history (head : KDA.Head α modelDim keyDim valueDim con
     (logFloor : α) (current : Tensor α [modelDim])
     (history : List (Tensor α [modelDim])) :
     head.prepare logFloor current history = head.activate logFloor current
-      (head.queryConv.forward ((current :: history).map (vecMatMulSpec · head.queryWeight)))
-      (head.keyConv.forward ((current :: history).map (vecMatMulSpec · head.keyWeight)))
-      (head.valueConv.forward ((current :: history).map (vecMatMulSpec · head.valueWeight))) := by
+      (head.queryConv.forward ((current :: history).map (Tensor.vecmat · head.queryWeight)))
+      (head.keyConv.forward ((current :: history).map (Tensor.vecmat · head.keyWeight)))
+      (head.valueConv.forward ((current :: history).map (Tensor.vecmat · head.valueWeight))) := by
   simp [prepare, List.map_take, ShortConv.forward_take]
 
 /-- Construct one head's recurrence input from a fixed newest-first model-width window.
@@ -288,10 +288,10 @@ def prepareWindow (head : KDA.Head α modelDim keyDim valueDim convWidth decayRa
     (hWidth : 0 < convWidth) (logFloor : α)
     (window : Tensor α [convWidth, modelDim]) :
     KDA.Input α keyDim valueDim :=
-  let current := Spec.get window ⟨0, hWidth⟩
-  let qPre := head.queryConv.forwardWindow hWidth (matMulSpec window head.queryWeight)
-  let kPre := head.keyConv.forwardWindow hWidth (matMulSpec window head.keyWeight)
-  let vPre := head.valueConv.forwardWindow hWidth (matMulSpec window head.valueWeight)
+  let current := Tensor.unstack window ⟨0, hWidth⟩
+  let qPre := head.queryConv.forwardWindow hWidth (Tensor.matmul window head.queryWeight)
+  let kPre := head.keyConv.forwardWindow hWidth (Tensor.matmul window head.keyWeight)
+  let vPre := head.valueConv.forwardWindow hWidth (Tensor.matmul window head.valueWeight)
   head.activate logFloor current qPre kPre vPre
 
 end KDA.Head
@@ -317,7 +317,7 @@ variable {modelDim heads keyDim valueDim convWidth decayRank : Nat}
 
 Heads run along the leading tensor axis.  A packed tensor, rather than a function
 `Fin heads → KDA.State`, makes the specification state the same value that GraphSpec and the
-runtime pass around.  `Spec.get state head` still gives one head's matrix.
+runtime pass around.  `Tensor.unstack state head` still gives one head's matrix.
 -/
 abbrev State (α : Type) [Storage α] (heads keyDim valueDim : Nat) :=
   Tensor α [heads, keyDim, valueDim]
@@ -331,10 +331,10 @@ packed result has the same layout as the GraphSpec graph.
 def gates (layer : KDA.Layer α modelDim heads keyDim valueDim convWidth decayRank)
     (x : Tensor α [modelDim]) :
     Tensor α [heads, valueDim] :=
-  Tensor.stackLeading fun head =>
-    Tensor.map Activation.Math.sigmoidSpec <|
-      vecMatMulSpec x <| Tensor.stackLeading fun input =>
-        Spec.get (Spec.get layer.gateWeight input) head
+  Tensor.dim fun head =>
+    Tensor.map Context.sigmoid <|
+      Tensor.vecmat x <| Tensor.dim fun input =>
+        Tensor.unstack (Tensor.unstack layer.gateWeight input) head
 
 /-- Read every recurrent head, normalize it, apply its output gate, and project back to model
 width.
@@ -348,15 +348,15 @@ def readout (state : Tensor α [heads, keyDim, valueDim])
     (outputWeight : Tensor α [heads, valueDim, modelDim])
     (outputNormScale : Tensor α [heads, valueDim]) :
     Tensor α [modelDim] :=
-  let headOutput := Tensor.stackLeading fun h =>
-    RMSNorm.scale (KDA.read (Spec.get state h) (Spec.get query h))
-      (Spec.get outputNormScale h)
-  let gated := mulSpec gate headOutput
-  let projectedHeads := Tensor.stackLeading fun h =>
-    vecMatMulSpec (Spec.get gated h) (Spec.get outputWeight h)
-  Tensor.stackLeading fun output => Tensor.scalar <|
+  let headOutput := Tensor.dim fun h =>
+    RMSNorm.scale (KDA.read (Tensor.unstack state h) (Tensor.unstack query h))
+      (Tensor.unstack outputNormScale h)
+  let gated := gate * headOutput
+  let projectedHeads := Tensor.dim fun h =>
+    Tensor.vecmat (Tensor.unstack gated h) (Tensor.unstack outputWeight h)
+  Tensor.dim fun output => Tensor.scalar <|
     (List.finRange heads).foldl (fun total head =>
-      total + Tensor.getScalar (Spec.get projectedHeads head) output) 0
+      total + Tensor.getScalar (Tensor.unstack projectedHeads head) output) 0
 
 /-- Complete one layer step after every head's recurrence inputs have been prepared.
 
@@ -368,8 +368,8 @@ def stepPrepared (layer : KDA.Layer α modelDim heads keyDim valueDim convWidth 
     (state : State α heads keyDim valueDim) (x : Tensor α [modelDim])
     (prepared : Fin heads → KDA.Input α keyDim valueDim) :
     State α heads keyDim valueDim × Tensor α [modelDim] :=
-  let next := Tensor.stackLeading fun h => KDA.update (Spec.get state h) (prepared h)
-  let query := Tensor.stackLeading fun h => (prepared h).query
+  let next := Tensor.dim fun h => KDA.update (Tensor.unstack state h) (prepared h)
+  let query := Tensor.dim fun h => (prepared h).query
   (next, readout next query (layer.gates x) layer.outputWeight layer.outputNormScale)
 
 /-- One token step through every KDA head and the shared output projection. -/
@@ -385,7 +385,7 @@ def stepWindow (layer : KDA.Layer α modelDim heads keyDim valueDim convWidth de
     (window : Tensor α [convWidth, modelDim])
     (state : State α heads keyDim valueDim) :
     State α heads keyDim valueDim × Tensor α [modelDim] :=
-  let current := Spec.get window ⟨0, hWidth⟩
+  let current := Tensor.unstack window ⟨0, hWidth⟩
   layer.stepPrepared state current fun head =>
     (layer.head head).prepareWindow hWidth logFloor window
 
@@ -401,8 +401,8 @@ def rollWindowRaw (current : Tensor α [modelDim])
     (previous : Tensor α [convWidth, modelDim]) :
     Tensor α [1 + (convWidth - 1), modelDim] :=
   let currentRow : Tensor α [1, modelDim] :=
-    Tensor.reshapeSpec current (by simp [Shape.size])
-  let retained := Tensor.sliceAxisRangeSpec 0 previous 0 (convWidth - 1) (by simp)
+    Tensor.reshape current _ (by simp [Shape.size])
+  let retained := Tensor.take previous 0 (convWidth - 1) (by simp [Shape.axisSize])
   Tensor.concat currentRow retained
 
 /-- Advance the fixed newest-first short-convolution window by one token.

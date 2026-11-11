@@ -7,7 +7,8 @@ Authors: TorchLean Team
 module
 
 public import KimiK3.Model
-public import NN.Spec.Layers.Loss
+public import TorchLean.Tensor.Layers.Loss.Axis
+public import TorchLean.Tensor.Constructors
 
 /-!
 # Masked next-token pretraining
@@ -24,7 +25,7 @@ https://arxiv.org/abs/2607.24653.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
 open Tensor
 open scoped BigOperators
 
@@ -33,7 +34,7 @@ namespace Pretraining
 /-- Negative log-likelihood of one target token, evaluated from unnormalized vocabulary logits. -/
 noncomputable def tokenLoss {vocabSize : Nat}
     (logits : Tensor ℝ [vocabSize]) (target : Fin vocabSize) : ℝ :=
-  -Tensor.getScalar (Activation.logSoftmaxVecSpec logits) target
+  -Tensor.getScalar (Tensor.logSoftmax logits ⟨0, Nat.one_pos⟩) target
 
 /-- Mean next-token loss over the positions selected by `supervised`.
 
@@ -45,7 +46,7 @@ noncomputable def nextTokenLoss {sequenceLength vocabSize : Nat}
     (logits : Tensor ℝ [sequenceLength, vocabSize])
     (targets : Fin sequenceLength → Fin vocabSize)
     (supervised : Finset (Fin sequenceLength)) (_hSupervised : supervised.Nonempty) : ℝ :=
-  (∑ position ∈ supervised, tokenLoss (Spec.get logits position) (targets position)) /
+  (∑ position ∈ supervised, tokenLoss (Tensor.unstack logits position) (targets position)) /
     supervised.card
 
 /-- Closed-form logit-gradient formula for the masked next-token objective.
@@ -60,11 +61,11 @@ noncomputable def logitGradientFormula {sequenceLength vocabSize : Nat}
     (targets : Fin sequenceLength → Fin vocabSize)
     (supervised : Finset (Fin sequenceLength)) (_hSupervised : supervised.Nonempty) :
     Tensor ℝ [sequenceLength, vocabSize] :=
-  Tensor.stackLeading fun position =>
+  Tensor.dim fun position =>
     if position ∈ supervised then
-      scaleSpec
-        (crossEntropyLogitsDerivSpec 0 (Spec.get logits position)
-          (TorchLean.Tensor.oneHot vocabSize (targets position)))
+      Tensor.scale
+        (Tensor.crossEntropyBackward .logits (Tensor.unstack logits position)
+          (Tensor.oneHot vocabSize (targets position)) ⟨0, Nat.one_pos⟩ false)
         (1 / supervised.card)
     else
       Tensor.zeros [vocabSize]
@@ -76,13 +77,12 @@ theorem logitGradientFormula_at_supervised {sequenceLength vocabSize : Nat}
     (targets : Fin sequenceLength → Fin vocabSize)
     (supervised : Finset (Fin sequenceLength)) (hSupervised : supervised.Nonempty)
     (position : Fin sequenceLength) (hPosition : position ∈ supervised) :
-    Spec.get (logitGradientFormula logits targets supervised hSupervised) position =
-      scaleSpec
-        (crossEntropyLogitsDerivSpec 0 (Spec.get logits position)
-          (TorchLean.Tensor.oneHot vocabSize (targets position)))
+    Tensor.unstack (logitGradientFormula logits targets supervised hSupervised) position =
+      Tensor.scale
+        (Tensor.crossEntropyBackward .logits (Tensor.unstack logits position)
+          (Tensor.oneHot vocabSize (targets position)) ⟨0, Nat.one_pos⟩ false)
         (1 / supervised.card) := by
-  simp only [logitGradientFormula, Tensor.stackLeading, Spec.get_dim]
-  rw [ite_eq_left hPosition]
+  simp only [logitGradientFormula, Tensor.unstack_dim, ite_eq_left hPosition]
 
 /-- At every masked position the formula is zero. -/
 theorem logitGradientFormula_at_masked {sequenceLength vocabSize : Nat}
@@ -90,10 +90,9 @@ theorem logitGradientFormula_at_masked {sequenceLength vocabSize : Nat}
     (targets : Fin sequenceLength → Fin vocabSize)
     (supervised : Finset (Fin sequenceLength)) (hSupervised : supervised.Nonempty)
     (position : Fin sequenceLength) (hPosition : position ∉ supervised) :
-    Spec.get (logitGradientFormula logits targets supervised hSupervised) position =
+    Tensor.unstack (logitGradientFormula logits targets supervised hSupervised) position =
       Tensor.zeros [vocabSize] := by
-  simp only [logitGradientFormula, Tensor.stackLeading, Spec.get_dim]
-  rw [ite_eq_right hPosition]
+  simp only [logitGradientFormula, Tensor.unstack_dim, ite_eq_right hPosition]
 
 end Pretraining
 

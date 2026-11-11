@@ -597,11 +597,9 @@
             tanh. Evaluating those nodes over real numbers should return exactly the same
             tensor as the reference function, and a <em>denotation theorem</em> proves that equality,
             which lets us check the graph's wiring against the equation.</p>
-          <p>We can lower that graph to a program for execution. But connecting a fused,
-            low-precision GPU implementation to the real-valued graph needs a further proof:
-            how much can its answer differ under the chosen arithmetic? That numerical bound and the graph equality
-            answer different questions, and I haven't done the numerical proof for K3's fused kernels yet, so we'll keep both calculations
-            visible as we work through the model.</p>
+          <p>To connect a fused GPU implementation to this equality, we'd need a bound on how
+            much its arithmetic can change the answer. Here we'll work through the real-valued
+            calculation.</p>
 
           <p>We'll use this approach for the recurrent update and the sequence of decoder steps
             too, and even though their statements are larger, we can still follow the function, its
@@ -804,9 +802,6 @@
           evaluation rules for the graph operations, and what those rules leave is the three matrix products
           and SiTU expression from <code>Expert.forward</code>. That's why the result works for
           every choice of weights and dimensions, not only our tiny example.</p>
-        <p>We can then lower the graph with <code>toProgram</code>. To connect a GPU answer to
-          this real-valued theorem we still need a rounding argument for the operations that
-          actually execute, and the graph equality gives us the equation that argument must use.</p>
       </div>
       <div class="method-theorem">
         <h3>A bound on the expert's output</h3>
@@ -834,7 +829,7 @@
 <pre data-lean-example="expertBound" id="expert-output-bound"></pre>
         </details>
       </div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Expert.lean#L56" target="_blank" rel="noreferrer">GraphSpec/Expert.lean, complete worked pattern ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Expert.lean" target="_blank" rel="noreferrer">GraphSpec/Expert.lean, complete worked pattern ↗</a>
     </section>
 
     <section id="configuration" class="spread chapter-anchor">
@@ -989,7 +984,7 @@
           down the paper's decay interval, and the other checks that projection, window preparation,
           recurrence, and readout are wired into the same fixed-window token step.</p>
         <div class="proof-ladder"><div><span>reference step</span><code>KDA.Layer.stepWindow</code></div><i>proved equal</i><div><span>typed graph denotation</span><code>KDA.layerModel.specFwd</code></div><i>separate refinement needed</i><div class="boundary-rung"><span>kernel</span><code>fused finite-precision KDA</code></div></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/KDA.lean#L1031" target="_blank" rel="noreferrer">GraphSpec/KDA.lean, graph denotation ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/KDA.lean" target="_blank" rel="noreferrer">GraphSpec/KDA.lean, graph denotation ↗</a>
       </aside>
     </section>
 
@@ -1040,8 +1035,8 @@
           haven't proved yet that packing the list cache and calling <code>stepFixed</code>
           agrees with <code>GatedMLA.step</code>. And the graph theorem stops before the report's
           32-bit output tile and fused training kernel.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MLA.lean#L100" target="_blank" rel="noreferrer">GraphSpec/MLA.lean, typed cache step ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MLA.lean#L309" target="_blank" rel="noreferrer">GraphSpec/MLA.lean, denotation theorem ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MLA.lean" target="_blank" rel="noreferrer">GraphSpec/MLA.lean, typed cache step ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MLA.lean" target="_blank" rel="noreferrer">GraphSpec/MLA.lean, denotation theorem ↗</a>
       </aside>
     </section>
 
@@ -1094,8 +1089,8 @@
         <div class="assumption-box"><strong>The packed/list bridge is not proved yet.</strong><p>Here the
           graph theorem targets <code>attendPacked</code>, but the public <code>BlockState.retrieve</code>
           uses list-valued sources, and nothing identifies those two representations yet.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/AttnRes.lean#L44" target="_blank" rel="noreferrer">GraphSpec/AttnRes.lean, retrieval term ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/AttnRes.lean#L78" target="_blank" rel="noreferrer">GraphSpec/AttnRes.lean, evaluation theorem ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/AttnRes.lean" target="_blank" rel="noreferrer">GraphSpec/AttnRes.lean, retrieval term ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/AttnRes.lean" target="_blank" rel="noreferrer">GraphSpec/AttnRes.lean, evaluation theorem ↗</a>
       </aside>
     </section>
 
@@ -1142,11 +1137,10 @@
         <p><code>Fin activeExperts</code> fixes the number of slots, <code>Fin numExperts</code> keeps
           every ID in range, and injectivity forbids duplicates. Then the route-specialized graph carries
           the projections, selected expert calls, score normalization, RMSNorm, and final sum.</p>
-        <div class="assumption-box"><strong>Top-k is not a graph node.</strong><p>
-          <code>modelAtInput</code> chooses the top experts mathematically while constructing a graph
-          for one concrete real input. A runtime implementation can compute and check that route before
-          executing <code>modelGivenRoute</code>, and if the selected experts change, so does the staged graph.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MoE.lean#L227" target="_blank" rel="noreferrer">GraphSpec/MoE.lean, route-specialized graph ↗</a>
+        <div class="assumption-box"><strong>Choosing the route.</strong><p>
+          <code>modelAtInput</code> chooses the top experts for one real input, then passes that
+          route to <code>modelGivenRoute</code>.</p></div>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/MoE.lean" target="_blank" rel="noreferrer">GraphSpec/MoE.lean, route-specialized graph ↗</a>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/FeedForward/MoE.lean#L186" target="_blank" rel="noreferrer">FeedForward/MoE.lean, computed route is top-k ↗</a>
       </aside>
     </section>
@@ -1177,7 +1171,7 @@
           coordinate. If you want a bound on the norm of a whole network activation, you'd also need
           the surrounding linear maps and their norms.</p></div>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/FeedForward/Activation.lean#L82" target="_blank" rel="noreferrer">FeedForward/Activation.lean, SiTU bound ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Primitives.lean#L238" target="_blank" rel="noreferrer">GraphSpec, transparent SiTU graph ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Primitives.lean" target="_blank" rel="noreferrer">GraphSpec, transparent SiTU graph ↗</a>
       </aside>
     </section>
 
@@ -1371,7 +1365,7 @@
           include <code>InputSlot.visual</code> or MoonViT.</p></div>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Model.lean#L213" target="_blank" rel="noreferrer">Model.lean, backbone token step ↗</a>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Model.lean#L344" target="_blank" rel="noreferrer">Model.lean, multimodal embedding behavior ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Backbone/KDADense.lean#L185" target="_blank" rel="noreferrer">GraphSpec/Backbone/KDADense.lean, first of four packed cases ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Backbone/KDADense.lean" target="_blank" rel="noreferrer">GraphSpec/Backbone/KDADense.lean, first of four packed cases ↗</a>
       </aside>
     </section>
 
@@ -1384,21 +1378,13 @@
           are known when the graph is built. Its component theorems compare graph operations with
           reference functions using that same pack, so I still need to show that packing the public
           state preserves its transitions.</p>
-        <p>Now we can compose the component proofs. Fix a valid K3 configuration, a current text
-          token, fixed-shape caches, and one expert route for every sparse layer, and the resulting graph
-          updates every layer cache and produces the vocabulary logits for the next token. Under
-          TorchLean's real-number semantics, those outputs equal <code>runSpecAuto</code> (the packed
-          reference calculation) exactly. Both sides use packed tensors, though, so this doesn't yet
-          prove equality with the public <code>BackboneLayer.forwardToken</code>.</p>
-        <p>“Packed” means that differently shaped KDA, MLA, and depth states sit in one ordered bundle
-          whose shapes are recorded in its type. Our graph is a directed acyclic graph (DAG), a
-          one-way network of tensor operations with no loop back to an earlier node, and a
-          <em>denotation theorem</em> proves what that graph computes when its nodes are interpreted as
-          real-number tensor functions.</p>
-        <p>So how can a recurrent model be a DAG? Because this theorem covers one incremental
-          step: the old caches enter as inputs, and the updated caches and logits leave as outputs. A
-          generation loop would feed those outputs into the next step, but that outer loop isn't
-          part of this graph yet.</p>
+        <p>Fix a valid K3 configuration, a text token, and fixed-shape caches. If each supplied
+          expert route agrees with the reference router, the composition returns exactly the same
+          updated caches and vocabulary logits as <code>runSpecAuto</code> over the reals. Both
+          calculations use the same packed state.</p>
+        <p>“Packed” means that differently shaped KDA, MLA, and depth states sit in one ordered
+          bundle whose shapes are recorded in its type. The operations describe one incremental
+          step. The old caches enter as inputs, and the updated caches and logits leave as outputs.</p>
         <div class="equation-block compact-equation"><div data-latex="G=\operatorname{graph}(M,r,t)">route-staged token graph</div><div data-latex="P=\operatorname{params}(M),\qquad I=\operatorname{inputs}(s)">parameters and causal state</div><div data-latex="\llbracket G\rrbracket_{\mathbb R}(P,I)=\operatorname{runSpecAuto}(M,t,s)">one-token packed denotation</div></div>
         <p>Those brackets mean “evaluate the typed graph as a real-valued function.” The equality is
           exact. It includes the scheduled KDA/MLA choice, dense or sparse channel path, causal state
@@ -1408,7 +1394,7 @@
           packed reference run. (Vocabulary scores, also called logits, are the raw numbers softmax later
           turns into next-token probabilities.)</p>
         <div class="proof-chain" aria-label="Hierarchy of graph equivalence proofs">
-          <div><span>primitive operations</span><b>RMSNorm · matmul · broadcast · reshape · activation</b><small>TorchLean GraphSpec primitives</small></div><i>↓</i>
+          <div><span>primitive operations</span><b>RMSNorm · matmul · broadcast · reshape · activation</b><small>TorchLean tensor operations</small></div><i>↓</i>
           <div><span>component graphs</span><b>KDA · MLA · AttnRes · Expert · MoE</b><small>component denotation theorems</small></div><i>↓</i>
           <div><span>four backbone cases</span><b>KDA/dense · KDA/sparse · MLA/dense · MLA/sparse</b><small>Backbone.model_specFwd_eq_specStep</small></div><i>↓</i>
           <div class="final-proof"><span>route-staged token graph</span><b>graph_specFwd_eq_runSpecAuto</b><small>updated causal states and current vocabulary logits</small></div>
@@ -1433,7 +1419,7 @@
           and route trace satisfying its hypotheses.</p>
 <pre data-lean-block="decoder-equality"></pre>
         <ol class="code-walk">
-          <li><code>graph … .specFwd</code> is the mathematical meaning of the typed TorchLean DAG.</li>
+          <li><code>graph … .specFwd</code> evaluates the packed tensor composition.</li>
           <li><code>parameters</code> and <code>inputs</code> pack the same model weights and causal
             state in the order expected by that graph.</li>
           <li><code>runSpecAuto</code> is the independent packed reference calculation, so equality means
@@ -1454,10 +1440,9 @@
           <code>LanguageModel.forwardDepthStates</code>, <code>forwardHidden</code>, and
           <code>logits</code> functions.
           This graph also excludes MoonViT and visual-input splicing, a generation loop, runtime
-          top-k, finite-precision kernels, checkpoint weights, and a proof that
-          <code>toProgram</code> execution agrees with <code>specFwd</code>.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/LanguageModel.lean#L218" target="_blank" rel="noreferrer">GraphSpec/LanguageModel.lean, final decoder semantics ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/LanguageModel.lean#L509" target="_blank" rel="noreferrer">GraphSpec/LanguageModel.lean, one-token theorem ↗</a>
+          top-k, finite-precision kernels, and checkpoint weights.</p></div>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/LanguageModel.lean" target="_blank" rel="noreferrer">GraphSpec/LanguageModel.lean, final decoder semantics ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/LanguageModel.lean" target="_blank" rel="noreferrer">GraphSpec/LanguageModel.lean, one-token theorem ↗</a>
         <h3>Streaming, full sequences, and chunk boundaries</h3>
         <p>We can evaluate a whole sequence layer by layer, or carry each layer's causal state
           between token steps, and we now prove that these two calculations give exactly the same
@@ -2874,7 +2859,7 @@
         holding a counterexample alone.</p>
       <div class="formalization-roadmap" aria-label="Formalization path from paper to checkpoint">
         <article class="done"><span>01 · checked</span><strong>Paper equation → reference function</strong><p>KDA, MLA, AttnRes, experts, routing, quantization, selected training equations, and EAGLE have explicit tensor or probability semantics.</p></article>
-        <article class="done"><span>02 · checked by component</span><strong>Reference function → typed graph</strong><p>TorchLean graphs exist for the major language components, all four sequence/channel layer combinations, and the MoonViT embedding, block, and merge/project stages.</p></article>
+        <article class="done"><span>02 · checked by component</span><strong>Reference function → tensor composition</strong><p>The Kimi development has typed tensor compositions for all four sequence/channel layer combinations and the MoonViT embedding, encoder, and merge/project stages.</p></article>
         <article class="done"><span>03 · checked for one packed token</span><strong>Typed graph → packed semantics</strong><p>Denotation theorems identify graph evaluation with the packed reference calculation through vocabulary logits.</p></article>
         <article class="open"><span>04 · open</span><strong>Packed state → public causal model</strong><p>List caches and packed tensors still need representation relations for KDA, MLA, AttnRes, the backbone, and the complete language model.</p></article>
         <article class="open"><span>05 · open</span><strong>Graph → executable K3 checkpoint</strong><p>Runtime top-k, released parameter loading, checkpoint-backed assembly and generation, execution refinement, and finite-precision kernel bounds remain to be connected to the K3 theorem.</p></article>

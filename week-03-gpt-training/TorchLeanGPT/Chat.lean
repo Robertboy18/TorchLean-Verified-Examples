@@ -6,7 +6,7 @@ Released under the MIT license.
 module
 
 public import TorchLeanGPT.Run
-import NN.API.Text.Bpe
+import TorchLean.NN.Text.GPT2BPE
 
 /-!
 # Shared dialogue interface
@@ -118,9 +118,9 @@ newlines at the same boundaries, so BPE merges at a boundary cannot differ betwe
 interactive generation.
 -/
 def encodeSegments
-    (tokenizer : text.GPT2BPE.Tokenizer) (segments : List String) :
+    (tokenizer : Text.GPT2BPE.Tokenizer) (segments : List String) :
     Except String (List Nat) := do
-  let pieces ← segments.mapM (text.GPT2BPE.encode tokenizer)
+  let pieces ← segments.mapM (Text.GPT2BPE.encode tokenizer)
   pure (pieces.flatMap Array.toList)
 
 /-- Segments for one message in the transcript format used by the dataset writer. -/
@@ -134,7 +134,7 @@ A blank `systemPrompt` drops the `System:` line, so the transcript starts with `
 instruction datasets without a system message.
 -/
 def encodeDialoguePrompt
-    (tokenizer : text.GPT2BPE.Tokenizer)
+    (tokenizer : Text.GPT2BPE.Tokenizer)
     (systemPrompt : String) (turns : List Turn) (userMessage : String) :
     Except String (List Nat) := do
   let prior :=
@@ -156,7 +156,7 @@ def encodeDialoguePrompt
 Id of the end-of-text marker, looked up in the loaded vocabulary. Encoding its spelling as
 ordinary text would split it into several tokens instead of selecting the special entry.
 -/
-def endOfTextToken (tokenizer : text.GPT2BPE.Tokenizer) : Except String Nat := do
+def endOfTextToken (tokenizer : Text.GPT2BPE.Tokenizer) : Except String Nat := do
   match tokenizer.tokenId? "<|endoftext|>" with
   | some token => pure token
   | none => throw "GPT-2 vocabulary has no <|endoftext|> token"

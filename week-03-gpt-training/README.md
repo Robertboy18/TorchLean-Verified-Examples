@@ -104,11 +104,11 @@ For CUDA discovery and the CPU-only build on Linux and macOS, see TorchLean's
 TorchLean's tied-token constructor supplies the architecture:
 
 ```lean
-def buildModel (cfg : nn.models.CausalTransformer.Config) (batch : Nat)
-    (runtime : Runtime.Config) :
+def buildModel (cfg : nn.CausalTransformer.Config) (batch : Nat)
+    (runtime : Session.Config) :
     nn.Builder (nn.IndexedModel (cfg.tokenShape [batch]) (cfg.vocabularyShape [batch])
       (Fin cfg.vocabularySize)) := do
-  let model ← nn.models.CausalTransformer.tied cfg [batch]
+  let model ← nn.CausalTransformer.tied cfg [batch]
   -- the rest wraps `model` and keeps the LayerNorm epsilon described below
 ```
 
@@ -539,8 +539,9 @@ The saved figure above is from the original FP32 run. Because the current Lean r
 the script now runs the PyTorch reference in `float64` too, target weights and optimizer state
 included. Both metric files record their precision, and the comparison rejects a mismatch. You need
 to supply a checkpoint for the GPT-2-small dimensions, saved by the current TorchLean runtime.
-Either binary64 state JSON or streamed binary32 state (`TLSF32B`, version 1) works, and the
-reference converts the latter to binary64 just as the Lean runner does. New metrics, the summary,
+The runner writes binary64 `TLSTATE` checkpoints. Both the Lean runner and the PyTorch comparison
+also read the historical binary64 JSON and `TLSF32B` files used in earlier runs. They widen
+binary32 values to binary64 on load. New metrics, the summary,
 and the figure go under the output directory you choose, and the example directory above keeps the
 saved FP32 results unchanged. How do we know those two archived metric files are FP32? They were
 written before either program recorded a dtype, so the label comes from the setup of that run, not
@@ -633,7 +634,7 @@ corpus token `t + 1` and not the mask attached to its input token:
 
 ```lean
 theorem causal_window_mask_is_next_target
-    {α : Type} [Storage α] [_root_.Context α] [Runtime.FromFloat α]
+    {α : Type} [Storage α] [TorchLean.Context α] [FromFloat α]
     (vocab batch seqLen : Nat) [NeZero vocab]
     (shard : Run.TokenShard) (targetMask : Run.TargetMask) (records : Run.DialogueRecords)
     (seed step padId : Nat) (bi : Fin batch) (i : Fin seqLen) :
@@ -642,8 +643,8 @@ theorem causal_window_mask_is_next_target
     let record := Run.sampledRecord records seed step bi.val
     let weight := Run.activeRowWeight
       (Run.recordBatchRows shard targetMask records seed step padId batch seqLen).2.2
-    (batchTensors.2.2.get bi).getScalar i =
-      Runtime.ofFloat
+    (batchTensors.2.2.unstack bi).getScalar i =
+      ofFloat
         (if decide (i.val + 1 < record.length) &&
             DialogueRecords.targetRowEnabled
               record.offset record.targetOffset record.targetLength i.val &&
@@ -677,15 +678,14 @@ in the forward pass and score gradient exactly zero in the backward pass:
 ```lean
 theorem causal_attention_blocks_future_forward_and_backward
     {context : Nat}
-    (scores dWeights : TorchLean.Tensor ℝ
-      (.dim context (.dim context .scalar)))
+    (scores dWeights : Tensor ℝ [context, context])
     (i j : Fin context)
     (future : i.val < j.val) :
     let weights :=
-      Spec.hardMaskedSoftmaxSpec scores (Spec.causalMask context)
-    Spec.get2 weights i j = 0 ∧
-      Spec.get2
-        (Spec.softmaxBackwardFromWeightsSpec weights dWeights) i j = 0
+      Softmax.hardMasked scores (Attention.causalMask context)
+    Tensor.get2 weights i j = 0 ∧
+      Tensor.get2
+        (Softmax.backwardFromWeights weights dWeights) i j = 0
 ```
 
 This theorem quantifies over every score matrix and every incoming attention-weight gradient of the
@@ -703,11 +703,9 @@ theorem weighted_rows_eq_of_eq_on_support
     ∑ i, weights i * left i = ∑ i, weights i * right i
 ```
 
-Once the corresponding row-derivative equalities have been established separately, the same support
-argument can be used coordinate by coordinate. But the theorem itself is about a weighted sum, and
-it doesn't prove differentiation of `Loss.crossEntropyWeighted` or the autograd implementation.
-Prompt tokens can still influence an active assistant target through causal attention (that's
-intentional).
+The theorem applies to the weighted sum of losses in `weightedObjective`. Given equal row
+derivatives on the active rows, the same argument applies to each derivative coordinate. Prompt
+tokens can still influence an active assistant target through causal attention.
 
 Build the proofs directly with:
 
@@ -761,9 +759,9 @@ lake -R -K cuda=true exe generate_torchlean_gpt_cached --device cuda \
 For one noninteractive answer, append `--message "What is two plus two?"`. That's handy for poking
 at the checkpoint, but judge its assistant quality by the failed generation tests above.
 
-Checkpoints preserve parameter values and check their shapes when loading. `Float` uses exact
-binary64 JSON on CPU and GPU, `Float32` uses binary32 payloads, and the cached decoder uses the same
-dtype as the live parameters. (Binary32 parameter files can also be loaded into a binary64 model.) A
+Checkpoints preserve parameter values and check their shapes when loading. The Week 3 runner
+writes binary64 `TLSTATE` on CPU and GPU. The loader also accepts the original binary64 JSON and
+binary32 checkpoints. The cached decoder uses the dtype of the live parameters. A
 file written with `--save-params` stores only model parameters, which is enough to begin a new phase
 such as instruction tuning. A resumable checkpoint directory also stores the AdamW moments, the
 completed step, the metric history, and the training configuration needed to reject an incompatible

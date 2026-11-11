@@ -7,9 +7,9 @@ Authors: Robert Joseph George
 module
 
 public import KimiK3.Common
-public import NN.Spec.Layers.Activation
+public import TorchLean.Tensor.Layers.Activation
 public import Mathlib.Analysis.SpecialFunctions.Sigmoid
-import NN.Proofs.Gradients.Activation
+import TorchLean.NN.Gradients.Activation
 
 /-!
 # SiTU-GLU
@@ -24,7 +24,8 @@ Reference: https://arxiv.org/abs/2607.24653, Section 2.3.2 and Appendix B.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
+open FloatLib.Numerics (MathFunctions)
 open Tensor
 
 namespace SiTU
@@ -38,17 +39,16 @@ SiTU-GLU on one coordinate. The sigmoid sees the uncapped gate preactivation, an
 factors of both GLU branches are soft-capped.
 -/
 def scalar {α : Type} [Context α] (gateCap upCap gate up : α) : α :=
-  (softCap gateCap gate * Activation.Math.sigmoidSpec gate) * softCap upCap up
+  (softCap gateCap gate * Context.sigmoid gate) * softCap upCap up
 
 /-- SiTU-GLU applied coordinatewise to gate and up projections. -/
 def vector {α : Type} [Storage α] [Context α] {n : Nat} (gateCap upCap : α)
     (gate up : Tensor α [n]) : Tensor α [n] :=
-  Tensor.stackLeading (fun i => Tensor.scalar (scalar gateCap upCap (Tensor.getScalar gate i)
-    (Tensor.getScalar up i)))
+  Tensor.zipWith (scalar gateCap upCap) gate up
 
 /-- TorchLean's generic sigmoid agrees with Mathlib's `Real.sigmoid`. -/
-private theorem sigmoidSpec_real (x : ℝ) : Activation.Math.sigmoidSpec x = Real.sigmoid x := by
-  simpa [Real.sigmoid] using Proofs.sigmoid_eq_inv_exp x
+private theorem sigmoid_real (x : ℝ) : Context.sigmoid x = Real.sigmoid x := by
+  simpa [Real.sigmoid_def] using Context.sigmoid_eq_inv_exp x
 
 /-- At scalar type `ℝ`, the generic `MathFunctions.tanh` is definitionally `Real.tanh`. -/
 private theorem tanh_real (x : ℝ) : MathFunctions.tanh x = Real.tanh x := by
@@ -72,7 +72,7 @@ theorem abs_scalar_le_mul_caps {gateCap upCap : ℝ}
   have hSoftUp : |softCap upCap up| ≤ upCap := by
     rw [softCap, tanh_real, abs_mul, abs_of_nonneg hUp]
     exact mul_le_of_le_one_right hUp hTanhUp
-  rw [scalar, sigmoidSpec_real, abs_mul, abs_mul]
+  rw [scalar, sigmoid_real, abs_mul, abs_mul]
   calc
     |softCap gateCap gate| * |Real.sigmoid gate| * |softCap upCap up|
         ≤ gateCap * 1 * upCap := by gcongr
@@ -93,20 +93,13 @@ a zero cap, because division in a field is total and `x / c = x * c⁻¹`.
 -/
 theorem expanded_eq_vector {n : Nat} (gateCap upCap : ℝ)
     (gate up : Tensor ℝ [n]) :
-    Tensor.mulSpec
-      (Tensor.mulSpec
-        (Tensor.mulSpec
-          (Activation.tanhSpec (Tensor.mulSpec gate (Tensor.full [n] gateCap⁻¹)))
-          (Tensor.full [n] gateCap))
-        (Activation.sigmoidSpec gate))
-      (Tensor.mulSpec
-        (Activation.tanhSpec (Tensor.mulSpec up (Tensor.full [n] upCap⁻¹)))
-        (Tensor.full [n] upCap)) =
+    (Tensor.tanh (gate * Tensor.full [n] gateCap⁻¹) * Tensor.full [n] gateCap) *
+      Tensor.sigmoid gate *
+      (Tensor.tanh (up * Tensor.full [n] upCap⁻¹) * Tensor.full [n] upCap) =
       vector gateCap upCap gate up := by
   apply Tensor.ext_vector
   intro index
-  simp [Tensor.mulSpec, Activation.tanhSpec, Activation.sigmoidSpec,
-    Activation.Math.tanhSpec, vector, Tensor.stackLeading, scalar, softCap, div_eq_mul_inv]
+  simp [Tensor.mul_def, Tensor.tanh, Tensor.sigmoid, vector, scalar, softCap, div_eq_mul_inv]
   ring
 
 end SiTU

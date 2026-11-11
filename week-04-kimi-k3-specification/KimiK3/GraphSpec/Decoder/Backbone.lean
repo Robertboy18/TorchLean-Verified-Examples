@@ -23,20 +23,18 @@ they match the router.
 namespace KimiK3
 namespace GraphSpec
 
-open Spec TorchLean NN.GraphSpec.DAG
+open TorchLean
 
 private theorem eval_splitArgs {α : Type} [Storage α] [Context α]
     {Γ left right : List Shape} (env : TorchLean.TensorPack α Γ)
     (args : Args Γ (left ++ right)) :
     (Term.evalArgs env (splitArgs args).1, Term.evalArgs env (splitArgs args).2) =
-      TorchLean.TensorPack.split (Term.evalArgs env args) := by
+      TorchLean.Pack.split (Term.evalArgs env args) := by
   exact Prod.ext (eval_splitArgs_left env args) (eval_splitArgs_right env args)
 
 namespace Decoder
 
-open Spec TorchLean
-open NN.GraphSpec.DAG
-open Runtime.Autograd.Torch
+open TorchLean
 
 variable {cfg : TextConfig} {decayRank : Nat}
 
@@ -113,7 +111,7 @@ def parametersFor (model : LanguageModel ℝ cfg decayRank) :
     (indices : List (Fin cfg.numLayers)) → TorchLean.TensorPack ℝ (ParamsFor model indices)
   | List.nil => .nil
   | index :: rest =>
-      TorchLean.TensorPack.append
+      TorchLean.Pack.append
         (DecoderLayer.parameters (model.layer index)) (parametersFor model rest)
 
 /-- Pack one causal state per layer into the decoder's heterogeneous state ABI. -/
@@ -124,7 +122,7 @@ def packStates (pastTokens : Nat) (model : LanguageModel ℝ cfg decayRank)
       TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices)
   | [] => .nil
   | index :: rest =>
-      TorchLean.TensorPack.append (state index)
+      TorchLean.Pack.append (state index)
         (packStates pastTokens model state rest)
 
 /-- Empty fixed-shape cache corresponding to a concrete sequence mixer. -/
@@ -161,9 +159,9 @@ noncomputable def inputsFor (pastTokens processedLayers : Nat)
     (states : TorchLean.TensorPack ℝ (StateShapesFor pastTokens model indices))
     (mlaScoreScale : ℝ) :
     TorchLean.TensorPack ℝ (InputsFor pastTokens processedLayers model indices) :=
-  TorchLean.TensorPack.append depth <|
-    TorchLean.TensorPack.append states <|
-      TorchLean.TensorPack.append (controlsFor model mlaScoreScale indices) <|
+  TorchLean.Pack.append depth <|
+    TorchLean.Pack.append states <|
+      TorchLean.Pack.append (controlsFor model mlaScoreScale indices) <|
         .cons (Tensor.scalar Normalize.l2Epsilon) <| .cons (Tensor.scalar cfg.situGateCap) <|
           .cons (Tensor.scalar cfg.situUpCap) .nil
 
@@ -203,7 +201,7 @@ noncomputable def runSpec {architecture : Config} {decayRank : Nat}
       outputsFor_nil pastTokens processedLayers model ▸ depth
   | index :: rest, depth, states, mlaScoreScale => by
       let layer := model.layer index
-      let stateParts := TorchLean.TensorPack.split
+      let stateParts := TorchLean.Pack.split
         (ss₁ := DecoderLayer.StateShapes pastTokens layer.sequence)
         (ss₂ := StateShapesFor pastTokens model rest) states
       let completed := Env.tget depth Var.head
@@ -220,7 +218,7 @@ noncomputable def runSpec {architecture : Config} {decayRank : Nat}
       let restResult := runSpec hcfg model route pastTokens (processedLayers + 1) rest nextDepth
         stateParts.2 mlaScoreScale
       exact outputsFor_cons pastTokens processedLayers model index rest ▸
-        TorchLean.TensorPack.append
+        TorchLean.Pack.append
           (DecoderLayer.nextStateValues pastTokens layer.sequence result) restResult
 termination_by indices => indices.length
 
@@ -243,7 +241,7 @@ noncomputable def runSpecAuto {architecture : Config} {decayRank : Nat}
       outputsFor_nil pastTokens processedLayers model ▸ depth
   | index :: rest, depth, states, mlaScoreScale => by
       let layer := model.layer index
-      let stateParts := TorchLean.TensorPack.split
+      let stateParts := TorchLean.Pack.split
         (ss₁ := DecoderLayer.StateShapes pastTokens layer.sequence)
         (ss₂ := StateShapesFor pastTokens model rest) states
       let completed := Env.tget depth Var.head
@@ -260,7 +258,7 @@ noncomputable def runSpecAuto {architecture : Config} {decayRank : Nat}
       let restResult := runSpecAuto hcfg model pastTokens (processedLayers + 1) rest nextDepth
         stateParts.2 mlaScoreScale
       exact outputsFor_cons pastTokens processedLayers model index rest ▸
-        TorchLean.TensorPack.append
+        TorchLean.Pack.append
           (DecoderLayer.nextStateValues pastTokens layer.sequence result) restResult
 termination_by indices => indices.length
 
@@ -284,7 +282,7 @@ noncomputable def RoutesAgree {architecture : Config} {decayRank : Nat}
   | List.nil, _depth, _states, _mlaScoreScale => True
   | index :: rest, depth, states, mlaScoreScale =>
       let layer := model.layer index
-      let stateParts := TorchLean.TensorPack.split
+      let stateParts := TorchLean.Pack.split
         (ss₁ := DecoderLayer.StateShapes pastTokens layer.sequence)
         (ss₂ := StateShapesFor pastTokens model rest) states
       let completed := Env.tget depth Var.head
@@ -458,7 +456,6 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
       cases params
       cases states
       cases controls
-      simp only [Block.eval]
       rfl
   | cons index rest ih =>
       rw [runBlock.eq_def]
@@ -485,13 +482,13 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
       have hControlParts := eval_splitArgs env controls
       dsimp [paramParts, stateParts, controlParts] at hParamParts hStateParts hControlParts
       have hParamParts' := hParamParts.trans <| congrArg
-        (TorchLean.TensorPack.split
+        (TorchLean.Pack.split
           (ss₁ := DecoderLayer.Params layer.sequence layer.channel)
           (ss₂ := ParamsFor languageModel rest)) hParams
       simp only [parametersFor,
-        TorchLean.TensorPack.split_append] at hParamParts'
+        TorchLean.Pack.split_append] at hParamParts'
       have hControlParts' := hControlParts.trans <| congrArg
-        (TorchLean.TensorPack.split
+        (TorchLean.Pack.split
           (ss₁ := [[]]) (ss₂ := ControlShapesFor languageModel rest)) hControls
       simp only [controlsFor] at hControlParts'
       have hLayerParams : Term.evalArgs env paramParts.1 =
@@ -531,7 +528,7 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
               hcfg.kvLatentDim_pos hcfg.routedLatentDim_pos (Term.eval env completed)
               (Term.eval env partialState) (Term.evalArgs env stateParts.1)
               mlaScoreScale := by
-        rw [NN.GraphSpec.DAG.MultiModel.eval_inline, hLayerParams]
+        rw [KimiK3.GraphSpec.MultiModel.eval_inline, hLayerParams]
         rw [DecoderLayer.evalArgs_inputTerms env pastTokens layer.sequence completed partialState
           stateParts.1 control epsilon gateCap upCap mlaScoreScale]
         · exact DecoderLayer.model_specFwd_eq_specStep pastTokens layer (route index)
@@ -559,8 +556,8 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
       set nextDepth := DepthSchedule.advance architecture.text.attnResBlockSize processedLayers
         architecture.text.hiddenDim hcfg.attnResBlockSize_pos (Term.eval env completed)
         (DecoderLayer.nextPartialValue pastTokens layer.sequence layerResult)
-      set envDepth := TorchLean.TensorPack.append
-        (TorchLean.TensorPack.append env layerResult) nextDepth
+      set envDepth := TorchLean.Pack.append
+        (TorchLean.Pack.append env layerResult) nextDepth
       let layerOutputs := DecoderLayer.Outputs pastTokens layer.sequence
       let nextDepthShapes := DepthSchedule.Shapes architecture.text.attnResBlockSize
         (processedLayers + 1) architecture.text.hiddenDim
@@ -623,7 +620,7 @@ theorem eval_runBlock {architecture : Config} {decayRank : Nat} (hcfg : architec
           hDepthResults, hLiftedStates]
       rw [Block.eval_andThen]
       rw [hRecursive]
-      simp only [Block.eval_cast, Block.eval, Term.evalArgs_append, envDepth,
+      simp only [Block.eval_cast, Block.eval_ret, Term.evalArgs_append, envDepth,
         Term.evalArgs_rename_inLeft,
         DecoderLayer.evalArgs_nextStateTerms, Term.evalArgs_rename_inRight,
         Term.evalArgs_vars, layer]
@@ -662,7 +659,7 @@ def initialParamsFor {architecture : Config} {decayRank : Nat} (hcfg : architect
         hcfg.hiddenDim_pos hcfg.numHeads_pos hcfg.kdaHeadDim_pos hcfg.kdaValueDim_pos
         hcfg.shortConvWidth_pos hcfg.queryLatentDim_pos hcfg.kvLatentDim_pos
         hcfg.routedLatentDim_pos
-      TorchLean.TensorPack.append layerGraph.initParams
+      TorchLean.Pack.append layerGraph.initParams
         (initialParamsFor hcfg model route pastTokens (processedLayers + 1) rest)
 
 /-- A complete typed GraphSpec model for a decoder schedule segment. -/
@@ -672,7 +669,7 @@ def model {architecture : Config} {decayRank : Nat} (hcfg : architecture.WF)
       Route architecture.text.numRoutedExperts architecture.text.activeExperts)
     (pastTokens processedLayers : Nat)
     (indices : List (Fin architecture.text.numLayers)) :
-    NN.GraphSpec.DAG.MultiModel (ParamsFor languageModel indices)
+    KimiK3.GraphSpec.MultiModel (ParamsFor languageModel indices)
       (InputsFor pastTokens processedLayers languageModel indices)
       (OutputsFor pastTokens processedLayers languageModel indices) :=
   { initParams := initialParamsFor hcfg languageModel route pastTokens processedLayers indices
@@ -725,11 +722,11 @@ theorem model_specFwd_eq_runSpec {architecture : Config} {decayRank : Nat}
         (inputsFor pastTokens processedLayers languageModel indices depth states mlaScoreScale) =
       runSpec hcfg languageModel route pastTokens processedLayers indices depth states
         mlaScoreScale := by
-  simp only [NN.GraphSpec.DAG.MultiModel.specFwd, model, InputsFor, inputsFor]
+  simp only [KimiK3.GraphSpec.MultiModel.specFwd, model, InputsFor, inputsFor]
   rw [eval_runBlock (mlaScoreScale := mlaScoreScale)]
   all_goals
     simp only [eval_splitArgs_left, eval_splitArgs_right,
-      Term.evalArgs_vars, TorchLean.TensorPack.split_append,
+      Term.evalArgs_vars, TorchLean.Pack.split_append,
       Term.eval_get, Env.tget]
 
 /-- Decoder model for the full configured schedule, in canonical zero-based layer order. -/
@@ -738,7 +735,7 @@ def fullModel {architecture : Config} {decayRank : Nat} (hcfg : architecture.WF)
     (route : ∀ _index : Fin architecture.text.numLayers,
       Route architecture.text.numRoutedExperts architecture.text.activeExperts)
     (pastTokens : Nat) :
-    NN.GraphSpec.DAG.MultiModel
+    KimiK3.GraphSpec.MultiModel
       (ParamsFor languageModel (List.finRange architecture.text.numLayers))
       (InputsFor pastTokens 0 languageModel (List.finRange architecture.text.numLayers))
       (OutputsFor pastTokens 0 languageModel (List.finRange architecture.text.numLayers)) :=

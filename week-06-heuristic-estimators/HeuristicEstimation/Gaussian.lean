@@ -8,7 +8,7 @@ module
 
 public import Mathlib.Probability.CDF
 public import Mathlib.Probability.Distributions.Gaussian.Real
-public import NN.Spec.Layers.Activation
+public import TorchLean.Tensor.Layers.Activation
 
 /-!
 # ReLU moments of a Gaussian preactivation
@@ -36,7 +36,7 @@ Gaussian formula, which is not proved here.
 
 namespace HeuristicEstimation.Gaussian
 
-open MeasureTheory ProbabilityTheory Set Filter Topology Real
+open MeasureTheory ProbabilityTheory Set Filter Topology Real TorchLean
 open scoped NNReal
 
 /-- The Gaussian density solves `p' = -((x - μ) / v) p`. -/
@@ -161,7 +161,7 @@ private theorem var_mul_gaussianPDFReal_zero (μ : ℝ) {σ : ℝ≥0} (hσ : 0 
 /-- A positive power of ReLU, weighted by `f`, is the same power of the identity restricted to
 `(0, ∞)`. -/
 private theorem mul_relu_pow_eq_indicator (f : ℝ → ℝ) {n : ℕ} (hn : n ≠ 0) :
-    (fun x => f x * Activation.Math.reluSpec x ^ n) =
+    (fun x => f x * Activation.relu x ^ n) =
       (Ioi 0).indicator (fun x => f x * x ^ n) := by
   funext x
   by_cases hx : 0 < x
@@ -170,7 +170,7 @@ private theorem mul_relu_pow_eq_indicator (f : ℝ → ℝ) {n : ℕ} (hn : n �
 
 /-- `relu_mean` as an integral against `gaussianReal μ (σ ^ 2)`. -/
 private theorem integral_gaussianReal_relu (μ : ℝ) {σ : ℝ≥0} (hσ : 0 < σ) :
-    ∫ x, Activation.Math.reluSpec x ∂gaussianReal μ (σ ^ 2) =
+    ∫ x, Activation.relu x ∂gaussianReal μ (σ ^ 2) =
       μ * cdf (gaussianReal 0 1) (μ / σ) + σ * gaussianPDFReal 0 1 (μ / σ) := by
   have hv : σ ^ 2 ≠ 0 := pow_ne_zero 2 hσ.ne'
   have hrelu := mul_relu_pow_eq_indicator (gaussianPDFReal μ (σ ^ 2)) one_ne_zero
@@ -191,7 +191,7 @@ private theorem integral_gaussianReal_relu (μ : ℝ) {σ : ℝ≥0} (hσ : 0 < 
 
 /-- `relu_second_moment` as an integral against `gaussianReal μ (σ ^ 2)`. -/
 private theorem integral_gaussianReal_relu_sq (μ : ℝ) {σ : ℝ≥0} (hσ : 0 < σ) :
-    ∫ x, Activation.Math.reluSpec x ^ 2 ∂gaussianReal μ (σ ^ 2) =
+    ∫ x, Activation.relu x ^ 2 ∂gaussianReal μ (σ ^ 2) =
       (μ ^ 2 + σ ^ 2) * cdf (gaussianReal 0 1) (μ / σ) +
         μ * σ * gaussianPDFReal 0 1 (μ / σ) := by
   have hv : σ ^ 2 ≠ 0 := pow_ne_zero 2 hσ.ne'
@@ -227,9 +227,9 @@ private theorem cdf_gaussianReal_zero : cdf (gaussianReal 0 1) 0 = 1 / 2 := by
 
 /-- ReLU is continuous, so it is a.e. strongly measurable for every measure. -/
 private theorem aestronglyMeasurable_relu (ν : Measure ℝ) :
-    AEStronglyMeasurable (Activation.Math.reluSpec : ℝ → ℝ) ν := by
-  have hrelu : (Activation.Math.reluSpec : ℝ → ℝ) = fun x => max x 0 :=
-    funext Activation.Math.reluSpec_eq_max
+    AEStronglyMeasurable (Activation.relu : ℝ → ℝ) ν := by
+  have hrelu : (Activation.relu : ℝ → ℝ) = fun x => max x 0 :=
+    funext Activation.relu_eq_max
   rw [hrelu]
   fun_prop
 
@@ -239,7 +239,7 @@ variable {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} {Z : Ω → ℝ}
 `E[ReLU Z] = μ Φ(μ / σ) + σ φ(μ / σ)`, where `Φ = cdf (gaussianReal 0 1)` and
 `φ = gaussianPDFReal 0 1`. -/
 theorem relu_mean {μ : ℝ} {σ : ℝ≥0} (hσ : 0 < σ) (hZ : HasLaw Z (gaussianReal μ (σ ^ 2)) P) :
-    ∫ ω, Activation.Math.reluSpec (Z ω) ∂P =
+    ∫ ω, Activation.relu (Z ω) ∂P =
       μ * cdf (gaussianReal 0 1) (μ / σ) + σ * gaussianPDFReal 0 1 (μ / σ) := by
   rw [← integral_gaussianReal_relu μ hσ]
   exact hZ.integral_comp (aestronglyMeasurable_relu _)
@@ -248,7 +248,7 @@ theorem relu_mean {μ : ℝ} {σ : ℝ≥0} (hσ : 0 < σ) (hZ : HasLaw Z (gauss
 `E[(ReLU Z)²] = (μ² + σ²) Φ(μ / σ) + μ σ φ(μ / σ)`. -/
 theorem relu_second_moment {μ : ℝ} {σ : ℝ≥0} (hσ : 0 < σ)
     (hZ : HasLaw Z (gaussianReal μ (σ ^ 2)) P) :
-    ∫ ω, Activation.Math.reluSpec (Z ω) ^ 2 ∂P =
+    ∫ ω, Activation.relu (Z ω) ^ 2 ∂P =
       (μ ^ 2 + σ ^ 2) * cdf (gaussianReal 0 1) (μ / σ) +
         μ * σ * gaussianPDFReal 0 1 (μ / σ) := by
   rw [← integral_gaussianReal_relu_sq μ hσ]
@@ -256,14 +256,14 @@ theorem relu_second_moment {μ : ℝ} {σ : ℝ≥0} (hσ : 0 < σ)
 
 /-- A centered Gaussian preactivation `Z ~ N(0, σ²)` has `E[ReLU Z] = σ / √(2π)`. -/
 theorem relu_mean_centered {σ : ℝ≥0} (hσ : 0 < σ) (hZ : HasLaw Z (gaussianReal 0 (σ ^ 2)) P) :
-    ∫ ω, Activation.Math.reluSpec (Z ω) ∂P = σ / √(2 * π) := by
+    ∫ ω, Activation.relu (Z ω) ∂P = σ / √(2 * π) := by
   rw [relu_mean hσ hZ]
   simp [gaussianPDFReal, div_eq_mul_inv]
 
 /-- A centered Gaussian preactivation `Z ~ N(0, σ²)` has `E[(ReLU Z)²] = σ² / 2`. -/
 theorem relu_second_moment_centered {σ : ℝ≥0} (hσ : 0 < σ)
     (hZ : HasLaw Z (gaussianReal 0 (σ ^ 2)) P) :
-    ∫ ω, Activation.Math.reluSpec (Z ω) ^ 2 ∂P = σ ^ 2 / 2 := by
+    ∫ ω, Activation.relu (Z ω) ^ 2 ∂P = σ ^ 2 / 2 := by
   rw [relu_second_moment hσ hZ, zero_div, cdf_gaussianReal_zero]
   ring
 

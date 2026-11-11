@@ -8,7 +8,8 @@ module
 
 public import KimiK3.Common
 public import KimiK3.Sequence.Scan
-public import NN.Spec.Layers.Activation
+public import TorchLean.Tensor.Layers.Activation
+public import TorchLean.Tensor.Layers.Softmax
 
 /-!
 # Gated Multi-head Latent Attention
@@ -27,7 +28,8 @@ https://arxiv.org/abs/2607.24653.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
+open FloatLib.Numerics (MathFunctions)
 open Tensor
 
 /-- One cached MLA token: a normalized KV latent and a shared, unrotated key component. -/
@@ -80,18 +82,18 @@ def attend
     (head : Fin heads)
     (queryLatent : Tensor α [queryLatentDim])
     (cache : Cache α kvLatentDim sharedKeyDim) : Tensor α [valueDim] :=
-  let queryContent := vecMatMulSpec queryLatent (Spec.get layer.queryContentUp head)
-  let queryShared := vecMatMulSpec queryLatent (Spec.get layer.querySharedUp head)
+  let queryContent := Tensor.vecmat queryLatent (Tensor.unstack layer.queryContentUp head)
+  let queryShared := Tensor.vecmat queryLatent (Tensor.unstack layer.querySharedUp head)
   let score := fun entry =>
-    MathFunctions.exp ((Tensor.dotSpec queryContent
-      (vecMatMulSpec entry.latent (Spec.get layer.keyUp head)) +
-      Tensor.dotSpec queryShared entry.sharedKey) /
+    MathFunctions.exp ((Tensor.dot queryContent
+      (Tensor.vecmat entry.latent (Tensor.unstack layer.keyUp head)) +
+      Tensor.dot queryShared entry.sharedKey) /
       MathFunctions.sqrt (contentKeyDim + sharedKeyDim : α))
   let denominator := cache.foldl (fun total entry => total + score entry) 0
   cache.foldl (fun output entry =>
     let weight := score entry / denominator
     output + Tensor.map (fun value => weight * value)
-      (vecMatMulSpec entry.latent (Spec.get layer.valueUp head)))
+      (Tensor.vecmat entry.latent (Tensor.unstack layer.valueUp head)))
     (Tensor.zeros [valueDim])
 
 /-- One complete Gated MLA step at a fixed context length.
@@ -109,72 +111,52 @@ def stepFixed (pastTokens : Nat)
     Tensor α [pastTokens + 1, kvLatentDim] ×
       Tensor α [pastTokens + 1, sharedKeyDim] ×
       Tensor α [modelDim] :=
-  let queryProjected := vecMatMulSpec x layer.queryDown
+  let queryProjected := Tensor.vecmat x layer.queryDown
   let queryLatent := RMSNorm.scale queryProjected layer.queryNormScale
-  let kvProjected := vecMatMulSpec x layer.kvDown
+  let kvProjected := Tensor.vecmat x layer.kvDown
   let currentKV := RMSNorm.scale kvProjected layer.kvNormScale
-  let currentShared := vecMatMulSpec x layer.sharedKeyDown
+  let currentShared := Tensor.vecmat x layer.sharedKeyDown
   let currentKVRow : Tensor α [1, kvLatentDim] :=
-    Tensor.reshapeSpec currentKV (by simp [Shape.size])
+    Tensor.reshape currentKV _ (by simp [Shape.size])
   let currentSharedRow : Tensor α [1, sharedKeyDim] :=
-    Tensor.reshapeSpec currentShared (by simp [Shape.size])
+    Tensor.reshape currentShared _ (by simp [Shape.size])
   let latentCache := Tensor.concat pastLatentCache currentKVRow
   let sharedKeyCache := Tensor.concat pastSharedKeyCache currentSharedRow
-  let queryBatchSource : Tensor α [1, 1, queryLatentDim] :=
-    Tensor.reshapeSpec queryLatent (by simp [Shape.size])
-  let queryBatch : Tensor α [heads, 1, queryLatentDim] :=
-    Tensor.broadcastTo
-      (Shape.CanBroadcastTo.dim_1_to_n
-        (Shape.CanBroadcastTo.dim_eq
-          (Shape.CanBroadcastTo.dim_eq
-            (Shape.CanBroadcastTo.scalarTo [])))) queryBatchSource
-  let latentBatchSource :
-      Tensor α [1, pastTokens + 1, kvLatentDim] :=
-    Tensor.reshapeSpec latentCache (by simp [Shape.size])
-  let latentBatch :
-      Tensor α [heads, pastTokens + 1, kvLatentDim] :=
-    Tensor.broadcastTo
-      (Shape.CanBroadcastTo.dim_1_to_n
-        (Shape.CanBroadcastTo.dim_eq
-          (Shape.CanBroadcastTo.dim_eq
-            (Shape.CanBroadcastTo.scalarTo [])))) latentBatchSource
-  let sharedBatchSource :
-      Tensor α [1, pastTokens + 1, sharedKeyDim] :=
-    Tensor.reshapeSpec sharedKeyCache (by simp [Shape.size])
-  let sharedBatch :
-      Tensor α [heads, pastTokens + 1, sharedKeyDim] :=
-    Tensor.broadcastTo
-      (Shape.CanBroadcastTo.dim_1_to_n
-        (Shape.CanBroadcastTo.dim_eq
-          (Shape.CanBroadcastTo.dim_eq
-            (Shape.CanBroadcastTo.scalarTo [])))) sharedBatchSource
+  let queryRow : Tensor α [1, queryLatentDim] := Tensor.dim fun _ => queryLatent
+  let queryBatch := Tensor.repeatLeading heads queryRow
+  let latentBatch := Tensor.repeatLeading heads latentCache
+  let sharedBatch := Tensor.repeatLeading heads sharedKeyCache
   let sameBatch := Shape.CanBroadcastTo.refl [heads]
-  let queryContent := Tensor.batchMatmulSpec sameBatch sameBatch queryBatch layer.queryContentUp
-  let queryShared := Tensor.batchMatmulSpec sameBatch sameBatch queryBatch layer.querySharedUp
-  let keys := Tensor.batchMatmulSpec sameBatch sameBatch latentBatch layer.keyUp
-  let values := Tensor.batchMatmulSpec sameBatch sameBatch latentBatch layer.valueUp
-  let contentScores := Tensor.batchMatmulSpec sameBatch sameBatch queryContent
-    (Tensor.swapAdjacentAxes keys 1)
-  let sharedScores :=
-    Tensor.batchMatmulSpec sameBatch sameBatch queryShared (Tensor.swapAdjacentAxes sharedBatch 1)
+  let queryContent := Tensor.batchMatmul sameBatch sameBatch queryBatch layer.queryContentUp
+  let queryShared := Tensor.batchMatmul sameBatch sameBatch queryBatch layer.querySharedUp
+  let keys := Tensor.batchMatmul sameBatch sameBatch latentBatch layer.keyUp
+  let values := Tensor.batchMatmul sameBatch sameBatch latentBatch layer.valueUp
+  let keysTransposed := keys.permute (Shape.adjacentSwap [heads, pastTokens + 1, contentKeyDim] 1)
+    [heads, contentKeyDim, pastTokens + 1]
+    (Shape.permute_adjacentSwap [heads, pastTokens + 1, contentKeyDim] 1).symm
+  let sharedTransposed := sharedBatch.permute (Shape.adjacentSwap [heads, pastTokens + 1, sharedKeyDim] 1)
+    [heads, sharedKeyDim, pastTokens + 1]
+    (Shape.permute_adjacentSwap [heads, pastTokens + 1, sharedKeyDim] 1).symm
+  let contentScores := Tensor.batchMatmul sameBatch sameBatch queryContent keysTransposed
+  let sharedScores := Tensor.batchMatmul sameBatch sameBatch queryShared sharedTransposed
   let scoreShape : Shape := [heads, 1, pastTokens + 1]
-  let scores := Tensor.mulSpec (Tensor.full scoreShape scoreScale)
-    (Tensor.addSpec contentScores sharedScores)
-  let headOutput3 := Tensor.batchMatmulSpec sameBatch sameBatch
-    (Activation.softmaxSpec 2 scores) values
+  let scores := Tensor.zipWith (· * ·) (Tensor.full scoreShape scoreScale)
+    (Tensor.zipWith (· + ·) contentScores sharedScores)
+  let headOutput3 := Tensor.batchMatmul sameBatch sameBatch
+    (Tensor.softmax scores ⟨2, by simp⟩) values
   let headOutput : Tensor α [heads, valueDim] :=
-    Tensor.reshapeSpec headOutput3 (by simp [Shape.size])
+    Tensor.reshape headOutput3 _ (by simp [Shape.size])
   let gateMatrix : Tensor α [modelDim, heads * valueDim] :=
-    Tensor.reshapeSpec layer.gateWeight (by simp [Shape.size])
-  let gateFlat := vecMatMulSpec x gateMatrix
+    Tensor.reshape layer.gateWeight _ (by simp [Shape.size])
+  let gateFlat := Tensor.vecmat x gateMatrix
   let gate : Tensor α [heads, valueDim] :=
-    Activation.sigmoidSpec (Tensor.reshapeSpec gateFlat (by simp [Shape.size]))
-  let gatedHeads := Tensor.mulSpec gate headOutput
+    Tensor.sigmoid (Tensor.reshape gateFlat _ (by simp [Shape.size]))
+  let gatedHeads := Tensor.zipWith (· * ·) gate headOutput
   let gatedFlat : Tensor α [heads * valueDim] :=
-    Tensor.reshapeSpec gatedHeads (by simp [Shape.size])
+    Tensor.reshape gatedHeads _ (by simp [Shape.size])
   let outputMatrix : Tensor α [heads * valueDim, modelDim] :=
-    Tensor.reshapeSpec layer.outputWeight (by simp [Shape.size, Nat.mul_assoc])
-  (latentCache, sharedKeyCache, vecMatMulSpec gatedFlat outputMatrix)
+    Tensor.reshape layer.outputWeight _ (by simp [Shape.size, Nat.mul_assoc])
+  (latentCache, sharedKeyCache, Tensor.vecmat gatedFlat outputMatrix)
 
 /-- One causal MLA token step, which appends the current entry before evaluating attention. -/
 def step
@@ -182,20 +164,20 @@ def step
       GatedMLA α modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim valueDim)
     (cache : Cache α kvLatentDim sharedKeyDim) (x : Tensor α [modelDim]) :
     Cache α kvLatentDim sharedKeyDim × Tensor α [modelDim] :=
-  let queryLatent := RMSNorm.scale (vecMatMulSpec x layer.queryDown) layer.queryNormScale
-  let currentKV := RMSNorm.scale (vecMatMulSpec x layer.kvDown) layer.kvNormScale
+  let queryLatent := RMSNorm.scale (Tensor.vecmat x layer.queryDown) layer.queryNormScale
+  let currentKV := RMSNorm.scale (Tensor.vecmat x layer.kvDown) layer.kvNormScale
   let current : Entry α kvLatentDim sharedKeyDim :=
-    { latent := currentKV, sharedKey := vecMatMulSpec x layer.sharedKeyDown }
+    { latent := currentKV, sharedKey := Tensor.vecmat x layer.sharedKeyDown }
   let cache' := cache ++ [current]
   let headOutput := fun h => layer.attend h queryLatent cache'
-  let gate := fun h channel => Activation.Math.sigmoidSpec <|
+  let gate := fun h channel => Context.sigmoid <|
     (List.finRange modelDim).foldl (fun total input =>
-      total + Tensor.getScalar x input * get2 (Spec.get layer.gateWeight input) h channel) 0
-  let output := Tensor.stackLeading (fun feature => Tensor.scalar <|
+      total + Tensor.getScalar x input * Tensor.get2 (Tensor.unstack layer.gateWeight input) h channel) 0
+  let output := Tensor.dim (fun feature => Tensor.scalar <|
     (List.finRange heads).foldl (fun acrossHeads h =>
       (List.finRange valueDim).foldl (fun total channel =>
         total + gate h channel * Tensor.getScalar (headOutput h) channel *
-          get2 (Spec.get layer.outputWeight h) channel feature) acrossHeads) 0)
+          Tensor.get2 (Tensor.unstack layer.outputWeight h) channel feature) acrossHeads) 0)
   (cache', output)
 
 /-- One MLA step appends one entry to the streaming cache. -/

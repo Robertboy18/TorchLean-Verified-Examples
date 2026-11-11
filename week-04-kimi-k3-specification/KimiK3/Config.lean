@@ -6,8 +6,8 @@ Authors: TorchLean Team
 
 module
 
-public import NN.API.Json
-public import NN.Spec.Core.Shape
+public import TorchLean.NN.Json
+public import TorchLean.Tensor.Shape
 
 /-!
 # Kimi K3 architecture configuration
@@ -300,6 +300,10 @@ def releasedCheckpointConfig : Config :=
 
 namespace ReleasedCheckpoint
 
+/-- Read a named field and report which checkpoint object it came from. -/
+def fieldValue (context key : String) (json : Json) : Except String Json := do
+  TorchLean.Json.field context key (← TorchLean.Json.object context json)
+
 /-- One-based numbers of the layers that `attentionKindAt` assigns to `kind`. -/
 def layerNumbers (cfg : TextConfig) (kind : AttentionKind) : Array Nat :=
   ((List.finRange cfg.numLayers).filter fun layer => cfg.attentionKindAt layer = kind).map
@@ -309,22 +313,22 @@ def layerNumbers (cfg : TextConfig) (kind : AttentionKind) : Array Nat :=
 def expectNatFieldEq (json : Json) (context field : String) (expected : Nat) :
     Except String Unit := do
   let value ← TorchLean.Json.expectNat s!"{context}.{field}"
-    (← TorchLean.Json.expectField context field json)
+    (← fieldValue context field json)
   unless value = expected do
     throw s!"{context}.{field}: expected {expected}, found {value}"
 
 /-- Require a string field to equal the expected checkpoint metadata. -/
 def expectStringFieldEq (json : Json) (context field expected : String) :
     Except String Unit := do
-  let value ← TorchLean.Json.expectString s!"{context}.{field}"
-    (← TorchLean.Json.expectField context field json)
+  let value ← TorchLean.Json.string s!"{context}.{field}"
+    (← fieldValue context field json)
   unless value = expected do
     throw s!"{context}.{field}: expected {repr expected}, found {repr value}"
 
 /-- Require a Boolean field to equal the expected checkpoint metadata. -/
 def expectBoolFieldEq (json : Json) (context field : String) (expected : Bool) :
     Except String Unit := do
-  let valueJson ← TorchLean.Json.expectField context field json
+  let valueJson ← fieldValue context field json
   let value ← match valueJson with
     | .bool value => pure value
     | _ => throw s!"{context}.{field}: expected boolean"
@@ -335,7 +339,7 @@ def expectBoolFieldEq (json : Json) (context field : String) (expected : Bool) :
 constants, which the released file writes with decimal syntax and `Float` represents exactly. -/
 def expectFloatFieldEq (json : Json) (context field : String) (expected : Float) :
     Except String Unit := do
-  let valueJson ← TorchLean.Json.expectField context field json
+  let valueJson ← fieldValue context field json
   let value ← match valueJson with
     | .num number => pure number.toFloat
     | _ => throw s!"{context}.{field}: expected number"
@@ -346,8 +350,8 @@ def expectFloatFieldEq (json : Json) (context field : String) (expected : Float)
 def expectNatArrayFieldEq (json : Json) (context field : String)
     (expected : Array Nat) : Except String Unit := do
   let fieldContext := s!"{context}.{field}"
-  let entries ← TorchLean.Json.expectArray fieldContext
-    (← TorchLean.Json.expectField context field json)
+  let entries ← TorchLean.Json.array fieldContext
+    (← fieldValue context field json)
   let value ← entries.mapM (TorchLean.Json.expectNat fieldContext)
   unless value = expected do
     throw s!"{context}.{field}: expected {repr expected}, found {repr value}"
@@ -359,11 +363,11 @@ token used by the multimodal splice, and the MXFP4 quantization group. Generatio
 Transformers bookkeeping are ignored.
 -/
 def validateJson (json : Json) : Except String Unit := do
-  let _ ← TorchLean.Json.expectObject "Kimi K3 config" json
+  let _ ← TorchLean.Json.object "Kimi K3 config" json
   expectStringFieldEq json "Kimi K3 config" "model_type" "kimi_k3"
   expectNatFieldEq json "Kimi K3 config" "media_placeholder_token_id" 163605
 
-  let text ← TorchLean.Json.expectField "Kimi K3 config" "text_config" json
+  let text ← fieldValue "Kimi K3 config" "text_config" json
   let cfg := releasedCheckpointConfig.text
   expectNatFieldEq text "text_config" "hidden_size" cfg.hiddenDim
   expectNatFieldEq text "text_config" "num_hidden_layers" cfg.numLayers
@@ -387,7 +391,7 @@ def validateJson (json : Json) : Except String Unit := do
   expectFloatFieldEq text "text_config" "activation_situ_beta" cfg.situGateCap.toFloat
   expectFloatFieldEq text "text_config" "activation_situ_linear_beta" cfg.situUpCap.toFloat
 
-  let linearAttention ← TorchLean.Json.expectField "text_config" "linear_attn_config" text
+  let linearAttention ← fieldValue "text_config" "linear_attn_config" text
   expectNatFieldEq linearAttention "linear_attn_config" "head_dim" cfg.kdaHeadDim
   expectNatFieldEq linearAttention "linear_attn_config" "num_heads" cfg.numHeads
   expectNatFieldEq linearAttention "linear_attn_config" "short_conv_kernel_size"
@@ -398,7 +402,7 @@ def validateJson (json : Json) : Except String Unit := do
   expectNatArrayFieldEq linearAttention "linear_attn_config" "kda_layers"
     (layerNumbers cfg .kda)
 
-  let vision ← TorchLean.Json.expectField "Kimi K3 config" "vision_config" json
+  let vision ← fieldValue "Kimi K3 config" "vision_config" json
   let visionCfg := releasedCheckpointConfig.vision
   expectNatFieldEq vision "vision_config" "patch_size" visionCfg.patchSize
   expectNatFieldEq vision "vision_config" "vt_hidden_size" visionCfg.hiddenDim
@@ -410,11 +414,11 @@ def validateJson (json : Json) : Except String Unit := do
     #[visionCfg.mergeHeight, visionCfg.mergeWidth]
   expectNatFieldEq vision "vision_config" "text_hidden_size" visionCfg.textHiddenDim
 
-  let quantization ← TorchLean.Json.expectField "text_config" "quantization_config" text
+  let quantization ← fieldValue "text_config" "quantization_config" text
   expectStringFieldEq quantization "quantization_config" "format" "mxfp4-pack-quantized"
-  let groups ← TorchLean.Json.expectField "quantization_config" "config_groups" quantization
-  let group ← TorchLean.Json.expectField "config_groups" "group_0" groups
-  let weights ← TorchLean.Json.expectField "group_0" "weights" group
+  let groups ← fieldValue "quantization_config" "config_groups" quantization
+  let group ← fieldValue "config_groups" "group_0" groups
+  let weights ← fieldValue "group_0" "weights" group
   expectNatFieldEq weights "quantization weights" "group_size" 32
   expectNatFieldEq weights "quantization weights" "num_bits" 4
   expectStringFieldEq weights "quantization weights" "scale_dtype" "torch.uint8"

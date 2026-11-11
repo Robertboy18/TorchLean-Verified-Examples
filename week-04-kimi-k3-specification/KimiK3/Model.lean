@@ -28,7 +28,7 @@ Sections 2.1--2.4, pp. 4--10, https://arxiv.org/abs/2607.24653.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
 open Tensor
 
 /-- Either recurrent KDA or global Gated MLA at one backbone layer. -/
@@ -329,15 +329,15 @@ variable {cfg : TextConfig} {decayRank : Nat}
 def embedText {sequenceLength : Nat} (model : LanguageModel α cfg decayRank)
     (tokens : Fin sequenceLength → Fin cfg.vocabSize) :
     Tensor α [sequenceLength, cfg.hiddenDim] :=
-  Tensor.stackLeading fun position => Spec.get model.tokenEmbedding (tokens position)
+  Tensor.dim fun position => Tensor.unstack model.tokenEmbedding (tokens position)
 
 omit [Context α] in
 /-- Text embedding is a row lookup in the shared vocabulary table. -/
 @[simp] theorem get_embedText {sequenceLength : Nat} (model : LanguageModel α cfg decayRank)
     (tokens : Fin sequenceLength → Fin cfg.vocabSize) (position : Fin sequenceLength) :
-    Spec.get (model.embedText tokens) position =
-      Spec.get model.tokenEmbedding (tokens position) := by
-  simp [embedText, Spec.get]
+    Tensor.unstack (model.embedText tokens) position =
+      Tensor.unstack model.tokenEmbedding (tokens position) := by
+  simp [embedText, Tensor.unstack]
 
 /-- Resolve a mixed text/visual sequence into language-width embeddings. Slots play the role of
 expanding a serialized media placeholder into MoonViT's visual tokens. -/
@@ -346,10 +346,10 @@ def embedMultimodal {sequenceLength visualTokens : Nat}
     (visual : Tensor α [visualTokens, cfg.hiddenDim])
     (slots : Fin sequenceLength → InputSlot cfg.vocabSize visualTokens) :
     Tensor α [sequenceLength, cfg.hiddenDim] :=
-  Tensor.stackLeading fun position =>
+  Tensor.dim fun position =>
     match slots position with
-    | .text token => Spec.get model.tokenEmbedding token
-    | .visual token => Spec.get visual token
+    | .text token => Tensor.unstack model.tokenEmbedding token
+    | .visual token => Tensor.unstack visual token
 
 omit [Context α] in
 /-- A text slot is resolved from the vocabulary embedding table. -/
@@ -359,8 +359,8 @@ theorem get_embedMultimodal_text {sequenceLength visualTokens : Nat}
     (slots : Fin sequenceLength → InputSlot cfg.vocabSize visualTokens)
     (position : Fin sequenceLength) (token : Fin cfg.vocabSize)
     (hSlot : slots position = .text token) :
-    Spec.get (model.embedMultimodal visual slots) position =
-      Spec.get model.tokenEmbedding token := by
+    Tensor.unstack (model.embedMultimodal visual slots) position =
+      Tensor.unstack model.tokenEmbedding token := by
   simp [embedMultimodal, hSlot]
 
 omit [Context α] in
@@ -371,7 +371,7 @@ theorem get_embedMultimodal_visual {sequenceLength visualTokens : Nat}
     (slots : Fin sequenceLength → InputSlot cfg.vocabSize visualTokens)
     (position : Fin sequenceLength) (token : Fin visualTokens)
     (hSlot : slots position = .visual token) :
-    Spec.get (model.embedMultimodal visual slots) position = Spec.get visual token := by
+    Tensor.unstack (model.embedMultimodal visual slots) position = Tensor.unstack visual token := by
   simp [embedMultimodal, hSlot]
 
 /-- Run MoonViT and splice its projected tokens into a mixed language-model sequence. -/
@@ -401,7 +401,7 @@ noncomputable def forwardDepthStates {sequenceLength : Nat}
     (model : LanguageModel ℝ cfg decayRank)
     (embeddings : Tensor ℝ [sequenceLength, cfg.hiddenDim]) :
     Fin sequenceLength → AttnRes.BlockState ℝ cfg.hiddenDim := by
-  let initialEmbeddings := List.ofFn fun position => Spec.get embeddings position
+  let initialEmbeddings := List.ofFn fun position => Tensor.unstack embeddings position
   let initial := initialEmbeddings.map BackboneLayer.initialDepthState
   let finalStates := (List.finRange cfg.numLayers).foldl
     (fun states index => (model.layer index).forward model.activeExperts_le states) initial
@@ -430,7 +430,7 @@ noncomputable def forwardHidden {sequenceLength : Nat}
     (model : LanguageModel ℝ cfg decayRank)
     (embeddings : Tensor ℝ [sequenceLength, cfg.hiddenDim]) :
     Tensor ℝ [sequenceLength, cfg.hiddenDim] :=
-  Tensor.stackLeading fun position =>
+  Tensor.dim fun position =>
     let state := model.forwardDepthStates embeddings position
     RMSNorm.scale (state.retrieve model.finalQuery) model.finalNormScale
 
@@ -438,8 +438,8 @@ noncomputable def forwardHidden {sequenceLength : Nat}
 noncomputable def logits {sequenceLength : Nat} (model : LanguageModel ℝ cfg decayRank)
     (embeddings : Tensor ℝ [sequenceLength, cfg.hiddenDim]) :
     Tensor ℝ [sequenceLength, cfg.vocabSize] :=
-  Tensor.stackLeading fun position =>
-    vecMatMulSpec (Spec.get (model.forwardHidden embeddings) position) model.vocabularyHead
+  Tensor.dim fun position =>
+    Tensor.vecmat (Tensor.unstack (model.forwardHidden embeddings) position) model.vocabularyHead
 
 end LanguageModel
 

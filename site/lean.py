@@ -1,7 +1,7 @@
 """Record Lean-server hovers and command output for the article's runnable examples.
 
-Run `python3 site/lean.py` after changing Examples.lean or the Lean sources it imports.
-One server checks one document. Publishing the static site never starts a compiler.
+Run `python3 site/lean.py` after changing an example or its Lean sources.
+Publishing the static site never starts a compiler.
 """
 
 from hashlib import sha256
@@ -18,38 +18,41 @@ from threading import Thread
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "site" / "Examples.lean"
 RECORD = ROOT / "site" / "assets" / "lean.json"
+FUNCTION_IMPORTS = "TorchLean.NN.Kernel.Function\nimport TorchLean.Tensor.Literal"
+EINOPS_IMPORTS = "TorchLean.Tensor.Einops.Elab.Einsum\nimport TorchLean.Tensor.Literal"
+HEURISTIC_IMPORTS = "HeuristicEstimation\nimport TorchLean.Tensor.Literal"
 IMPORTS = {
-    "sharedExpectation": "HeuristicEstimation",
+    "sharedExpectation": HEURISTIC_IMPORTS,
     "programTable": "ProgramEquilibrium.Bots",
     "boundedCoverage": "BoundedLob.Theory.Dupoc",
     "boundedRun": "BoundedLob.Agents.Outcomes",
     "boundedSelfPlay": "ProgramEquilibrium.Bounded",
-    "discardedSignal": "HeuristicEstimation",
-    "attentionMoments": "HeuristicEstimation",
-    "sensitiveSketch": "HeuristicEstimation",
-    "encodedSketch": "HeuristicEstimation",
+    "discardedSignal": HEURISTIC_IMPORTS,
+    "attentionMoments": HEURISTIC_IMPORTS,
+    "sensitiveSketch": HEURISTIC_IMPORTS,
+    "encodedSketch": HEURISTIC_IMPORTS,
     "rounding": "BatchInvariantInference.Core",
     "prompts": "VerifiableTransformers.Certificate.FiniteEval",
     "resume": "TorchLeanGPT.TrainingCorrectness",
     "cap": "KimiK3.FeedForward.Activation",
-    "kda": "KimiK3.Sequence.KDA\nimport NN.Tensor",
-    "ssm": "Nemotron.SSM\nimport NN.Tensor",
-    "expert": "KimiK3.GraphSpec.Expert",
-    "expertBound": "KimiK3.GraphSpec.Expert\nimport NN.Proofs.Tensor.Algebra",
-    "tensorFunction": "NN.Kernel",
-    "tensorGradient": "NN.Kernel",
-    "tensorRecurrence": "NN.Kernel",
-    "tensorRows": "NN.Kernel",
-    "tensorPrecision": "NN.Kernel",
-    "tensorProof": "NN.Kernel\nimport NN.Tactic.Autograd",
-    "tensorBlend": "NN.Kernel",
-    "tensorRelaxation": "NN.Kernel\nimport Mathlib.Tactic.Ring",
-    "tensorLoss": "NN.Kernel\nimport NN.Tactic.Autograd",
-    "tensorContraction": "NN.Tensor",
-    "tensorPatterns": "NN.Tensor",
-    "tensorAttention": "NN.Tensor",
-    "tensorModel": "NN.API",
-    "tensorChainRule": "NN.Tactic.Autograd",
+    "kda": "KimiK3.Sequence.KDA\nimport TorchLean.Tensor.Literal",
+    "ssm": "Nemotron.SSM\nimport TorchLean.Tensor.Literal",
+    "expert": "KimiK3.GraphSpec.Expert\nimport TorchLean.Tensor.Literal",
+    "expertBound": "KimiK3.FeedForward.Expert\nimport TorchLean.Tensor.Algebra",
+    "tensorFunction": FUNCTION_IMPORTS,
+    "tensorGradient": FUNCTION_IMPORTS,
+    "tensorRecurrence": FUNCTION_IMPORTS,
+    "tensorRows": FUNCTION_IMPORTS,
+    "tensorPrecision": FUNCTION_IMPORTS,
+    "tensorProof": "TorchLean.NN.Tactic.Autograd",
+    "tensorBlend": FUNCTION_IMPORTS,
+    "tensorRelaxation": FUNCTION_IMPORTS + "\nimport Mathlib.Tactic.Ring",
+    "tensorLoss": FUNCTION_IMPORTS + "\nimport TorchLean.NN.Tactic.Autograd",
+    "tensorContraction": EINOPS_IMPORTS,
+    "tensorPatterns": "TorchLean.Tensor.Einops.Elab.Transform\nimport TorchLean.Tensor.Literal",
+    "tensorAttention": EINOPS_IMPORTS + "\nimport TorchLean.Tensor.Einops.Elab.Transform",
+    "tensorModel": "TorchLean.NN.Trainer.Constructor\nimport TorchLean.NN.Builder",
+    "tensorChainRule": "TorchLean.NN.Tactic.Autograd",
 }
 # A GPU call whose frontend compilation failed still typechecks: the elaborator stores the
 # failure as an `Except.error` literal that the call only raises when it runs. This command runs
@@ -59,7 +62,8 @@ IMPORTS = {
 GPU_CHECK = """
 open Lean in
 elab "#site_reject_failed_gpu_compilation" : command => Lean.Elab.Command.liftTermElabM do
-  let frontend := [`NN.Kernel.Elementwise, `NN.Kernel.Zip, `TorchLean.autograd.Internal.Recording]
+  let frontend := [`TorchLean.Kernel.Elementwise, `TorchLean.Kernel.Zip,
+    `TorchLean.autograd.Internal.Recording]
   let failures ← IO.mkRef (#[] : Array Lean.MessageData)
   for (name, info) in (← Lean.getEnv).constants.map₂.toList do
     let some value := info.value? | continue
@@ -79,11 +83,11 @@ elab "#site_reject_failed_gpu_compilation" : command => Lean.Elab.Command.liftTe
 def fingerprint(compilation=False):
     """Reject recordings made against different source or dependency revisions."""
     digest = sha256()
-    paths = [ROOT / "lean-toolchain", ROOT / "lake-manifest.json", ROOT / "lakefile.lean"]
+    paths = [ROOT / name for name in ("lean-toolchain", "lake-manifest.json", "lakefile.lean")]
     if not compilation:
         paths += [SOURCE, Path(__file__), ROOT / "site" / "blocks.json"]
     for folder in sorted(ROOT.glob("week-*")):
-        paths.extend(sorted(folder.rglob("*.lean")))
+        paths.extend(path for path in sorted(folder.rglob("*.lean")) if path not in paths)
     for path in paths:
         if any(part in {".lake", "build"} for part in path.relative_to(ROOT).parts):
             continue
@@ -357,6 +361,7 @@ def complete_symbols(model):
 
 def record(only=None):
     before = fingerprint()
+    sources = fingerprint(compilation=True)
     blocks = json.loads((ROOT / 'site/blocks.json').read_text())
     cache = ROOT / 'build/lean-cache'
     cache.mkdir(parents=True, exist_ok=True)
@@ -364,7 +369,7 @@ def record(only=None):
     for file in source_files(blocks):
         path = ROOT / file
         text = path.read_text()
-        key = sha256(('hover-goal-v1' + fingerprint(compilation=True) + file).encode()).hexdigest()
+        key = sha256(('hover-goal-v1' + sources + file).encode()).hexdigest()
         cached = cache / (key + '.json')
         if cached.exists():
             modules[file] = complete_symbols(json.loads(cached.read_text()))
@@ -381,14 +386,15 @@ def record(only=None):
         print(f"Cached {len(modules)}/{len(source_files(blocks))} source files.")
         return
     examples = {}
+    pattern = r'^-- ANCHOR: (\w+)\n(.*?)^-- ANCHOR_END: \1$'
     server = start_server()
     try:
-        pattern = r'^-- ANCHOR: (\w+)\n(.*?)^-- ANCHOR_END: \1$'
-        for version, match in enumerate(re.finditer(pattern, SOURCE.read_text(), re.M | re.S), 1):
+        anchors = re.finditer(pattern, SOURCE.read_text(), re.M | re.S)
+        for version, match in enumerate(anchors, 1):
             name = match.group(1)
-            code = f'import {IMPORTS[name]}\n\n' + match.group(2).rstrip() + '\n'
-            # Only TorchLean's NN modules carry the GPU frontend (and the elaborator the check needs).
-            gpu_check = 'NN.' in IMPORTS[name]
+            imports = IMPORTS[name]
+            code = f'import {imports}\n\n' + match.group(2).rstrip() + '\n'
+            gpu_check = imports.startswith(FUNCTION_IMPORTS)
             examples[name] = check_document(server, code, version, gpu_check=gpu_check)
             print(f"Checked {name}: {len(examples[name]['spans'])} hover entries.", flush=True)
     finally:

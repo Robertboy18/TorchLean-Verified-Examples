@@ -94,9 +94,7 @@ private def buildCachedDecoder (pkg : Package) : FetchM (Job FilePath) := do
 /-!
 Shared Lake package for the TorchLean verified examples repository.
 
-The examples live in week folders, but they intentionally share one Lake
-project and one TorchLean dependency. Each week we can add modules under this same
-package instead of creating a separate Lake project.
+The examples share one Lake project and one TorchLean dependency.
 -/
 
 package TorchLeanVerifiedExamples where

@@ -23,7 +23,7 @@ Reference: https://arxiv.org/abs/2607.24653, Sections 2.3 and 4.1.4.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
 open Tensor
 
 /-- A SiTU-GLU feed-forward expert, with its input, hidden, and output widths in the type. -/
@@ -43,9 +43,9 @@ variable {inputDim hiddenDim outputDim : Nat}
 /-- Evaluate one SiTU-GLU expert. -/
 def forward (expert : Expert α inputDim hiddenDim outputDim) (gateCap upCap : α)
     (x : Tensor α [inputDim]) : Tensor α [outputDim] :=
-  let gate := vecMatMulSpec x expert.gateWeight
-  let up := vecMatMulSpec x expert.upWeight
-  vecMatMulSpec (SiTU.vector gateCap upCap gate up) expert.downWeight
+  let gate := Tensor.vecmat x expert.gateWeight
+  let up := Tensor.vecmat x expert.upWeight
+  Tensor.vecmat (SiTU.vector gateCap upCap gate up) expert.downWeight
 
 end Expert
 
@@ -109,12 +109,12 @@ theorem gateProjection_error_le
     (scales : Scales inputBlocks hiddenBlocks outputDim)
     (expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim)
     (hCover : ∀ output inputBlock offset,
-      |get2 expert.gateWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
+      |Tensor.get2 expert.gateWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
         6 * scaleValue (scales.gate output inputBlock))
     (input : Tensor ℝ [inputBlocks * 32])
     (output : Fin (hiddenBlocks * 32)) :
-    |Tensor.getScalar (vecMatMulSpec input (quantize scales expert).decode.gateWeight) output -
-        Tensor.getScalar (vecMatMulSpec input expert.gateWeight) output| ≤
+    |Tensor.getScalar (Tensor.vecmat input (quantize scales expert).decode.gateWeight) output -
+        Tensor.getScalar (Tensor.vecmat input expert.gateWeight) output| ≤
       ∑ index : Fin (inputBlocks * 32),
         |Tensor.getScalar input index| *
           scaleValue (scales.gate output (finProdFinEquiv.symm index).1) := by
@@ -126,12 +126,12 @@ theorem upProjection_error_le
     (scales : Scales inputBlocks hiddenBlocks outputDim)
     (expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim)
     (hCover : ∀ output inputBlock offset,
-      |get2 expert.upWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
+      |Tensor.get2 expert.upWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
         6 * scaleValue (scales.up output inputBlock))
     (input : Tensor ℝ [inputBlocks * 32])
     (output : Fin (hiddenBlocks * 32)) :
-    |Tensor.getScalar (vecMatMulSpec input (quantize scales expert).decode.upWeight) output -
-        Tensor.getScalar (vecMatMulSpec input expert.upWeight) output| ≤
+    |Tensor.getScalar (Tensor.vecmat input (quantize scales expert).decode.upWeight) output -
+        Tensor.getScalar (Tensor.vecmat input expert.upWeight) output| ≤
       ∑ index : Fin (inputBlocks * 32),
         |Tensor.getScalar input index| *
           scaleValue (scales.up output (finProdFinEquiv.symm index).1) := by
@@ -144,12 +144,12 @@ theorem downProjection_error_le
     (scales : Scales inputBlocks hiddenBlocks outputDim)
     (expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim)
     (hCover : ∀ output hiddenBlock offset,
-      |get2 expert.downWeight (finProdFinEquiv (hiddenBlock, offset)) output| ≤
+      |Tensor.get2 expert.downWeight (finProdFinEquiv (hiddenBlock, offset)) output| ≤
         6 * scaleValue (scales.down output hiddenBlock))
     (hidden : Tensor ℝ [hiddenBlocks * 32])
     (output : Fin outputDim) :
-    |Tensor.getScalar (vecMatMulSpec hidden (quantize scales expert).decode.downWeight) output -
-        Tensor.getScalar (vecMatMulSpec hidden expert.downWeight) output| ≤
+    |Tensor.getScalar (Tensor.vecmat hidden (quantize scales expert).decode.downWeight) output -
+        Tensor.getScalar (Tensor.vecmat hidden expert.downWeight) output| ≤
       ∑ index : Fin (hiddenBlocks * 32),
         |Tensor.getScalar hidden index| *
           scaleValue (scales.down output (finProdFinEquiv.symm index).1) := by
@@ -167,8 +167,8 @@ noncomputable def hiddenActivation {format : FP8Format}
     (input : MXFP8Encoding format inputBlocks sourceInput) :
     Tensor ℝ [hiddenBlocks * 32] :=
   let packed := quantize scales expert
-  let gate := vecMatMulSpec input.decode packed.decode.gateWeight
-  let up := vecMatMulSpec input.decode packed.decode.upWeight
+  let gate := Tensor.vecmat input.decode packed.decode.gateWeight
+  let up := Tensor.vecmat input.decode packed.decode.upWeight
   SiTU.vector gateCap upCap gate up
 
 -- Keep this activation folded inside certificate types (callers are unaffected).
@@ -202,7 +202,7 @@ noncomputable def output {format : FP8Format}
     {sourceInput : Tensor ℝ [inputBlocks * 32]}
     (execution : Execution format scales expert gateCap upCap sourceInput) :
     Tensor ℝ [outputDim] :=
-  vecMatMulSpec execution.hidden.decode (quantize scales expert).decode.downWeight
+  Tensor.vecmat execution.hidden.decode (quantize scales expert).decode.downWeight
 
 /-- Coordinatewise error of the final MXFP8-by-MXFP4 multiplication against the real down
 projection of the unencoded hidden activation. -/
@@ -210,14 +210,14 @@ theorem output_error_le {format : FP8Format}
     {scales : Scales inputBlocks hiddenBlocks outputDim}
     {expert : Expert ℝ (inputBlocks * 32) (hiddenBlocks * 32) outputDim}
     (hCover : ∀ output hiddenBlock offset,
-      |get2 expert.downWeight (finProdFinEquiv (hiddenBlock, offset)) output| ≤
+      |Tensor.get2 expert.downWeight (finProdFinEquiv (hiddenBlock, offset)) output| ≤
         6 * scaleValue (scales.down output hiddenBlock))
     {gateCap upCap : ℝ}
     {sourceInput : Tensor ℝ [inputBlocks * 32]}
     (execution : Execution format scales expert gateCap upCap sourceInput)
     (coordinate : Fin outputDim) :
     |Tensor.getScalar execution.output coordinate -
-        Tensor.getScalar (vecMatMulSpec
+        Tensor.getScalar (Tensor.vecmat
           (hiddenActivation scales expert gateCap upCap execution.input)
           expert.downWeight) coordinate| ≤
       ∑ index : Fin (hiddenBlocks * 32),

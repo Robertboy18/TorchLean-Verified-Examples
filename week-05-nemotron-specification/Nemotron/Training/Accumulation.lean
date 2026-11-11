@@ -7,7 +7,7 @@ Authors: TorchLean Team
 module
 
 public import Nemotron.Cache.Error
-public import NN.Spec.Core.TensorOps
+public import TorchLean.Tensor.Arithmetic
 public import FloatLib.Numerics.Reduction.Error
 public import FloatLib.Floats.Formats.BinaryInterchange.Arithmetic.Runtime
 
@@ -25,12 +25,12 @@ native backend used the same order or that the leaves are exact gradients.
 
 namespace Nemotron.Training
 
-open Spec TorchLean FloatLib.Numerics
+open TorchLean FloatLib.Numerics
 
 /-- Combine gradient tensors in the supplied order, with the caller's scalar arithmetic. -/
 def accumulate {α : Type} [Storage α] {shape : Shape} (combine : α → α → α)
     (schedule : ReductionTree (Tensor α shape)) : Tensor α shape :=
-  schedule.eval (Tensor.map2Spec combine) id
+  schedule.eval (Tensor.zipWith combine) id
 
 /-- A tensor reduction follows the same scalar schedule at every coordinate. -/
 theorem accumulate_apply {α : Type} [Storage α] {shape : Shape} (combine : α → α → α)
@@ -39,7 +39,7 @@ theorem accumulate_apply {α : Type} [Storage α] {shape : Shape} (combine : α 
   induction schedule with
   | leaf x => rfl
   | node left right hl hr =>
-      simpa [accumulate, ReductionTree.eval, Tensor.map2Spec] using congrArg₂ combine hl hr
+      simpa [accumulate, ReductionTree.eval, Tensor.zipWith_apply] using congrArg₂ combine hl hr
 
 /-- Accumulation error is at most FloatLib's sum of per-addition allowances, for any tensor shape
 and scalar type. Errors in producing the leaves are not counted, since the reference adds the
@@ -49,14 +49,14 @@ theorem accumulate_within {α : Type} [Storage α] {shape : Shape}
     (combine : α → α → α) (interpret : α → ℝ)
     (schedule : ReductionTree (Tensor α shape))
     (allowance : Tensor α shape → Tensor α shape → ℝ)
-    (h : schedule.AllNodes (Tensor.map2Spec combine) id (fun x y =>
-      Cache.Within (allowance x y) (Tensor.map interpret (Tensor.map2Spec combine x y))
-        (Tensor.addSpec (Tensor.map interpret x) (Tensor.map interpret y)))) :
-    Cache.Within (schedule.errorBudget (Tensor.map2Spec combine) id allowance)
+    (h : schedule.AllNodes (Tensor.zipWith combine) id (fun x y =>
+      Cache.Within (allowance x y) (Tensor.map interpret (Tensor.zipWith combine x y))
+        (Tensor.map interpret x + Tensor.map interpret y))) :
+    Cache.Within (schedule.errorBudget (Tensor.zipWith combine) id allowance)
       (Tensor.map interpret (accumulate combine schedule))
       (accumulate (· + ·) (schedule.map (Tensor.map interpret))) := by
   intro coordinate
-  have hError := schedule.abs_eval_sub_exact_le_errorBudget (Tensor.map2Spec combine) id
+  have hError := schedule.abs_eval_sub_exact_le_errorBudget (Tensor.zipWith combine) id
     (fun x => interpret (x coordinate)) allowance
     (by
       induction schedule with
@@ -64,19 +64,19 @@ theorem accumulate_within {α : Type} [Storage α] {shape : Shape}
       | node left right hl hr =>
           -- Project each node's tensor bound to this coordinate.
           exact ⟨hl h.1, hr h.2.1, by
-            simpa [Tensor.map, Tensor.addSpec, Tensor.map2Spec] using h.2.2 coordinate⟩)
+            simpa [Tensor.map_apply, Tensor.add_apply] using h.2.2 coordinate⟩)
   change |interpret (accumulate combine schedule coordinate) -
     schedule.eval (· + ·) (fun x => interpret (x coordinate))| ≤ _ at hError
   rw [accumulate_apply] at hError
-  simpa [accumulate_apply, ReductionTree.eval_map, Function.comp_def, Tensor.map] using hError
+  simpa [accumulate_apply, ReductionTree.eval_map, Function.comp_def, Tensor.map_apply] using hError
 
 /-- With one allowance `δ` per addition the error is at most `nodeCount * δ`, in any order. -/
 theorem accumulate_within_nodeCount {α : Type} [Storage α] {shape : Shape}
     (combine : α → α → α) (interpret : α → ℝ)
     (schedule : ReductionTree (Tensor α shape)) (δ : ℝ)
-    (h : schedule.AllNodes (Tensor.map2Spec combine) id (fun x y =>
-      Cache.Within δ (Tensor.map interpret (Tensor.map2Spec combine x y))
-        (Tensor.addSpec (Tensor.map interpret x) (Tensor.map interpret y)))) :
+    (h : schedule.AllNodes (Tensor.zipWith combine) id (fun x y =>
+      Cache.Within δ (Tensor.map interpret (Tensor.zipWith combine x y))
+        (Tensor.map interpret x + Tensor.map interpret y))) :
     Cache.Within (schedule.nodeCount * δ)
       (Tensor.map interpret (accumulate combine schedule))
       (accumulate (· + ·) (schedule.map (Tensor.map interpret))) := by

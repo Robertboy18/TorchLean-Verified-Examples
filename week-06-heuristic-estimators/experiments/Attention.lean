@@ -5,9 +5,10 @@ Authors: Robert Joseph George
 -/
 
 import Lean.Data.Json.Printer
-import NN.Runtime.Autograd.Torch.Core.CheckpointIO
-import NN.Spec.Layers.Activation
-import NN.Tensor
+import TorchLean.NN.Checkpoint.Format
+import TorchLean.Tensor.Layers.Loss.Axis
+import TorchLean.Tensor.Operations
+import TorchLean.Tensor.Reduce.Fold
 
 /-!
 # A trained attention head with fewer query–key coordinates
@@ -32,7 +33,7 @@ about this executable's rounding.
 -/
 
 open TorchLean Lean
-open Runtime.Autograd.Torch.Internal.CheckpointIO (readExact readNat64)
+open TorchLean.Checkpoint (readExact readNat64)
 
 namespace AttentionExperiment
 
@@ -77,7 +78,7 @@ private def attention {tokens width valueWidth : Nat}
     (values : Tensor Float [tokens, valueWidth]) (scale : Float) :
     Tensor Float [tokens] × Tensor Float [tokens] × Tensor Float [valueWidth] :=
   let logits := Tensor.map (fun value => value / scale) (Tensor.matvec keys query)
-  let weights := Activation.softmaxVecSpec logits
+  let weights := Tensor.softmax logits ⟨0, Nat.one_pos⟩
   (logits, weights, Tensor.vecmat weights values)
 
 private def finite {shape : Shape} (values : Tensor Float shape) : Bool :=

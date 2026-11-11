@@ -5,7 +5,8 @@ Authors: Robert Joseph George
 -/
 
 import Lean.Data.Json.Printer
-import NN.Tensor
+import TorchLean.Tensor.Operations
+import TorchLean.Tensor.Reduce.Fold
 import VerifiableTransformers.Replay.UpstreamFloatReplay
 
 /-!

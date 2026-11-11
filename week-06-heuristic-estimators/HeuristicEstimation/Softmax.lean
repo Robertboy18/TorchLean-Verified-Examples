@@ -8,7 +8,7 @@ module
 
 public import HeuristicEstimation.Basic
 public import Mathlib.Analysis.Calculus.MeanValue
-public import NN.Proofs.Autograd.FDeriv.SoftmaxSpec
+public import TorchLean.NN.Softmax.Correctness
 
 /-!
 # Perturbing an attention row
@@ -25,43 +25,42 @@ theorem. It does not assume that the two output vectors are already close.
 namespace HeuristicEstimation.Softmax
 
 open TorchLean
-open Proofs.Autograd
+open TorchLean.Tensor (getScalarE getScalarE_ofLp)
 open scoped BigOperators
 
 /-- One coordinate of an attention output, using the stable tensor softmax. -/
 def output {α : Type} [Storage α] [Context α] {n : Nat}
     (logits values : Tensor α [n]) : α :=
-  Tensor.sum (Activation.softmaxSpec 0 logits * values)
+  Tensor.sum (Tensor.softmax logits ⟨0, Nat.one_pos⟩ * values)
 
 private theorem output_eq_dot {n : Nat} (logits values : Tensor ℝ [n]) :
-    output logits values = dotCLM (getScalarE values) (softmaxVec (getScalarE logits)) := by
-  change Tensor.sumSpec (Tensor.mulSpec (Activation.softmaxSpec 0 logits) values) = _
-  rw [Spec.sum_spec_vec, dotCLM_apply]
+    output logits values = innerSL ℝ (getScalarE values) (Vec.softmax (getScalarE logits)) := by
+  rw [output, vector_sum_eq, innerSL_apply_apply, Vec.inner_eq_sum_mul]
   apply Finset.sum_congr rfl
   intro i _
-  rw [Spec.getScalar_mul_spec]
-  have h := congrArg (fun v : Vec n => v i) (getScalarE_softmaxVecSpec logits)
-  rw [Proofs.softmaxSpec_zero_vec]
+  rw [Tensor.getScalar_mul]
+  have h := congrArg (fun v : Vec n => v i) (TorchLean.Softmax.getScalarE_vec logits)
+  rw [Tensor.softmax_zero_vec]
   change _ * values.getScalar i = values.getScalar i * _
   rw [← h]
   rw [getScalarE_ofLp, mul_comm]
 
 private theorem weighted_jvp_le {n : Nat} (logits direction values : Vec (n + 1))
     (V ε : ℝ) (hv : ∀ i, |values i| ≤ V) (hd : ∀ i, |direction i| ≤ ε) :
-    |dotCLM values (softmaxJvp logits direction)| ≤ 2 * V * ε := by
+    |innerSL ℝ values (Vec.softmaxJVP logits direction)| ≤ 2 * V * ε := by
   classical
-  let p := softmaxVec logits
-  let center := dotCLM p direction
+  let p := Vec.softmax logits
+  let center := inner ℝ p direction
   have hp : ∀ i, 0 < p i := fun i => by
-    simp only [p, softmaxVec, vecOfFun_apply]
-    exact div_pos (Real.exp_pos _) (sumExp_pos _)
+    simp only [p, Vec.softmax, PiLp.toLp_apply]
+    exact div_pos (Real.exp_pos _) (Vec.sumExp_pos _)
   have hsum : ∑ i, p i = 1 := by
-    simp only [p, softmaxVec, vecOfFun_apply]
+    simp only [p, Vec.softmax, PiLp.toLp_apply]
     rw [← Finset.sum_div]
-    exact div_self (sumExp_ne_zero _)
+    exact div_self (Vec.sumExp_ne_zero _)
   have hcenter : |center| ≤ ε := by
     dsimp only [center]
-    rw [dotCLM_apply]
+    rw [Vec.inner_eq_sum_mul]
     calc
       _ ≤ ∑ i, |p i * direction i| := Finset.abs_sum_le_sum_abs _ _
       _ = ∑ i, p i * |direction i| := by
@@ -84,7 +83,7 @@ private theorem weighted_jvp_le {n : Nat} (logits direction values : Vec (n + 1)
         mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hdiff (hp i).le)
           ((abs_nonneg _).trans (hv i))
       _ = _ := by ring
-  rw [dotCLM_apply]
+  rw [innerSL_apply_apply, Vec.inner_eq_sum_mul]
   change |∑ i, values i * (p i * (direction i - center))| ≤ _
   calc
     _ ≤ ∑ i, |values i * (p i * (direction i - center))| :=
@@ -102,14 +101,14 @@ theorem output_sub_le {n : Nat} (logits approximate values : Tensor ℝ [n + 1])
   let y := getScalarE approximate
   let v := getScalarE values
   let path : ℝ → Vec (n + 1) := AffineMap.lineMap x y
-  let f := fun t : ℝ => dotCLM v (softmaxVec (path t))
-  let derivative := fun t : ℝ => dotCLM v (softmaxJvp (path t) (y - x))
+  let f := fun t : ℝ => innerSL ℝ v (Vec.softmax (path t))
+  let derivative := fun t : ℝ => innerSL ℝ v (Vec.softmaxJVP (path t) (y - x))
   have hf (t : ℝ) : HasDerivAt f (derivative t) t := by
     have hp : HasDerivAt path (y - x) t := AffineMap.hasDerivAt_lineMap
-    have hs := (hasFDerivAt_softmaxVec (path t)).comp_hasDerivAt t hp
-    have ho := (dotCLM v).hasFDerivAt.comp_hasDerivAt t hs
+    have hs := (Vec.hasFDerivAt_softmax (path t)).comp_hasDerivAt t hp
+    have ho := (innerSL ℝ v).hasFDerivAt.comp_hasDerivAt t hs
     convert! ho using 1
-    exact congrArg (dotCLM v) (softmaxJvp_eq_deriv _ _)
+    exact congrArg (innerSL ℝ v) (Vec.softmaxJVP_eq_deriv _ _)
   have hbound (t : ℝ) : ‖derivative t‖ ≤ 2 * V * ε := by
     rw [Real.norm_eq_abs]
     exact weighted_jvp_le (path t) (y - x) v V ε hv hlogits
@@ -124,13 +123,13 @@ theorem output_sub_le {n : Nat} (logits approximate values : Tensor ℝ [n + 1])
 theorem output_shift {n : Nat} (logits values : Tensor ℝ [n + 1]) (shift : ℝ) :
     output (Tensor.ofFn fun i => logits.getScalar i + shift) values =
       output logits values := by
-  have hs : Activation.softmaxSpec 0 (Tensor.ofFn fun i => logits.getScalar i + shift) =
-      Activation.softmaxSpec 0 logits := by
-    rw [Proofs.softmaxSpec_zero_vec, Proofs.softmaxSpec_zero_vec]
+  have hs : Tensor.softmax (Tensor.ofFn fun i => logits.getScalar i + shift) ⟨0, Nat.one_pos⟩ =
+      Tensor.softmax logits ⟨0, Nat.one_pos⟩ := by
+    rw [Tensor.softmax_zero_vec, Tensor.softmax_zero_vec]
     apply Tensor.ext_vector
     intro i
-    rw [Proofs.getScalar_softmaxVecSpec_eq_exp_div,
-      Proofs.getScalar_softmaxVecSpec_eq_exp_div]
+    rw [TorchLean.Softmax.getScalar_vec_eq_exp_div,
+      TorchLean.Softmax.getScalar_vec_eq_exp_div]
     simp only [Tensor.getScalar_ofFn]
     simp_rw [Real.exp_add]
     rw [← Finset.sum_mul]

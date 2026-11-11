@@ -7,13 +7,14 @@ Authors: TorchLean Team
 module
 
 public import Nemotron.Cache.Error
-public import NN.Spec.Core.Sequence
-public import NN.Spec.Core.TensorOps
-public import NN.Spec.Core.Tensor.Linalg
-public import NN.Tensor.Operations
+public import TorchLean.Tensor.Sequence
+public import TorchLean.Tensor.Arithmetic
+public import TorchLean.Tensor.Contract
+public import TorchLean.Tensor.OfFn
+public import TorchLean.Tensor.Operations
 public import Mathlib.Data.List.GetD
 
-import NN.Proofs.Tensor.Algebra
+import TorchLean.Tensor.Algebra
 
 /-!
 # A prepared single-head SSM core
@@ -31,7 +32,7 @@ adds grouping and the D skip).
 
 namespace Nemotron.SSM
 
-open Spec TorchLean KimiK3
+open TorchLean KimiK3
 
 /-- State of a single head, with one row per value channel and one column per SSM coordinate. -/
 abbrev State (α : Type) [Storage α] (valueDim stateDim : Nat) :=
@@ -48,8 +49,8 @@ structure Input (α : Type) [Storage α] (valueDim stateDim : Nat) where
 def update {α : Type} [Storage α] [Add α] [Mul α]
     {valueDim stateDim : Nat} (state : State α valueDim stateDim)
     (input : Input α valueDim stateDim) : State α valueDim stateDim :=
-  Tensor.addSpec (Tensor.scaleSpec state input.retention)
-    (Tensor.outerProductSpec input.value input.write)
+  state.scale input.retention +
+    Tensor.matrix (fun i j => input.value.getScalar i * input.write.getScalar j)
 
 /-- Update the state, then read the new state against the token's read vector. -/
 def step {α : Type} [Storage α] [Add α] [Mul α] [Zero α]
@@ -57,7 +58,7 @@ def step {α : Type} [Storage α] [Add α] [Mul α] [Zero α]
     (input : Input α valueDim stateDim) :
     State α valueDim stateDim × Tensor α [valueDim] :=
   let next := update state input
-  (next, Tensor.matVecMulSpec next input.read)
+  (next, Tensor.matvec next input.read)
 
 /-- Applying the same prepared input to two states cancels the rank-one write. -/
 theorem update_sub_apply {valueDim stateDim : Nat}
@@ -65,7 +66,7 @@ theorem update_sub_apply {valueDim stateDim : Nat}
     (coordinate : Shape.Coord [valueDim, stateDim]) :
     update x input coordinate - update y input coordinate =
       input.retention * (x coordinate - y coordinate) := by
-  simp [update, Tensor.addSpec, Tensor.scaleSpec, Tensor.map2Spec, Tensor.map]
+  simp [update, Tensor.scale]
   ring
 
 /-- If `|retention| ≤ L`, one update scales a coordinate error bound by `L`, for any dimensions. -/
@@ -83,25 +84,25 @@ theorem read_within {valueDim stateDim : Nat}
     (x y : State ℝ valueDim stateDim) (read : Tensor ℝ [stateDim])
     (e : ℝ) (hxy : Cache.Within e x y) :
     Cache.Within (e * ∑ j : Fin stateDim, |read.getScalar j|)
-      (Tensor.matVecMulSpec x read) (Tensor.matVecMulSpec y read) := by
+      (Tensor.matvec x read) (Tensor.matvec y read) := by
   rintro ⟨i, rest⟩
   cases rest
-  change |(Tensor.matVecMulSpec x read).getScalar i -
-    (Tensor.matVecMulSpec y read).getScalar i| ≤ _
-  rw [Proofs.TensorAlgebra.getScalar_mat_vec_mul_spec,
-    Proofs.TensorAlgebra.getScalar_mat_vec_mul_spec, ← Finset.sum_sub_distrib,
+  change |(Tensor.matvec x read).getScalar i -
+    (Tensor.matvec y read).getScalar i| ≤ _
+  rw [Tensor.matvec, Tensor.matvec, Tensor.getScalar_contract_matVec_eq_sum,
+    Tensor.getScalar_contract_matVec_eq_sum, ← Finset.sum_sub_distrib,
     Finset.mul_sum]
   calc
-    |∑ j : Fin stateDim, (get2 x i j * read.getScalar j - get2 y i j * read.getScalar j)|
+    |∑ j : Fin stateDim, (Tensor.get2 x i j * read.getScalar j - Tensor.get2 y i j * read.getScalar j)|
         ≤ ∑ j : Fin stateDim,
-            |get2 x i j * read.getScalar j - get2 y i j * read.getScalar j| :=
+            |Tensor.get2 x i j * read.getScalar j - Tensor.get2 y i j * read.getScalar j| :=
       Finset.abs_sum_le_sum_abs _ _
     _ ≤ ∑ j : Fin stateDim, e * |read.getScalar j| := by
       apply Finset.sum_le_sum
       intro j _
       rw [← sub_mul, abs_mul]
       apply mul_le_mul_of_nonneg_right _ (abs_nonneg _)
-      simpa [get2, Spec.get, Tensor.getScalar, Tensor.unstack, Tensor.item] using
+      simpa only [Tensor.get2_eq_apply] using
         hxy ⟨i, j, ()⟩
 
 /-- Output error after one step: the state bound `L * e` times the read vector's absolute sum. -/
@@ -144,7 +145,7 @@ def run {α : Type} [Storage α] [Add α] [Mul α] [Zero α]
     (initial : State α valueDim stateDim) :
     State α valueDim stateDim × Tensor α [tokens, valueDim] :=
   let result := CausalScan.run step initial inputs.toList
-  (result.1, Tensor.stackLeading fun i =>
+  (result.1, Tensor.dim fun i =>
     result.2.getD i.val (Tensor.full [valueDim] 0))
 
 /-- Every bounded output index is present, so packing does not use the default zero vector. -/
@@ -161,7 +162,7 @@ theorem run_unstack {α : Type} [Storage α] [Add α] [Mul α] [Zero α]
     (initial : State α valueDim stateDim) (i : Fin tokens) :
     Tensor.unstack (inputs.run initial).2 i =
       (CausalScan.run step initial inputs.toList).2[i.val]'(inputs.output_index_lt initial i) := by
-  simp only [run, Tensor.unstack_stackLeading]
+  simp only [run, Tensor.unstack_dim]
   exact List.getD_eq_getElem _ _ (inputs.output_index_lt initial i)
 
 end Sequence

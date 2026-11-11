@@ -6,8 +6,8 @@ experts, a vision encoder, Muon updates, reinforcement learning, quantization-aw
 speculative decoding. If you read those components only as implementation prose, it's hard to see
 which equations compose, or which properties survive when you evaluate the model in chunks.
 
-Here I've written K3's architecture equations as shape-indexed tensor functions. I also built the
-core language operations from primitive TorchLean graph nodes, and Lean proves that the
+Here I've written K3's architecture equations as shape-indexed tensor functions. I also composed
+the core language operations from TorchLean tensor primitives, and Lean proves that the
 packed one-token graph returns the same updated state and vocabulary logits as those packed
 functions. K3's published dimensions are only one valid instance, and small instances let us
 evaluate the same equations without constructing the 2.78-trillion-parameter checkpoint. MoonViT
@@ -152,11 +152,9 @@ import KimiK3
 `run_append` also proves that splitting an embedding tensor into two chunks preserves every
 logit and the final decoder state, provided the second chunk uses the state returned by the first.
 
-All of this lives in [`Model/Streaming.lean`](KimiK3/Model/Streaming.lean): real-valued
-specifications and proofs, not a runnable checkpoint loader. By contrast, the graph
-modules work on TorchLean's typed DAG, which records tensor operations and their shapes (`GraphSpec` is
-the library's name for that interface, not another autodiff system), and they keep packed caches
-where this file keeps the public causal state.
+[`Model/Streaming.lean`](KimiK3/Model/Streaming.lean) proves these results for the public causal
+state. The `GraphSpec` modules compose current TorchLean tensor operations over a packed state,
+with the shape of each input and output in its type.
 
 ## Code layout
 
@@ -194,9 +192,8 @@ consequences of the equations, so I haven't restated them as Lean theorems.
 The composed GraphSpec result is for one autoregressive token step with fixed-shape tensor caches,
 and it proves equality to the packed decoder semantics used to assemble that graph. What I haven't
 proved yet is that packing the public list-based KDA/MLA histories and running this graph is equal
-to `BackboneLayer.forwardToken` or the full-sequence `LanguageModel.logits` path. You can lower the
-graph to a TorchLean `Program`, but equivalence to a fused finite-precision kernel would be another
-refinement on top of that.
+to `BackboneLayer.forwardToken` or the full-sequence `LanguageModel.logits` path. A fused kernel
+would need a proof connecting its implementation to this calculation and a bound on rounding error.
 
 For Per-Head Muon, the proofs cover matrix split/merge and orthogonalization contracts, not the
 full distributed optimizer. Post-training is similar. Those modules formalize deterministic reward,

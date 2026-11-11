@@ -23,7 +23,7 @@ semantics of the batch-invariance proof. The sections are:
 5. the theorems for an accepted certificate: run by any active thread on any
    batch laid out in the kernel's buffers, it stores the intended value reduction
    for that thread's row and output coordinate
-6. the connection to the TorchLean FlashAttention boundary
+6. the connection to the TorchLean attention boundary
 
 The scope is narrow on purpose. Nothing here models CUDA, PTX, SASS, or NVIDIA
 hardware in general. Lean checks one certificate extracted from one compiled
@@ -961,7 +961,7 @@ end CUDA
 Two pieces of evidence sit side by side here. The extracted certificate
 describes the tiny value-reduction kernel, and its checker gives the program
 contract above. The native forward certificate carries its own proof of equality
-with TorchLean's FlashAttention denotation, since checking the FMA chain says
+with TorchLean's attention denotation, since checking the FMA chain says
 nothing about full attention.
 -/
 
@@ -969,59 +969,60 @@ namespace CUDA
 namespace TinyAttentionSound
 
 open BatchInvariantInference
-open Spec
+open TorchLean (Context Tensor)
 open TorchLean (Storage)
 
 /-- A checked native forward certificate combines:
 
 1. an extracted certificate for the compiled CUDA microkernel
 2. Lean's check that the certificate is accepted for `expectedArch`
-3. a runtime refinement certificate to TorchLean FlashAttention
+3. a runtime refinement certificate to TorchLean attention
 
-Each field stands on its own, and `refines_flashAttention` reads only
+Each field stands on its own, and `refines_scaledDotProduct` reads only
 `nativeCert`. -/
 structure CheckedNativeForwardCert
     (expectedArch : String)
-    (α : Type) [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
-    {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0} where
+    (α : Type) [Storage α] [Context α]
+    {nQ nK dModel : Nat} where
   kernelCert : CUDA.TinyAttentionCert.TinyAttentionKernelCert
   kernelChecked :
     CUDA.TinyAttentionCert.checkTinyAttentionKernelCertFor expectedArch kernelCert = true
   nativeCert :
-    TorchLeanFlashAttention.NativeForwardCert α
-      (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2)
+    TorchLeanAttention.NativeForwardCert α
+      (nQ := nQ) (nK := nK) (dModel := dModel)
 
 theorem CheckedNativeForwardCert.kernel_contract
     {expectedArch : String}
-    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
-    {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
+    {α : Type} [Storage α] [Context α]
+    {nQ nK dModel : Nat}
     (cert : CheckedNativeForwardCert expectedArch α
-      (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2)) :
+      (nQ := nQ) (nK := nK) (dModel := dModel)) :
     CUDA.TinyAttentionCert.TinyAttentionKernelContractFor expectedArch cert.kernelCert :=
   CUDA.TinyAttentionCert.checkTinyAttentionKernelCertFor_sound
     expectedArch cert.kernelCert cert.kernelChecked
 
 theorem CheckedNativeForwardCert.kernel_refines_valueReduction
     {expectedArch : String}
-    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
-    {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
+    {α : Type} [Storage α] [Context α]
+    {nQ nK dModel : Nat}
     (cert : CheckedNativeForwardCert expectedArch α
-      (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2))
+      (nQ := nQ) (nK := nK) (dModel := dModel))
     (fma : β -> β -> β -> β)
     (zero : β) :
     CUDA.TinyPTXSemantics.RefinesTinyValueReduction cert.kernelCert fma zero :=
   CUDA.TinyPTXSemantics.kernelCert_refines_tinyValueReduction
     expectedArch cert.kernelCert cert.kernelChecked fma zero
 
-theorem CheckedNativeForwardCert.refines_flashAttention
+theorem CheckedNativeForwardCert.refines_scaledDotProduct
     {expectedArch : String}
-    {α : Type} [Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
-    {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
+    {α : Type} [Storage α] [Context α]
+    {nQ nK dModel : Nat}
     (cert : CheckedNativeForwardCert expectedArch α
-      (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2)) :
+      (nQ := nQ) (nK := nK) (dModel := dModel)) :
     cert.nativeCert.runtimeOut =
-      Spec.flashAttention cert.nativeCert.cfg cert.nativeCert.ctx :=
-  cert.nativeCert.refines_flashAttention
+      Tensor.attention (batch := []) cert.nativeCert.query cert.nativeCert.key cert.nativeCert.value
+        (1 / if dModel = 0 then 1 else Context.sqrtNat dModel) cert.nativeCert.mask :=
+  cert.nativeCert.refines_scaledDotProduct
 
 end TinyAttentionSound
 end CUDA

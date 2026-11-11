@@ -28,18 +28,16 @@ later nodes need not be centered.
 namespace HeuristicEstimation.Averaging
 
 open TorchLean
-open Spec (Shape)
-open Proofs.Autograd.Algebra (Graph)
+open Tape (Graph)
 open scoped BigOperators
 
 private theorem sum_dot_eq_zero {n : Nat} {shape : Shape}
     (weights : Fin n → ℝ) (values : Fin n → Tensor ℝ shape) (seed : Tensor ℝ shape)
     (hmean : ∀ coordinate, ∑ i : Fin n, weights i * values i coordinate = 0) :
-    (∑ i : Fin n, weights i * Proofs.TensorAlgebra.dot (values i) seed) = 0 := by
-  have hdot (i : Fin n) : Proofs.TensorAlgebra.dot (values i) seed =
+    (∑ i : Fin n, weights i * Tensor.Rep.dot (values i) seed) = 0 := by
+  have hdot (i : Fin n) : Tensor.Rep.dot (values i) seed =
       ∑ coordinate : shape.Coord, values i coordinate * seed coordinate := by
-    rw [← Spec.dot_eq_tensorAlgebra_dot, Spec.dot, Spec.sum_spec_eq_coord_sum]
-    simp only [Tensor.mulSpec, Tensor.map2Spec, Tensor.Internal.Rep.zipWith_apply]
+    rfl
   simp_rw [hdot, Finset.mul_sum, ← mul_assoc]
   rw [Finset.sum_comm]
   simp_rw [← Finset.sum_mul, hmean, zero_mul, Finset.sum_const_zero]
@@ -50,11 +48,11 @@ private theorem sum_dotList_eq_zero {n : Nat} {shapes : List Shape}
     (hmean : ∀ (position : Fin shapes.length) (coordinate : (shapes.get position).Coord),
       ∑ i : Fin n, weights i * (values i).get position coordinate = 0) :
     (∑ i : Fin n,
-      weights i * Proofs.Autograd.Algebra.TensorPack.dotList (values i) seed) = 0 := by
+      weights i * TensorPack.dotList (values i) seed) = 0 := by
   induction shapes with
   | nil =>
       have hnil (i : Fin n) :
-          Proofs.Autograd.Algebra.TensorPack.dotList (values i) seed = 0 := by
+          TensorPack.dotList (values i) seed = 0 := by
         cases values i
         cases seed
         rfl
@@ -78,9 +76,9 @@ private theorem sum_dotList_eq_zero {n : Nat} {shapes : List Shape}
             cases values i
             rfl
           have hsplit (i : Fin n) :
-              Proofs.Autograd.Algebra.TensorPack.dotList (values i) (.cons first rest) =
-                Proofs.TensorAlgebra.dot (values i).head first +
-                  Proofs.Autograd.Algebra.TensorPack.dotList (values i).tail rest := by
+              TensorPack.dotList (values i) (.cons first rest) =
+                Tensor.Rep.dot (values i).head first +
+                  TensorPack.dotList (values i).tail rest := by
             cases values i
             rfl
           simp_rw [hsplit, mul_add, Finset.sum_add_distrib]
@@ -106,20 +104,20 @@ theorem mean_difference {retained discarded : Nat} {data : Type}
     (hmean : ∀ (i : Fin retained) (position : Fin inputs.length)
       (coordinate : (inputs.get position).Coord),
       ∑ j : Fin discarded, law[(i, j)] *
-        (TensorPack.sub (values i j) (reference i)).get position coordinate = 0) :
+        (Composition.subtract (values i j) (reference i)).get position coordinate = 0) :
     (∑ i : Fin retained, weights.getScalar i * ∑ j : Fin discarded, law[(i, j)] *
-      Proofs.Autograd.Algebra.TensorPack.dotList
-        (TensorPack.sub (graph.eval (values i j) parameters)
-          (graph.eval (reference i) parameters)) (seed i)) =
+      TensorPack.dotList
+        (Composition.subtract (graph.toData.eval (values i j) parameters)
+          (graph.toData.eval (reference i) parameters)) (seed i)) =
       ∑ i : Fin retained, weights.getScalar i * ∑ j : Fin discarded, law[(i, j)] *
-        Composition.remainder graph (values i j) (reference i) parameters (seed i) := by
+        Composition.remainder graph.toData (values i j) (reference i) parameters (seed i) := by
   apply Finset.sum_congr rfl
   intro i _
   congr 1
-  simp_rw [Composition.eval_difference, mul_add, Finset.sum_add_distrib]
+  simp_rw [Composition.eval_difference graph.toData graph.correct, mul_add, Finset.sum_add_distrib]
   rw [sum_dotList_eq_zero (fun j => law[(i, j)])
-    (fun j => TensorPack.sub (values i j) (reference i))
-    (graph.backpropCtx (reference i) parameters (seed i)) (hmean i), zero_add]
+    (fun j => Composition.subtract (values i j) (reference i))
+    (graph.toData.backpropCtx (reference i) parameters (seed i)) (hmean i), zero_add]
 
 /-- Bounds on the graph remainder at every pair of states bound the expected output error. The
 reference term is averaged over retained states only. With normalized outer weights, both sides
@@ -136,27 +134,27 @@ private theorem mean_error_le_of_bound {retained discarded : Nat} {data : Type}
     (hmean : ∀ (i : Fin retained) (position : Fin inputs.length)
       (coordinate : (inputs.get position).Coord),
       ∑ j : Fin discarded, law[(i, j)] *
-        (TensorPack.sub (values i j) (reference i)).get position coordinate = 0)
+        (Composition.subtract (values i j) (reference i)).get position coordinate = 0)
     (hbound : ∀ (i : Fin retained) (j : Fin discarded),
-      |Composition.remainder graph (values i j) (reference i) parameters (seed i)| ≤
+      |Composition.remainder graph.toData (values i j) (reference i) parameters (seed i)| ≤
         budget[(i, j)]) :
     |(∑ i : Fin retained, weights.getScalar i * ∑ j : Fin discarded, law[(i, j)] *
-      Proofs.Autograd.Algebra.TensorPack.dotList (graph.eval (values i j) parameters) (seed i)) -
+      TensorPack.dotList (graph.toData.eval (values i j) parameters) (seed i)) -
       (∑ i : Fin retained, weights.getScalar i *
-        Proofs.Autograd.Algebra.TensorPack.dotList
-          (graph.eval (reference i) parameters) (seed i))| ≤
+        TensorPack.dotList
+          (graph.toData.eval (reference i) parameters) (seed i))| ≤
       ∑ i : Fin retained, weights.getScalar i * ∑ j : Fin discarded,
         law[(i, j)] * budget[(i, j)] := by
   have hdifference :
       (∑ i : Fin retained, weights.getScalar i * ∑ j : Fin discarded, law[(i, j)] *
-        Proofs.Autograd.Algebra.TensorPack.dotList (graph.eval (values i j) parameters) (seed i)) -
+        TensorPack.dotList (graph.toData.eval (values i j) parameters) (seed i)) -
         (∑ i : Fin retained, weights.getScalar i *
-          Proofs.Autograd.Algebra.TensorPack.dotList
-            (graph.eval (reference i) parameters) (seed i)) =
+          TensorPack.dotList
+            (graph.toData.eval (reference i) parameters) (seed i)) =
       ∑ i : Fin retained, weights.getScalar i * ∑ j : Fin discarded, law[(i, j)] *
-        Proofs.Autograd.Algebra.TensorPack.dotList
-          (TensorPack.sub (graph.eval (values i j) parameters)
-            (graph.eval (reference i) parameters)) (seed i) := by
+        TensorPack.dotList
+          (Composition.subtract (graph.toData.eval (values i j) parameters)
+            (graph.toData.eval (reference i) parameters)) (seed i) := by
     rw [← Finset.sum_sub_distrib]
     apply Finset.sum_congr rfl
     intro i _
@@ -183,24 +181,24 @@ theorem mean_error_le {retained discarded : Nat} {data : Type}
     (hmean : ∀ (i : Fin retained) (position : Fin inputs.length)
       (coordinate : (inputs.get position).Coord),
       ∑ j : Fin discarded, law[(i, j)] *
-        (TensorPack.sub (values i j) (reference i)).get position coordinate = 0)
+        (Composition.subtract (values i j) (reference i)).get position coordinate = 0)
     (hlocal : ∀ (i : Fin retained) (j : Fin discarded),
-      Composition.Within graph (values i j) (reference i) parameters (radii i)) :
+      Composition.Within graph.toData (values i j) (reference i) parameters (radii i)) :
     |(∑ i : Fin retained, weights.getScalar i * ∑ j : Fin discarded, law[(i, j)] *
-      Proofs.Autograd.Algebra.TensorPack.dotList (graph.eval (values i j) parameters) (seed i)) -
+      TensorPack.dotList (graph.toData.eval (values i j) parameters) (seed i)) -
       (∑ i : Fin retained, weights.getScalar i *
-        Proofs.Autograd.Algebra.TensorPack.dotList
-          (graph.eval (reference i) parameters) (seed i))| ≤
+        TensorPack.dotList
+          (graph.toData.eval (reference i) parameters) (seed i))| ≤
       ∑ i : Fin retained, weights.getScalar i *
-        Composition.bound graph (reference i) parameters (seed i) (radii i) := by
+        Composition.bound graph.toData (reference i) parameters (seed i) (radii i) := by
   let budget := Tensor.matrix fun i (_ : Fin discarded) =>
-    Composition.bound graph (reference i) parameters (seed i) (radii i)
+    Composition.bound graph.toData (reference i) parameters (seed i) (radii i)
   have hbound (i : Fin retained) (j : Fin discarded) :
-      |Composition.remainder graph (values i j) (reference i) parameters (seed i)| ≤
+      |Composition.remainder graph.toData (values i j) (reference i) parameters (seed i)| ≤
         budget[(i, j)] := by
     dsimp only [budget]
     rw [matrix_entry]
-    exact Composition.remainder_le_bound graph _ _ _ _ _ (hlocal i j)
+    exact Composition.remainder_le_bound graph.toData _ _ _ _ _ (hlocal i j)
   have h := mean_error_le_of_bound graph weights law budget values reference parameters seed
     hweights hlaw hmass hmean hbound
   simpa only [budget, matrix_entry, ← Finset.sum_mul, hmass, one_mul] using h

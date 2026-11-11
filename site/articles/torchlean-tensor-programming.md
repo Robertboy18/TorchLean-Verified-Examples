@@ -102,7 +102,7 @@ This definition also leaves the number type open. So who picks it? In the code, 
 type of an entry and `[Mul α]` asks for multiplication on that type, so it's the input that picks `Float32`
 for this example. Later we'll use the same generic `square` with a wider FloatLib format.
 
-We choose `cpu` or `gpu` when we run the function. CPU evaluates the Lean calculation.
+We choose `.cpu` or `.cuda` when we run the function. CPU evaluates the Lean calculation.
 On GPU, the custom path recognizes supported arithmetic, produces a checked representation,
 and generates CUDA source that NVIDIA's [NVRTC](https://docs.nvidia.com/cuda/nvrtc/index.html)
 compiles at runtime. None of that leaks into the function itself, which never mentions a device.
@@ -196,7 +196,7 @@ and one and three quarters.
 
 Our tensor starts at `[0, 2, 4]`, and after three updates its entries are `[1.75, 2, 2.25]`:
 the middle entry already sits at the target and stays put, while the other two close in
-on it from opposite sides. To take the GPU route for the same recurrence you call `approach 3 (device := gpu)`.
+on it from opposite sides. To run the same recurrence on a GPU, call `approach 3 (device := .cuda)`.
 
 But can we understand every step without running all of them? If we write the rate as $r$,
 the target as $t$ and the initial value as $x_0$, subtracting the target from one update gives
@@ -485,7 +485,7 @@ This model accepts two features, expands to eight, applies ReLU, and returns one
 Lean checks the shapes wherever the layers meet. Objective, optimizer and execution settings
 come from the trainer (which doesn't change the model definition). After that the quickstart
 gives it tensor data and runs the training loop, and if you want the supported native GPU path,
-you select `gpu` in the settings.
+you select `.cuda` in the settings.
 
 Keeping these apart also matters when we choose precision. Builders come with seeded
 initializers, and the typed state records the scalar type of the parameters and buffers.
@@ -566,8 +566,8 @@ and the second reading 4, 5, 6.
 Rows can run independently, but the additions within a row follow the order we wrote.
 
 Inside the body I pick a row-major address, `row * width + column`, and add that value to
-the accumulator. `read 0` names the first input tensor, `Arguments.empty.push matrix` supplies
-it, and output shape `[2]` asks for two row results. If you read out of range you get
+the accumulator. `.singleton matrix` supplies the input tensor that `read 0` reads.
+The output shape `[2]` asks for two row results. If you read out of range you get
 an error, since the output shape alone can't establish that every address in the body is valid.
 
 For a plain row sum I'd use the `reduce` pattern above. This indexed interface

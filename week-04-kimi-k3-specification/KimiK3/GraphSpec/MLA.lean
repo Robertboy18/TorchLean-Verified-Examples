@@ -6,23 +6,20 @@ Authors: Robert Joseph George
 
 module
 
-public import KimiK3.GraphSpec.Primitives
+public import KimiK3.GraphSpec.Core
 public import KimiK3.Sequence.MLA
 
 /-!
 # Fixed-cache Gated MLA graph
 
-This module lowers a complete Kimi K3 Gated MLA token step to TorchLean's typed DAG. The graph
+This module composes a complete Kimi K3 Gated MLA token step from shaped tensor operations. It
 includes the query and KV down-projections, normalization, cache append, every head's key/value
 reconstruction and attention, the output gate, and the final projection.
 
-The cache length is part of every tensor shape, which is what compilation, autograd, and backend
-planning need. `KimiK3.GatedMLA.Cache` is a separate list-based streaming view. The graph is proved
-equal to `GatedMLA.stepFixed`, and no theorem yet says that packing a list cache and running
-`GatedMLA.step` gives the same result.
+The cache length is part of every tensor shape. The composition returns the same three outputs as
+`GatedMLA.stepFixed`. `KimiK3.GatedMLA.Cache` represents the list-based streaming step.
 
-K3 uses NoPE attention, so the graph has no rotary-position operation and its two score terms come
-from the content key and the shared unrotated key.
+K3 uses NoPE attention. Its two score terms come from the content key and the shared unrotated key.
 -/
 
 @[expose] public section
@@ -31,10 +28,13 @@ namespace KimiK3
 namespace GraphSpec
 namespace MLA
 
-open Spec TorchLean
+open TorchLean
 open TorchLean.Tensor
-open NN.GraphSpec.DAG
-open Runtime.Autograd.Torch
+
+private theorem eval_term {Γ : List Shape} {s : Shape} {α : Type}
+    [Storage α] [Context α] (env : TensorPack α Γ)
+    (f : ∀ {β : Type}, [Storage β] → [Context β] → TensorPack β Γ → Tensor β s) :
+    Term.eval env (⟨f⟩ : Term Γ s) = f env := rfl
 
 /-! ## Complete Gated MLA step -/
 
@@ -96,11 +96,11 @@ def stepInputs {α : Type} [Storage α] {pastTokens modelDim kvLatentDim sharedK
   .cons pastLatentCache <| .cons pastSharedKeyCache <| .cons x <|
     .cons (Tensor.scalar scoreScale) .nil
 
-/-- One fixed-context Gated MLA token step as a typed multi-output DAG. -/
+/-- Compose one Gated MLA token step with a fixed cache length. -/
 def stepModel (pastTokens modelDim heads queryLatentDim kvLatentDim contentKeyDim
     sharedKeyDim valueDim : Nat) (hQueryLatent : 0 < queryLatentDim)
     (hKVLatent : 0 < kvLatentDim) :
-    NN.GraphSpec.DAG.MultiModel
+    MultiModel
       (LayerParams modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim valueDim)
       (StepInputs pastTokens modelDim kvLatentDim sharedKeyDim)
       (StepOutputs pastTokens modelDim kvLatentDim sharedKeyDim) :=
@@ -133,149 +133,61 @@ def stepModel (pastTokens modelDim heads queryLatentDim kvLatentDim contentKeyDi
   let pastSharedKeyCache := Args.get inputTerms (.tail .head)
   let x := Args.get inputTerms (.tail (.tail .head))
   let scoreScale := Args.get inputTerms (.tail (.tail (.tail .head)))
-  let queryProjected : Term Γ [queryLatentDim] :=
-    Term.op (PrimOp.broadcastVecMat [] [] [] modelDim queryLatentDim
-      (Shape.CanBroadcastTo.refl []) (Shape.CanBroadcastTo.refl []))
-      (.cons x (.cons queryDown .nil))
-  let queryLatent : Term Γ [queryLatentDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.rmsNorm [] queryLatentDim hQueryLatent)
-      (.cons queryProjected (.cons queryNormScale .nil))
-  let kvProjected : Term Γ [kvLatentDim] :=
-    Term.op (PrimOp.broadcastVecMat [] [] [] modelDim kvLatentDim
-      (Shape.CanBroadcastTo.refl []) (Shape.CanBroadcastTo.refl []))
-      (.cons x (.cons kvDown .nil))
-  let currentKV : Term Γ [kvLatentDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.rmsNorm [] kvLatentDim hKVLatent)
-      (.cons kvProjected (.cons kvNormScale .nil))
-  let currentShared : Term Γ [sharedKeyDim] :=
-    Term.op (PrimOp.broadcastVecMat [] [] [] modelDim sharedKeyDim
-      (Shape.CanBroadcastTo.refl []) (Shape.CanBroadcastTo.refl []))
-      (.cons x (.cons sharedKeyDown .nil))
-  let currentKVRow : Term Γ [1, kvLatentDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
-      (.cons currentKV .nil)
-  let currentSharedRow : Term Γ [1, sharedKeyDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
-      (.cons currentShared .nil)
-  let latentCache : Term Γ [pastTokens + 1, kvLatentDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.concatAxis
-      [pastTokens, kvLatentDim] 0 pastTokens 1)
-      (.cons pastLatentCache (.cons currentKVRow .nil))
-  let sharedKeyCache : Term Γ [pastTokens + 1, sharedKeyDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.concatAxis
-      [pastTokens, sharedKeyDim] 0 pastTokens 1)
-      (.cons pastSharedKeyCache (.cons currentSharedRow .nil))
-  let queryBatchSource : Term Γ [1, 1, queryLatentDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
-      (.cons queryLatent .nil)
-  let queryBatch : Term Γ [heads, 1, queryLatentDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.broadcast
-      (Shape.CanBroadcastTo.dim_1_to_n
-        (Shape.CanBroadcastTo.dim_eq
-          (Shape.CanBroadcastTo.dim_eq
-            (Shape.CanBroadcastTo.scalarTo []))))) (.cons queryBatchSource .nil)
-  let latentBatchSource :
-      Term Γ [1, pastTokens + 1, kvLatentDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
-      (.cons latentCache .nil)
-  let latentBatch :
-      Term Γ [heads, pastTokens + 1, kvLatentDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.broadcast
-      (Shape.CanBroadcastTo.dim_1_to_n
-        (Shape.CanBroadcastTo.dim_eq
-          (Shape.CanBroadcastTo.dim_eq
-            (Shape.CanBroadcastTo.scalarTo []))))) (.cons latentBatchSource .nil)
-  let sharedBatchSource :
-      Term Γ [1, pastTokens + 1, sharedKeyDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
-      (.cons sharedKeyCache .nil)
-  let sharedBatch :
-      Term Γ [heads, pastTokens + 1, sharedKeyDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.broadcast
-      (Shape.CanBroadcastTo.dim_1_to_n
-        (Shape.CanBroadcastTo.dim_eq
-          (Shape.CanBroadcastTo.dim_eq
-            (Shape.CanBroadcastTo.scalarTo []))))) (.cons sharedBatchSource .nil)
-  let queryContent : Term Γ [heads, 1, contentKeyDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.matmul [heads] [heads] [heads]
-      1 queryLatentDim contentKeyDim (.refl [heads]) (.refl [heads]))
-      (.cons queryBatch (.cons queryContentUp .nil))
-  let queryShared : Term Γ [heads, 1, sharedKeyDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.matmul [heads] [heads] [heads]
-      1 queryLatentDim sharedKeyDim (.refl [heads]) (.refl [heads]))
-      (.cons queryBatch (.cons querySharedUp .nil))
-  let keys :
-      Term Γ [heads, pastTokens + 1, contentKeyDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.matmul [heads] [heads] [heads]
-      (pastTokens + 1) kvLatentDim contentKeyDim (.refl [heads]) (.refl [heads]))
-      (.cons latentBatch (.cons keyUp .nil))
-  let values : Term Γ [heads, pastTokens + 1, valueDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.matmul [heads] [heads] [heads]
-      (pastTokens + 1) kvLatentDim valueDim (.refl [heads]) (.refl [heads]))
-      (.cons latentBatch (.cons valueUp .nil))
-  let keysTranspose :
-      Term Γ [heads, contentKeyDim, pastTokens + 1] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth
-      [heads, pastTokens + 1, contentKeyDim] 1)
-      (.cons keys .nil)
-  let sharedTranspose :
-      Term Γ [heads, sharedKeyDim, pastTokens + 1] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth
-      [heads, pastTokens + 1, sharedKeyDim] 1)
-      (.cons sharedBatch .nil)
-  let contentScores : Term Γ [heads, 1, pastTokens + 1] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.matmul [heads] [heads] [heads]
-      1 contentKeyDim (pastTokens + 1) (.refl [heads]) (.refl [heads]))
-      (.cons queryContent (.cons keysTranspose .nil))
-  let sharedScores : Term Γ [heads, 1, pastTokens + 1] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.matmul [heads] [heads] [heads]
-      1 sharedKeyDim (pastTokens + 1) (.refl [heads]) (.refl [heads]))
-      (.cons queryShared (.cons sharedTranspose .nil))
+  let vecmat {m n : Nat} (vector : Term Γ [m]) (matrix : Term Γ [m, n]) : Term Γ [n] :=
+    ⟨fun env => Tensor.vecmat (vector.eval env) (matrix.eval env)⟩
+  let rmsNorm {n : Nat} (h : 0 < n) (x gamma : Term Γ [n]) : Term Γ [n] :=
+    ⟨fun env => RMSNorm.scalePositive h (x.eval env) (gamma.eval env)⟩
+  let reshape {source target : Shape} (x : Term Γ source)
+      (h : source.size = target.size) : Term Γ target :=
+    ⟨fun env => Tensor.reshape (x.eval env) target h⟩
+  let concat {n m : Nat} {s : Shape} (past : Term Γ (n :: s))
+      (current : Term Γ (m :: s)) : Term Γ ((n + m) :: s) :=
+    ⟨fun env => Tensor.concat (past.eval env) (current.eval env)⟩
+  let repeatHead {s : Shape} (x : Term Γ s) : Term Γ (heads :: s) :=
+    ⟨fun env => Tensor.repeatLeading heads (x.eval env)⟩
+  let matmul {m n p : Nat} (a : Term Γ [heads, m, n]) (b : Term Γ [heads, n, p]) :
+      Term Γ [heads, m, p] :=
+    ⟨fun env => Tensor.batchMatmul (.refl [heads]) (.refl [heads]) (a.eval env) (b.eval env)⟩
+  let transpose {m n : Nat} (a : Term Γ [heads, m, n]) : Term Γ [heads, n, m] :=
+    ⟨fun env => Tensor.permute (a.eval env) (Shape.adjacentSwap [heads, m, n] 1) [heads, n, m]
+      (Shape.permute_adjacentSwap [heads, m, n] 1).symm⟩
+  let queryLatent := rmsNorm hQueryLatent (vecmat x queryDown) queryNormScale
+  let currentKV := rmsNorm hKVLatent (vecmat x kvDown) kvNormScale
+  let currentShared := vecmat x sharedKeyDown
+  let currentKVRow : Term Γ [1, kvLatentDim] := reshape currentKV (by simp [Shape.size])
+  let currentSharedRow : Term Γ [1, sharedKeyDim] := reshape currentShared (by simp [Shape.size])
+  let latentCache := concat pastLatentCache currentKVRow
+  let sharedCache := concat pastSharedKeyCache currentSharedRow
+  let queryRow : Term Γ [1, queryLatentDim] := ⟨fun env => Tensor.dim fun _ => queryLatent.eval env⟩
+  let queryBatch := repeatHead queryRow
+  let latentBatch := repeatHead latentCache
+  let sharedBatch := repeatHead sharedCache
+  let queryContent := matmul queryBatch queryContentUp
+  let queryShared := matmul queryBatch querySharedUp
+  let keys := matmul latentBatch keyUp
+  let values := matmul latentBatch valueUp
+  let contentScores := matmul queryContent (transpose keys)
+  let sharedScores := matmul queryShared (transpose sharedBatch)
   let scoreShape : Shape := [heads, 1, pastTokens + 1]
-  let scores : Term Γ scoreShape :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.add scoreShape)
-      (.cons contentScores (.cons sharedScores .nil))
-  let scaledScores : Term Γ scoreShape :=
-    scaleTerm scoreShape scoreScale scores
-  let weights : Term Γ scoreShape :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.softmax scoreShape 2) (.cons scaledScores .nil)
-  let headOutput3 : Term Γ [heads, 1, valueDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.matmul [heads] [heads] [heads]
-      1 (pastTokens + 1) valueDim (.refl [heads]) (.refl [heads]))
-      (.cons weights (.cons values .nil))
-  let headOutput : Term Γ [heads, valueDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
-      (.cons headOutput3 .nil)
-  let gateMatrix : Term Γ [modelDim, heads * valueDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
-      (.cons gateWeight .nil)
-  let gateFlat : Term Γ [heads * valueDim] :=
-    Term.op (PrimOp.broadcastVecMat [] [] [] modelDim (heads * valueDim)
-      (Shape.CanBroadcastTo.refl []) (Shape.CanBroadcastTo.refl []))
-      (.cons x (.cons gateMatrix .nil))
-  let gateUnactivated : Term Γ [heads, valueDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
-      (.cons gateFlat .nil)
-  let gate : Term Γ [heads, valueDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.sigmoid [heads, valueDim])
-      (.cons gateUnactivated .nil)
-  let gatedHeads : Term Γ [heads, valueDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.mul [heads, valueDim])
-      (.cons gate (.cons headOutput .nil))
-  let gatedFlat : Term Γ [heads * valueDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
-      (.cons gatedHeads .nil)
+  let weights : Term Γ scoreShape := ⟨fun env =>
+    let scores := Tensor.zipWith (· + ·) (contentScores.eval env) (sharedScores.eval env)
+    let scaled := Tensor.zipWith (· * ·) (Tensor.full scoreShape (scoreScale.eval env).item) scores
+    Tensor.softmax scaled ⟨2, by simp [scoreShape]⟩⟩
+  let headOutput3 := matmul weights values
+  let headOutput : Term Γ [heads, valueDim] := reshape headOutput3 (by simp [Shape.size])
+  let gateMatrix : Term Γ [modelDim, heads * valueDim] := reshape gateWeight (by simp [Shape.size])
+  let gateFlat := vecmat x gateMatrix
+  let gateUnactivated : Term Γ [heads, valueDim] := reshape gateFlat (by simp [Shape.size])
+  let gatedHeads : Term Γ [heads, valueDim] := ⟨fun env =>
+    Tensor.zipWith (· * ·) (Tensor.sigmoid (gateUnactivated.eval env)) (headOutput.eval env)⟩
+  let gatedFlat : Term Γ [heads * valueDim] := reshape gatedHeads (by simp [Shape.size])
   let outputMatrix : Term Γ [heads * valueDim, modelDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size, Nat.mul_assoc]))
-      (.cons outputWeight .nil)
-  let output : Term Γ [modelDim] :=
-    Term.op (PrimOp.broadcastVecMat [] [] [] (heads * valueDim) modelDim
-      (Shape.CanBroadcastTo.refl []) (Shape.CanBroadcastTo.refl []))
-      (.cons gatedFlat (.cons outputMatrix .nil))
+    reshape outputWeight (by simp [Shape.size, Nat.mul_assoc])
+  let output := vecmat gatedFlat outputMatrix
   { initParams :=
       initialLayerParams modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim
         valueDim
-    body := Block.ret (.cons latentCache (.cons sharedKeyCache (.cons output .nil))) }
+    body := Block.ret (.cons latentCache (.cons sharedCache (.cons output .nil))) }
 
 /-- Evaluate the typed MLA token-step graph on concrete parameters and inputs. -/
 noncomputable def stepGraphOutputs
@@ -319,29 +231,11 @@ theorem stepModel_specFwd_eq_stepFixed
         scoreScale =
       stepFixedOutputs pastTokens modelDim heads queryLatentDim kvLatentDim contentKeyDim
         sharedKeyDim valueDim layer pastLatentCache pastSharedKeyCache x scoreScale := by
-  -- Interpret the packed graph operations as the projections, cache appends, and attention
-  -- in the reference step. The three output tensors must agree separately.
-  simp only [stepGraphOutputs, stepFixedOutputs, NN.GraphSpec.DAG.MultiModel.specFwd,
-    stepModel, layerParameters, stepInputs,
-    Args.vars, Args.weakenLeft, Args.rename,
-    Term.rename, Block.eval, Term.evalArgs, Term.eval,
-    TorchLean.TensorPack.append, NN.GraphSpec.DAG.PrimOp.concatAxis,
-    NN.GraphSpec.DAG.PrimOp.concatAxisSpec, Shape.replaceAxis,
-    NN.GraphSpec.DAG.PrimOp.reshape_specFwd,
-    NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd, NN.GraphSpec.DAG.PrimOp.rmsNormSpec,
-    NN.GraphSpec.DAG.PrimOp.matmul_specFwd,
-    NN.GraphSpec.DAG.PrimOp.swapAdjacentAtDepth_specFwd,
-    NN.GraphSpec.DAG.PrimOp.add_specFwd, eval_scaleTerm,
-    NN.GraphSpec.DAG.PrimOp.sigmoid_specFwd, NN.GraphSpec.DAG.PrimOp.mul_specFwd,
-    PrimOp.broadcastVecMat, NN.GraphSpec.DAG.PrimOp.broadcast,
-    NN.GraphSpec.DAG.PrimOp.softmax, GatedMLA.stepFixed,
-    GraphSpec.rmsNormVectorSpec_eq_scale]
-  simp [Tensor.permuteByAdjacentSwaps]
-  constructor
-  · with_unfolding_all rfl
-  · constructor
-    · with_unfolding_all rfl
-    · with_unfolding_all rfl
+  simp only [stepGraphOutputs, stepFixedOutputs, MultiModel.specFwd, stepModel,
+    Block.eval_ret, Term.evalArgs, eval_term, Term.eval_get, Term.evalArgs_rename_inLeft,
+    Term.evalArgs_rename_inRight, Term.evalArgs_vars, Env.tget, layerParameters, stepInputs,
+    Tensor.item_scalar, GatedMLA.stepFixed, RMSNorm.scale_eq_scalePositive hQueryLatent,
+    RMSNorm.scale_eq_scalePositive hKVLatent]
 
 end MLA
 end GraphSpec

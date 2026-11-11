@@ -7,6 +7,7 @@ Authors: TorchLean Team
 module
 
 public import Nemotron.Cache.Error
+import TorchLean.Tensor.Rep.Pointwise
 public import FloatLib.Floats.Formats.BinaryInterchange.Analysis.Error
 public import FloatLib.Numerics.Quantization.Deterministic.Rational
 
@@ -23,7 +24,7 @@ rounds stochastically (`Nemotron.Cache.Stochastic`).
 
 namespace Nemotron.Cache
 
-open Spec TorchLean KimiK3
+open TorchLean KimiK3
 open FloatLib.Floats
 open FloatLib.Floats.Formats.BinaryInterchange
 
@@ -36,10 +37,10 @@ noncomputable def roundTensor {shape : Shape} (fmt : FloatFormat)
 bound covers subnormals and needs no relative error bound near zero. -/
 theorem roundTensor_within {shape : Shape} (fmt : FloatFormat)
     (x : Tensor ℝ shape) (δ : ℝ)
-    (hδ : ∀ coordinate, Model.epsilonAt fmt (x coordinate) ≤ δ) :
+    (hδ : ∀ coordinate, Model.ulpAt fmt (x coordinate) / 2 ≤ δ) :
     Within δ (roundTensor fmt x) x := by
   intro coordinate
-  simpa [roundTensor, Tensor.map] using
+  simpa only [roundTensor, Tensor.map_apply] using
     (Model.abs_roundAt_sub_le fmt (x coordinate)).trans (hδ coordinate)
 
 namespace Counterexample

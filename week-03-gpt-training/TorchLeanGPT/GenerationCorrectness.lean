@@ -5,7 +5,7 @@ Released under the MIT license.
 
 module
 
-public import NN.MLTheory.Proofs.Verification.Robustness.LipschitzCertified
+public import TorchLean.Verify.Robustness.LipschitzCertified
 
 /-!
 # Numerically stable autoregressive generation
@@ -29,17 +29,16 @@ moves the winner and its margin.
 
 @[expose] public section
 
-open _root_.Spec TorchLean
+open TorchLean
 
 namespace TorchLeanGPT
 namespace Generation
 
-open NN.MLTheory.Proofs.Verification.Robustness
-open NN.MLTheory.Robustness.Spec
+open TorchLean.Robustness
 
 /-- A next-token model assigns one real logit to every vocabulary item after a token history. -/
 abbrev LogitModel (vocab : Nat) :=
-  List Nat → Tensor ℝ (.dim vocab .scalar)
+  List Nat → Tensor ℝ [vocab]
 
 /-- Greedy autoregressive generation, returning only the newly generated suffix. -/
 noncomputable def greedy (model : LogitModel vocab) : Nat → List Nat → List Nat
@@ -61,7 +60,7 @@ def StepCertified
     0 < margin ∧
     HasLogitMargin (ideal history) winner margin ∧
     2 * error < margin ∧
-    tensorDistance (tensorLinfNorm (α := ℝ)) (ideal history) (approximate history) ≤ error
+    distance (linfNorm (α := ℝ)) (ideal history) (approximate history) ≤ error
 
 /-- The one-step certificate preserves the next greedy token. -/
 theorem argmax_eq_of_step_certified
@@ -69,9 +68,9 @@ theorem argmax_eq_of_step_certified
     (h : StepCertified ideal approximate history) :
     argmaxClassifier (approximate history) = argmaxClassifier (ideal history) := by
   rcases h with ⟨winner, margin, error, hMarginPositive, hMargin, hErrorSmall, hError⟩
-  have hApprox := argmaxClassifier_eq_of_linf_distance_lt_half_margin
+  have hApprox := argmaxClassifier_eq_of_distance_le
     (hmargin := hMargin) (hδ := hErrorSmall) (hdist := hError)
-  have hIdeal := argmaxClassifier_eq_of_hasLogitMargin
+  have hIdeal := HasLogitMargin.argmaxClassifier_eq
     (hm := hMarginPositive) (hmargin := hMargin)
   exact hApprox.trans hIdeal.symm
 
@@ -141,16 +140,16 @@ theorem greedy_eq_of_linf_error_lt_half_margin
       HasLogitMargin (ideal history) (winner history) (margin history))
     (herrorSmall : ∀ history, 2 * error history < margin history)
     (herror : ∀ history,
-      tensorDistance (tensorLinfNorm (α := ℝ)) (ideal history) (approximate history) ≤
+      distance (linfNorm (α := ℝ)) (ideal history) (approximate history) ≤
         error history) :
     ∀ steps history, greedy approximate steps history = greedy ideal steps history := by
   apply greedy_eq_of_argmax_eq
   intro history
-  have hApprox := argmaxClassifier_eq_of_linf_distance_lt_half_margin
+  have hApprox := argmaxClassifier_eq_of_distance_le
     (hmargin := hmargin history)
     (hδ := herrorSmall history)
     (hdist := herror history)
-  have hIdeal := argmaxClassifier_eq_of_hasLogitMargin
+  have hIdeal := HasLogitMargin.argmaxClassifier_eq
     (hm := hmarginPositive history)
     (hmargin := hmargin history)
   exact hApprox.trans hIdeal.symm

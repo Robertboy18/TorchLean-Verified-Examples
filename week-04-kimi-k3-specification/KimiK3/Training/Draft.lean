@@ -8,13 +8,14 @@ module
 
 public import KimiK3.Model
 public import Mathlib.Data.Fin.VecNotation
-public import NN.Proofs.Analysis.Softmax
-public import NN.Proofs.Tensor.Basic.Algebra
-public import NN.Tensor
+public import TorchLean.NN.Softmax
+public import TorchLean.Tensor.Algebra
+public import TorchLean.Tensor.LinearAlgebra.Real
+public import TorchLean.Tensor.Operations
+public import TorchLean.Tensor.Reduce.Real
 public import Mathlib.Geometry.Convex.ConvexSpace.Defs
 public import Mathlib.Data.EReal.Basic
 import Mathlib.Algebra.Order.Group.MinMax
-import NN.Proofs.Tensor.Basic.LinearAlgebra
 
 /-!
 # EAGLE-3 draft model and speculative sampling
@@ -32,7 +33,7 @@ https://arxiv.org/abs/2607.24653.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
 open Tensor
 open scoped BigOperators
 
@@ -47,7 +48,7 @@ def ofBlockState {hiddenDim : Nat} (state : AttnRes.BlockState ℝ hiddenDim)
   let outputs := state.blockOutputs
   have hFourOutputs : 4 ≤ outputs.length := by simpa [outputs] using hFour
   have hNonempty : outputs ≠ [] := List.ne_nil_of_length_pos (by omega)
-  Tensor.stackLeading ![outputs.get ⟨0, by omega⟩,
+  Tensor.dim ![outputs.get ⟨0, by omega⟩,
     outputs.get ⟨3, by omega⟩, outputs.getLast hNonempty]
 
 end Features
@@ -73,41 +74,36 @@ variable {hiddenDim : Nat}
 /-- Multiplying a real vector by an all-zero square matrix gives the zero vector. -/
 @[simp]
 private theorem vecMatMul_fill_zero (values : Tensor ℝ [hiddenDim]) :
-    vecMatMulSpec values (Tensor.zeros [hiddenDim, hiddenDim]) =
+    Tensor.vecmat values (Tensor.zeros [hiddenDim, hiddenDim]) =
       Tensor.zeros [hiddenDim] := by
   apply Tensor.ext_vector
   intro column
-  rw [getScalar_vec_mat_mul_spec]
-  simp
+  simp [Tensor.vecmat, Tensor.getScalar_contract_vecMat_eq_sum, Tensor.get2]
 
 /-- Multiplying a real row vector by the identity matrix returns that vector. -/
 @[simp]
 private theorem vecMatMul_identity (values : Tensor ℝ [hiddenDim]) :
-    vecMatMulSpec values (identityTensorSpec hiddenDim) = values := by
-  let result := vecMatMulSpec values (identityTensorSpec hiddenDim)
-  have coordinates : Tensor.getScalar result = Tensor.getScalar values := by
-    funext column
-    simp [result, getScalar_vec_mat_mul_spec, get2_identityTensorSpec]
-  exact Tensor.ext_vector (fun column => congrFun coordinates column)
+    Tensor.vecmat values (Tensor.identity hiddenDim) = values := by
+  apply Tensor.ext_vector
+  intro column
+  simp [Tensor.vecmat, Tensor.getScalar_contract_vecMat_eq_sum, Tensor.get2_identity]
 
 variable {α : Type} [Storage α] [Context α]
 
 /-- Concatenate-and-project written as a sum of three matrix products. -/
 def forward (fusion : Tensor α [3, hiddenDim, hiddenDim]) (features : Tensor α [3, hiddenDim]) :
     Tensor α [hiddenDim] :=
-  addSpec
-    (addSpec
-      (vecMatMulSpec (Spec.get features 0) (Spec.get fusion 0))
-      (vecMatMulSpec (Spec.get features 1) (Spec.get fusion 1)))
-    (vecMatMulSpec (Spec.get features 2) (Spec.get fusion 2))
+  Tensor.vecmat (features.unstack 0) (fusion.unstack 0) +
+    Tensor.vecmat (features.unstack 1) (fusion.unstack 1) +
+    Tensor.vecmat (features.unstack 2) (fusion.unstack 2)
 
 /-- With the report's `[0 0 I]` initialization, fusion returns the high-level feature. -/
 theorem initial_fusion_eq_high (features : Tensor ℝ [3, hiddenDim])
     (fusion : Tensor ℝ [3, hiddenDim, hiddenDim])
-    (hLow : (Spec.get fusion 0) = Tensor.zeros [hiddenDim, hiddenDim])
-    (hMiddle : (Spec.get fusion 1) = Tensor.zeros [hiddenDim, hiddenDim])
-    (hHigh : (Spec.get fusion 2) = identityTensorSpec hiddenDim) :
-    FeatureFusion.forward fusion features = (Spec.get features 2) := by
+    (hLow : (Tensor.unstack fusion 0) = Tensor.zeros [hiddenDim, hiddenDim])
+    (hMiddle : (Tensor.unstack fusion 1) = Tensor.zeros [hiddenDim, hiddenDim])
+    (hHigh : (Tensor.unstack fusion 2) = Tensor.identity hiddenDim) :
+    FeatureFusion.forward fusion features = (Tensor.unstack features 2) := by
   rw [forward, hLow, hMiddle, hHigh]
   rw [vecMatMul_fill_zero, vecMatMul_fill_zero, vecMatMul_identity]
   simp
@@ -146,8 +142,8 @@ the target model's three-level fusion at the first training-time-test step and t
 hidden state at every later step. -/
 noncomputable def inputFromFeature (model : Model cfg decayRank) (token : Fin cfg.vocabSize)
     (feature : Tensor ℝ [cfg.hiddenDim]) : Tensor ℝ [cfg.hiddenDim] :=
-  vecMatMulSpec (Spec.get model.tokenEmbedding token) model.tokenInputWeight +
-    vecMatMulSpec feature model.featureInputWeight
+  Tensor.vecmat (Tensor.unstack model.tokenEmbedding token) model.tokenInputWeight +
+    Tensor.vecmat feature model.featureInputWeight
 
 /-- Form the first draft input by fusing the low-, middle-, and high-level target features. -/
 noncomputable def input (model : Model cfg decayRank) (token : Fin cfg.vocabSize)
@@ -189,7 +185,7 @@ noncomputable def stepLogits (model : Model cfg decayRank) (state : model.Causal
     (token : Fin cfg.vocabSize) (features : Tensor ℝ [3, cfg.hiddenDim]) :
     model.CausalState × Tensor ℝ [cfg.vocabSize] :=
   let result := model.stepHidden state token features
-  (result.1, vecMatMulSpec result.2 model.vocabularyHead)
+  (result.1, Tensor.vecmat result.2 model.vocabularyHead)
 
 /-- Advance one continuation position using the preceding draft hidden state as the feature
 input. -/
@@ -198,7 +194,7 @@ noncomputable def stepLogitsFromFeature (model : Model cfg decayRank) (state : m
     model.CausalState ×
       (Tensor ℝ [cfg.hiddenDim] × Tensor ℝ [cfg.vocabSize]) :=
   let result := model.stepHiddenFromFeature state token feature
-  (result.1, result.2, vecMatMulSpec result.2 model.vocabularyHead)
+  (result.1, result.2, Tensor.vecmat result.2 model.vocabularyHead)
 
 /-- Draft next-token logits. -/
 noncomputable def logits (model : Model cfg decayRank)
@@ -211,14 +207,14 @@ input built from the high-level feature alone. This is why the draft head can st
 layer. -/
 theorem input_at_eagle_initialization (model : Model cfg decayRank)
     (token : Fin cfg.vocabSize) (features : Tensor ℝ [3, cfg.hiddenDim])
-    (hLow : (Spec.get model.featureFusion 0) =
+    (hLow : (Tensor.unstack model.featureFusion 0) =
       Tensor.zeros [cfg.hiddenDim, cfg.hiddenDim])
-    (hMiddle : (Spec.get model.featureFusion 1) =
+    (hMiddle : (Tensor.unstack model.featureFusion 1) =
       Tensor.zeros [cfg.hiddenDim, cfg.hiddenDim])
-    (hHigh : (Spec.get model.featureFusion 2) = identityTensorSpec cfg.hiddenDim) :
+    (hHigh : (Tensor.unstack model.featureFusion 2) = Tensor.identity cfg.hiddenDim) :
     model.input token features =
-      vecMatMulSpec (Spec.get model.tokenEmbedding token) model.tokenInputWeight +
-        vecMatMulSpec (Spec.get features 2) model.featureInputWeight := by
+      Tensor.vecmat (Tensor.unstack model.tokenEmbedding token) model.tokenInputWeight +
+        Tensor.vecmat (Tensor.unstack features 2) model.featureInputWeight := by
   rw [input, inputFromFeature,
     FeatureFusion.initial_fusion_eq_high features model.featureFusion hLow hMiddle hHigh]
 
@@ -237,14 +233,14 @@ noncomputable def ofLogits {vocabSize : Nat} (hVocab : 0 < vocabSize)
   cases vocabSize with
   | zero => omega
   | succ n =>
-      let probabilities := Activation.softmaxVecSpec logits
+      let probabilities := Softmax.vec logits
       exact {
         weights := Finsupp.equivFunOnFinite.symm (Tensor.getScalar probabilities)
         nonneg := fun token => by
-          simpa using le_of_lt (Proofs.softmax_vec_spec_pos logits token)
+          simpa using le_of_lt (Softmax.vec_pos logits token)
         total := by
-          simpa [Finsupp.sum_fintype, probabilities, Spec.sum_spec_vec] using
-            Proofs.sum_spec_softmax_vec_spec logits }
+          simpa [Finsupp.sum_fintype, probabilities, Tensor.sum_eq_coord_sum,
+            Fintype.sum_prod_type, Tensor.getScalar_eq_apply] using Softmax.sum_vec logits }
 
 end Distribution
 
@@ -254,7 +250,7 @@ noncomputable def targetDistributionAt {cfg : TextConfig} {decayRank sequenceLen
     (model : LanguageModel ℝ cfg decayRank)
     (embeddings : Tensor ℝ [sequenceLength, cfg.hiddenDim])
     (position : Fin sequenceLength) : Distribution cfg.vocabSize :=
-  Distribution.ofLogits model.vocabSize_pos (Spec.get (model.logits embeddings) position)
+  Distribution.ofLogits model.vocabSize_pos (Tensor.unstack (model.logits embeddings) position)
 
 namespace Model
 

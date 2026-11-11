@@ -58,7 +58,7 @@ structure Answer where
 def answer
     (config : Chat.Config)
     (decoder : CachedDecode.Runtime.Decoder)
-    (tokenizer : text.GPT2BPE.Tokenizer)
+    (tokenizer : Text.GPT2BPE.Tokenizer)
     (deviceName : String)
     (promptIds : List Nat) : IO Answer := do
   let stopToken ← CLI.orThrow exeName <| Chat.endOfTextToken tokenizer
@@ -69,7 +69,7 @@ def answer
           activity := some "kv-cache"
           stepIndex := config.generate?
           device := some deviceName })
-  let decoded ← CLI.orThrow exeName <| text.GPT2BPE.decode tokenizer result.tokenIds.toArray
+  let decoded ← CLI.orThrow exeName <| Text.GPT2BPE.decode tokenizer result.tokenIds.toArray
   pure { text := Chat.trimGeneratedTurn decoded, generation := result }
 
 /-- Print one timing line after a response. -/
@@ -87,7 +87,7 @@ def printTiming (promptTokens : Nat) (answer : Answer) : IO Unit := do
 partial def loop
     (config : Chat.Config)
     (decoder : CachedDecode.Runtime.Decoder)
-    (tokenizer : text.GPT2BPE.Tokenizer)
+    (tokenizer : Text.GPT2BPE.Tokenizer)
     (deviceName : String) : IO Unit := do
   IO.println "Enter :q or an empty line to stop."
   let stdin ← IO.getStdin
@@ -108,10 +108,10 @@ partial def loop
   go []
 
 /-- Load the ordinary TorchLean model and borrow its checked checkpoint buffers for decoding. -/
-def run (opts : Runtime.Config) (args : List String) : IO Unit := do
+def run (opts : Session.Config) (args : List String) : IO Unit := do
   let config ← Chat.Config.parse exeName opts.seed args
   let cfg := config.model.toTorchLean
-  if !opts.usesCuda then
+  if !opts.usesCUDA then
     throw <| IO.userError s!"{exeName}: the incremental cache currently requires --device cuda"
   else if cfg.sequenceLength = 0 then
     throw <| IO.userError s!"{exeName}: impossible zero context after validation"
@@ -122,16 +122,16 @@ def run (opts : Runtime.Config) (args : List String) : IO Unit := do
   else
     letI : NeZero cfg.vocabularySize := ⟨hVocab⟩
     do
-      _root_.TorchLean.rand.manualSeed config.seed
+      Random.manualSeed config.seed
       let model := nn.build config.seed (buildModel cfg 1 opts)
       let actualParameterCount :=
         (model.stateShapes).foldl
           (fun total shape => total + Shape.size shape) 0
       let tokenizer ← LeanProfiler.span "tokenizer.load"
-        (text.GPT2BPE.load config.tokenizerVocab config.tokenizerMerges
+        (Text.GPT2BPE.load config.tokenizerVocab config.tokenizerMerges
           (progress := true) (label := exeName))
         (metadata := { phase := some "data", activity := some "tokenizer" })
-      let evalDef := nn.models.CausalTransformer.objective cfg model (mode := .eval)
+      let evalDef := nn.CausalTransformer.objective cfg model (mode := .eval)
       let runtimeModule ← LeanProfiler.span "model.initialize"
         (Module.instantiate evalDef opts (α := Float))
         (metadata :=
@@ -139,29 +139,29 @@ def run (opts : Runtime.Config) (args : List String) : IO Unit := do
             activity := some "parameters"
             backend := some (Run.backendProfileName opts)
             dtype := some "Float"
-            device := some opts.deviceName })
+            device := some opts.device.cliName })
       LeanProfiler.span "checkpoint.load"
-        (Checkpoint.load runtimeModule config.checkpoint)
+        (Run.loadModelParams runtimeModule config.checkpoint)
         (metadata := { phase := some "checkpoint", activity := some "load" })
       let decoder ← LeanProfiler.span "decoder.initialize"
         (CachedDecode.Runtime.Decoder.initialize cfg
-          (Module.Objective.Internal.runtime runtimeModule).trainer.state)
+          (Module.Objective.runtime runtimeModule).trainer.state)
         (metadata :=
           { phase := some "initialization"
             activity := some "kv-cache"
-            device := some opts.deviceName })
-      IO.println s!"loaded {actualParameterCount} parameters on {opts.deviceName}"
+            device := some opts.device.cliName })
+      IO.println s!"loaded {actualParameterCount} parameters on {opts.device.cliName}"
       IO.println s!"cache capacity={cfg.sequenceLength}, layers={cfg.layerCount}, heads={cfg.headCount}"
       try
         match config.message? with
         | some message =>
             let promptIds ← CLI.orThrow exeName <|
               Chat.encodeDialoguePrompt tokenizer config.systemPrompt [] message
-            let response ← answer config decoder tokenizer opts.deviceName promptIds
+            let response ← answer config decoder tokenizer opts.device.cliName promptIds
             IO.println response.text
             printTiming promptIds.length response
         | none =>
-            loop config decoder tokenizer opts.deviceName
+            loop config decoder tokenizer opts.device.cliName
       finally
         decoder.close
 

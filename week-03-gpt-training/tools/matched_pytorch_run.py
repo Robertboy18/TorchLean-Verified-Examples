@@ -94,16 +94,30 @@ class DialogueDataset:
 
 
 class CheckpointReader:
-    """Read binary32 streams or exact-bit binary64 JSON, checking the model layout."""
+    """Read current and historical exact-bit checkpoints, checking the model layout."""
 
     def __init__(self, path: Path, device: torch.device) -> None:
         self.path = path
         self.device = device
         self.handle = path.open("rb")
-        if self.handle.read(7) == b"TLSF32B":
+        magic = self.handle.read(7)
+        if magic in (b"TLSTATE", b"TLSF32B"):
             version = self._u64()
             if version != 1:
                 raise ValueError(f"unsupported checkpoint version {version}")
+            self.dtype = np.dtype("<f4")
+            if magic == b"TLSTATE":
+                encodings = {
+                    b"torchlean_state_bits_v1": np.dtype("<f8"),
+                    b"torchlean_state_float32_bits_v1": np.dtype("<f4"),
+                }
+                tag_size = self._u64()
+                if tag_size not in {len(tag) for tag in encodings}:
+                    raise ValueError("unsupported checkpoint scalar encoding")
+                tag = self.handle.read(tag_size)
+                if tag not in encodings:
+                    raise ValueError(f"unsupported checkpoint scalar encoding {tag!r}")
+                self.dtype = encodings[tag]
             self.state = None
             self.remaining = self._u64()
         else:
@@ -136,16 +150,19 @@ class CheckpointReader:
             self.remaining -= 1
             return torch.from_numpy(array).to(self.device)
         rank = self._u64()
+        if rank != len(expected):
+            raise ValueError(f"checkpoint rank {rank} does not match {expected}")
         shape = tuple(self._u64() for _ in range(rank))
         count = self._u64()
         if shape != expected or count != math.prod(expected):
             raise ValueError(
                 f"checkpoint shape {shape}/{count} does not match {expected}"
             )
-        raw = self.handle.read(4 * count)
-        if len(raw) != 4 * count:
+        byte_count = self.dtype.itemsize * count
+        raw = self.handle.read(byte_count)
+        if len(raw) != byte_count:
             raise ValueError("truncated checkpoint tensor")
-        array = np.frombuffer(raw, dtype="<f4").copy().reshape(shape)
+        array = np.frombuffer(raw, dtype=self.dtype).copy().reshape(shape)
         self.remaining -= 1
         return torch.from_numpy(array).to(self.device)
 

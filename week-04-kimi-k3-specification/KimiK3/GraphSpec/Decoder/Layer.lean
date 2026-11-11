@@ -20,7 +20,7 @@ The denotation theorem covers those four cases with the same parameter and state
 namespace KimiK3
 namespace GraphSpec
 
-open Spec TorchLean NN.GraphSpec.DAG
+open TorchLean
 
 /-- Split graph arguments at the parameter/state boundary of a decoder component. -/
 def splitArgs {Γ : List Shape} : {left right : List Shape} →
@@ -34,30 +34,28 @@ def splitArgs {Γ : List Shape} : {left right : List Shape} →
 @[simp] theorem eval_splitArgs_left {α : Type} [Storage α] [Context α]
     {Γ left right : List Shape} (env : TorchLean.TensorPack α Γ)
     (args : Args Γ (left ++ right)) :
-    Term.evalArgs env (splitArgs args).1 = (TorchLean.TensorPack.split (Term.evalArgs env args)).1 := by
+    Term.evalArgs env (splitArgs args).1 = (TorchLean.Pack.split (Term.evalArgs env args)).1 := by
   induction left with
   | nil => rfl
   | cons _ _ ih =>
       cases args with
-      | cons value rest => simp [splitArgs, Term.evalArgs, TorchLean.TensorPack.split, ih]
+      | cons value rest => simp [splitArgs, Term.evalArgs, TorchLean.Pack.split, ih]
 
 /-- Evaluating the remaining argument group selects the remaining input tensors. -/
 @[simp] theorem eval_splitArgs_right {α : Type} [Storage α] [Context α]
     {Γ left right : List Shape} (env : TorchLean.TensorPack α Γ)
     (args : Args Γ (left ++ right)) :
-    Term.evalArgs env (splitArgs args).2 = (TorchLean.TensorPack.split (Term.evalArgs env args)).2 := by
+    Term.evalArgs env (splitArgs args).2 = (TorchLean.Pack.split (Term.evalArgs env args)).2 := by
   induction left with
   | nil => rfl
   | cons _ _ ih =>
       cases args with
-      | cons value rest => simp [splitArgs, Term.evalArgs, TorchLean.TensorPack.split, ih]
+      | cons value rest => simp [splitArgs, Term.evalArgs, TorchLean.Pack.split, ih]
 
 namespace DecoderLayer
 
-open Spec TorchLean
+open TorchLean
 open TorchLean.Tensor
-open NN.GraphSpec.DAG
-open Runtime.Autograd.Torch
 
 variable {cfg : TextConfig} {decayRank : Nat}
 
@@ -145,7 +143,7 @@ def model (pastTokens completedCount : Nat) (layer : BackboneLayer ℝ cfg decay
     (hValue : 0 < cfg.kdaValueDim) (hWidth : 0 < cfg.shortConvWidth)
     (hQueryLatent : 0 < cfg.queryLatentDim) (hKVLatent : 0 < cfg.kvLatentDim)
     (hRoutedLatent : 0 < cfg.routedLatentDim) :
-    NN.GraphSpec.DAG.MultiModel (Params layer.sequence layer.channel)
+    KimiK3.GraphSpec.MultiModel (Params layer.sequence layer.channel)
       (Inputs pastTokens completedCount layer.sequence) (Outputs pastTokens layer.sequence) :=
   match layer.sequence, layer.channel with
   | .kda _ _, .dense _ =>
@@ -359,7 +357,7 @@ theorem evalArgs_inputTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ
               simp only [controlValue] at hControl
               simp only [inputTerms, inputs, Term.evalArgs,
                 Backbone.KDADense.inputs, Backbone.depthInputs,
-                TorchLean.TensorPack.append, hControl, hEpsilon, hGateCap, hUpCap]
+                TorchLean.Pack.append, hControl, hEpsilon, hGateCap, hUpCap]
   | mla mla =>
       cases state with
       | cons pastLatentCache rest =>
@@ -369,7 +367,7 @@ theorem evalArgs_inputTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ
               simp only [controlValue] at hControl
               simp only [inputTerms, inputs, Term.evalArgs,
                 Backbone.MLADense.inputs, Backbone.depthInputs,
-                TorchLean.TensorPack.append, hControl, hGateCap, hUpCap]
+                TorchLean.Pack.append, hControl, hGateCap, hUpCap]
 
 /-- Mathematical transition denoted by the graph selected for `layer`.
 

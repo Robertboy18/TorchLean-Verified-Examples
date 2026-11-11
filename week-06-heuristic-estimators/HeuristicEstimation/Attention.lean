@@ -31,9 +31,8 @@ def score {α : Type} [Storage α] [Add α] [Mul α] [Zero α] {d : Nat}
 /-- Over ℝ, the score unfolds to a sum over coordinates. -/
 theorem score_eq_sum {d : Nat} (query key : Tensor ℝ [d]) :
     score query key = ∑ i : Fin d, query.getScalar i * key.getScalar i := by
-  change Tensor.sumSpec (Tensor.mulSpec query key) = _
-  rw [Spec.sum_spec_vec]
-  simp only [Spec.getScalar_mul_spec]
+  rw [score, vector_sum_eq]
+  simp only [Tensor.getScalar_mul]
 
 /-- Covariance-aware estimate of a score: the score of the means plus the trace of the supplied
 cross-covariance. -/
@@ -56,8 +55,7 @@ theorem score_mean {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
   rw [integral_finsetSum Finset.univ
     (f := fun i ω => (query ω).getScalar i * (key ω).getScalar i)
     (fun i _ => (hq i).integrable_mul (hk i))]
-  simp only [estimate, score_eq_sum, Tensor.getScalar_ofFn, Tensor.sum,
-    Spec.sum_spec_vec]
+  simp only [estimate, score_eq_sum, vector_sum_eq, Tensor.getScalar_ofFn]
   simp only [matrix_entry, ← Finset.sum_add_distrib]
   exact Finset.sum_congr rfl fun i _ => product_mean (hq i) (hk i)
 
@@ -70,7 +68,7 @@ theorem score_projection_error {d : Nat} (projection : Tensor ℝ [d, d])
       score query (key - Tensor.matvec projection key) := by
   have hadjoint (x y : Tensor ℝ [d]) :
       score (Tensor.matvec projection x) y = score x (Tensor.matvec projection y) := by
-    simp only [score_eq_sum, Tensor.matvec, Spec.getScalar_mat_vec_mul_spec,
+    simp only [score_eq_sum, Tensor.matvec, Tensor.getScalar_contract_matVec_eq_sum,
       Finset.sum_mul, Finset.mul_sum]
     rw [Finset.sum_comm]
     apply Finset.sum_congr rfl
@@ -83,16 +81,9 @@ theorem score_projection_error {d : Nat} (projection : Tensor ℝ [d, d])
     ring
   have htwice : Tensor.matvec projection (Tensor.matvec projection key) =
       Tensor.matvec projection key := by
-    change Spec.matVecMulSpec projection (Spec.matVecMulSpec projection key) = _
-    rw [Spec.mat_vec_assoc]
-    change Tensor.matvec (Tensor.matmul projection projection) key = _
-    rw [hid]
+    simp only [Tensor.matvec]
+    rw [Tensor.contract_matVec_assoc, hid]
   rw [hadjoint, htwice]
-  change _ = score query (Tensor.subSpec key (Tensor.matvec projection key))
-  have hsub (i : Fin d) :
-      (Tensor.subSpec key (Tensor.matvec projection key)).getScalar i =
-        key.getScalar i - (Tensor.matvec projection key).getScalar i := by
-    simp [Tensor.getScalar_eq_apply, Tensor.subSpec, Tensor.map2Spec]
-  simp only [score_eq_sum, hsub, mul_sub, Finset.sum_sub_distrib]
+  simp only [score_eq_sum, Tensor.getScalar_sub, mul_sub, Finset.sum_sub_distrib]
 
 end HeuristicEstimation.Attention

@@ -8,12 +8,12 @@ module
 
 public import KimiK3.FeedForward.Expert
 public import KimiK3.GraphSpec.Primitives
-public import NN.Proofs.Tensor.Basic.Algebra
+public import TorchLean.Tensor.Algebra.Real
 
 /-!
 # Executable SiTU expert graph
 
-A SiTU-GLU expert in TorchLean's typed GraphSpec DAG, built from ordinary linear, elementwise,
+A SiTU-GLU expert in TorchLean's typed typed tensor graph, built from ordinary linear, elementwise,
 `tanh`, and `sigmoid` primitives. The evaluation theorem shows that the graph computes
 `Expert.forward` over real-valued tensors.
 -/
@@ -23,10 +23,9 @@ A SiTU-GLU expert in TorchLean's typed GraphSpec DAG, built from ordinary linear
 namespace KimiK3
 namespace GraphSpec
 
-open Spec TorchLean
+open TorchLean
+open FloatLib.Numerics (MathFunctions)
 open TorchLean.Tensor
-open NN.GraphSpec.DAG
-open Runtime.Autograd.Torch
 
 namespace Expert
 
@@ -40,7 +39,7 @@ abbrev Params (inputDim hiddenDim outputDim : Nat) : List Shape :=
 abbrev Inputs (inputDim : Nat) : List Shape :=
   [[inputDim], [], []]
 
-/-- Zero initialization, present because GraphSpec's model package requires one.
+/-- Zero initialization, present because the model package requires one.
 
 Training code replaces it with initialized or checkpoint-loaded parameters, and the semantic
 theorem below holds for arbitrary expert weights.
@@ -49,7 +48,7 @@ def initialParams (inputDim hiddenDim outputDim : Nat) :
     TorchLean.TensorPack Float (Params inputDim hiddenDim outputDim) :=
   TorchLean.TensorPack.zero
 
-/-- Typed DAG term for one SiTU expert, given input and parameter terms.
+/-- Typed forward expression for one SiTU expert, given input and parameter terms.
 
 Use this form to embed an expert in a larger graph such as Stable LatentMoE.
 -/
@@ -65,12 +64,12 @@ def term {Γ : List Shape} (inputDim hiddenDim outputDim : Nat)
       (Shape.CanBroadcastTo.refl []) (Shape.CanBroadcastTo.refl []))
     (.cons input (.cons upWeight .nil))
   let cappedGate := GraphSpec.softCapTerm [hiddenDim] gateCap gate
-  let sigmoidGate := Term.op (NN.GraphSpec.DAG.PrimOp.sigmoid [hiddenDim])
+  let sigmoidGate := Term.op (PrimOp.sigmoid [hiddenDim])
     (.cons gate .nil)
-  let gated := Term.op (NN.GraphSpec.DAG.PrimOp.mul [hiddenDim])
+  let gated := Term.op (PrimOp.mul [hiddenDim])
     (.cons cappedGate (.cons sigmoidGate .nil))
   let cappedUp := GraphSpec.softCapTerm [hiddenDim] upCap up
-  let hidden := Term.op (NN.GraphSpec.DAG.PrimOp.mul [hiddenDim])
+  let hidden := Term.op (PrimOp.mul [hiddenDim])
     (.cons gated (.cons cappedUp .nil))
   Term.op (PrimOp.broadcastVecMat [] [] [] hiddenDim outputDim
       (Shape.CanBroadcastTo.refl []) (Shape.CanBroadcastTo.refl []))
@@ -85,21 +84,21 @@ def term {Γ : List Shape} (inputDim hiddenDim outputDim : Nat)
     (gateCap upCap : Term Γ []) :
     Term.eval env
         (term inputDim hiddenDim outputDim input gateWeight upWeight downWeight gateCap upCap) =
-      vecMatMulSpec
+      Tensor.vecmat
         (SiTU.vector
           (Tensor.item (Term.eval env gateCap))
           (Tensor.item (Term.eval env upCap))
-          (vecMatMulSpec (Term.eval env input) (Term.eval env gateWeight))
-          (vecMatMulSpec (Term.eval env input) (Term.eval env upWeight)))
+          (Tensor.vecmat (Term.eval env input) (Term.eval env gateWeight))
+          (Tensor.vecmat (Term.eval env input) (Term.eval env upWeight)))
         (Term.eval env downWeight) := by
   -- Expand the graph primitives, then identify the two capped branches with SiTU.
-  simp [term, Term.eval, Term.evalArgs,
-    PrimOp.broadcastVecMat, NN.GraphSpec.DAG.PrimOp.sigmoid,
-    NN.GraphSpec.DAG.PrimOp.mul, one_div, SiTU.expanded_eq_vector]
+  simp only [term, Term.eval_op, Term.evalArgs, broadcastVecMat_scalar_specFwd,
+    PrimOp.sigmoid_specFwd, PrimOp.mul_specFwd, eval_softCapTerm, one_div,
+    SiTU.expanded_eq_vector]
 
 /-- Typed GraphSpec representation of one SiTU-GLU expert. -/
 def model (inputDim hiddenDim outputDim : Nat) :
-    NN.GraphSpec.DAG.Model
+    Model
       (Params inputDim hiddenDim outputDim)
       (Inputs inputDim)
       [outputDim] :=
@@ -132,10 +131,11 @@ theorem specFwd_eq_forward {inputDim hiddenDim outputDim : Nat}
     (model inputDim hiddenDim outputDim).specFwd
         (parameters expert) (inputs input gateCap upCap) =
       expert.forward gateCap upCap input := by
-  simp [model, parameters, inputs, NN.GraphSpec.DAG.Model.specFwd,
-    TorchLean.TensorPack.append, Args.vars, Args.weakenLeft, Args.rename,
-    Term.rename, Term.eval, Env.tget,
+  simp [model, parameters, inputs, Model.specFwd,
+    TorchLean.Pack.append, Args.vars, Args.weakenLeft, Args.rename,
+    Term.rename, Term.eval_var, Env.tget,
     KimiK3.Expert.forward, Params, Inputs]
+  rfl
 
 end Expert
 

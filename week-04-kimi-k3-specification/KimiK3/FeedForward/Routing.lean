@@ -21,7 +21,7 @@ Reference: https://arxiv.org/abs/2607.24653, Section 2.3.3, Eq. 13.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
 open Tensor
 
 /-- A route is an embedding of active slots into experts, so no expert can be selected twice. -/

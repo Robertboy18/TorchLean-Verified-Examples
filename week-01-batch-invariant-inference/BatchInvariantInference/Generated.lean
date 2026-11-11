@@ -19,6 +19,7 @@ namespace TinyValueReductionCert
 
 open CUDA
 open CUDA.TinyPTX
+open TorchLean (Context)
 
 def compiledKernelCert : TinyAttentionCert.TinyAttentionKernelCert where
   sourcePath := "week-01-batch-invariant-inference/cuda/tiny_attn_one_row.cu"
@@ -160,14 +161,14 @@ theorem compiledKernelCert_batchInvariant
   TinyPTXSemantics.tinyValueReductionForward_batchInvariant_of_check "sm_80"
     compiledKernelCert compiledKernelCert_check fma zero
 
-/-- Pair the compiled kernel with a native FlashAttention refinement certificate. -/
+/-- Pair the compiled kernel with a native attention refinement certificate. -/
 def checkedNativeForwardCert
-    {α : Type} [TorchLean.Storage α] [Context α] [DecidableRel ((· > ·) : α -> α -> Prop)]
-    {nQ nK dModel : Nat} {h1 : nQ ≠ 0} {h2 : nK ≠ 0}
-    (nativeCert : BatchInvariantInference.TorchLeanFlashAttention.NativeForwardCert α
-      (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2)) :
+    {α : Type} [TorchLean.Storage α] [Context α]
+    {nQ nK dModel : Nat}
+    (nativeCert : BatchInvariantInference.TorchLeanAttention.NativeForwardCert α
+      (nQ := nQ) (nK := nK) (dModel := dModel)) :
     TinyAttentionSound.CheckedNativeForwardCert "sm_80" α
-      (nQ := nQ) (nK := nK) (dModel := dModel) (h1 := h1) (h2 := h2) where
+      (nQ := nQ) (nK := nK) (dModel := dModel) where
   kernelCert := compiledKernelCert
   kernelChecked := compiledKernelCert_check
   nativeCert := nativeCert

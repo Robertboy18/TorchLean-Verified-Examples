@@ -7,7 +7,7 @@ Authors: TorchLean Team
 module
 
 public import Nemotron.Architecture.Schedule
-public import NN.Spec.Core.Shape
+public import TorchLean.Tensor.Shape
 import Mathlib.Tactic.NormNum
 import Mathlib.Tactic.Ring
 import Lean.Elab.Tactic.Omega
@@ -30,7 +30,7 @@ different operating points, not conflicting claims about one configuration.
 
 namespace Nemotron.Architecture
 
-open Spec
+open TorchLean
 
 /-- A recurrent layer stores one matrix per head, independent of sequence length. -/
 def ssmShape (heads headDim stateDim : Nat) : Shape := [heads, headDim, stateDim]
@@ -96,7 +96,7 @@ def routedExpertParameters (experts latentDim innerDim : Nat) : Nat :=
 /-- Each routed expert contributes an up projection and a down projection of equal size. -/
 theorem routedExpertParameters_eq (experts latentDim innerDim : Nat) :
     routedExpertParameters experts latentDim innerDim = 2 * experts * latentDim * innerDim := by
-  simp only [routedExpertParameters, Shape.size]
+  simp [routedExpertParameters, Shape.size]
   ring
 
 /-- A latent dimension of 2048 instead of 8192 makes the routed-expert matrices four times

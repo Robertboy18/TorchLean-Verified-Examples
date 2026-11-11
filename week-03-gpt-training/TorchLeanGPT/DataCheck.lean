@@ -33,9 +33,9 @@ private def checkBatches : IO Unit := do
         contentHash := 0 }
     let actual := causalLmMaskedTokenBatchFromRecords (α := Float)
       32 batch seqLen shard mask records 7 11 31
-    let key := Spec.Random.keyOf 7 11
+    let key := Random.keyOf 7 11
     let rows := (List.range batch).flatMap fun bi =>
-      let record := records.entries[Spec.Random.sampleNat key bi records.entries.size]!
+      let record := records.entries[Random.sampleNat key bi records.entries.size]!
       (List.range seqLen).map fun i =>
         if i + 1 < record.length then
           let target := record.offset + i + 1

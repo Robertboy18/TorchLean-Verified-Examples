@@ -6,9 +6,8 @@ Authors: TorchLean Team
 
 module
 
-public import KimiK3.Common
-public import NN.MLTheory.Optimization.Muon
-public import NN.Proofs.Tensor.Basic.Algebra
+public import TorchLean.NN.Optimizer.Muon
+public import TorchLean.Tensor.OfFn
 
 /-!
 # Per-head Muon
@@ -26,13 +25,12 @@ https://arxiv.org/abs/2607.24653.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
 open Tensor
-open scoped BigOperators
 
 namespace PerHeadMuon
 
-open Optim.Muon
+open TorchLean.Muon
 
 /-- One momentum matrix for every attention head. -/
 abbrev HeadMatrices (α : Type) [Storage α] (heads rows columns : Nat) :=
@@ -47,38 +45,39 @@ buffers head by head.
 def split {α : Type} [Storage α] {heads rows columns : Nat}
     (momentum : MatrixTensor α rows (heads * columns)) :
     HeadMatrices α heads rows columns :=
-  fun head => Tensor.stackLeading fun row => Tensor.stackLeading fun column =>
-    Tensor.scalar (get2 momentum row (finProdFinEquiv (head, column)))
+  fun head => Tensor.matrix fun row column =>
+    get2 momentum row (finProdFinEquiv (head, column))
 
 /-- Reassemble per-head matrices into the original projection layout. -/
 def merge {α : Type} [Storage α] {heads rows columns : Nat}
     (blocks : HeadMatrices α heads rows columns) :
     MatrixTensor α rows (heads * columns) :=
-  Tensor.stackLeading fun row => Tensor.stackLeading fun outputColumn =>
+  Tensor.matrix fun row outputColumn =>
     let headColumn := finProdFinEquiv.symm outputColumn
-    Tensor.scalar (get2 (blocks headColumn.1) row headColumn.2)
+    get2 (blocks headColumn.1) row headColumn.2
 
 /-- Splitting and reassembling a projection momentum matrix preserves every entry. -/
 theorem merge_split {α : Type} [Storage α] {heads rows columns : Nat}
     (momentum : MatrixTensor α rows (heads * columns)) :
     merge (split momentum) = momentum := by
-  apply TorchLean.Tensor.Internal.Rep.ext
+  apply Tensor.Rep.ext
   rintro ⟨row, column, ⟨⟩⟩
   have h : get2 (merge (split momentum)) row column = get2 momentum row column := by
-    simp only [merge, split, Tensor.stackLeading, Spec.get2_dim, Prod.mk.eta,
-      Equiv.apply_symm_apply]
-  simpa only [Spec.get2_eq_apply] using h
+    simp only [merge, split, Tensor.matrix, Tensor.get2, Tensor.unstack_dim, Tensor.getScalar_ofFn,
+      Prod.mk.eta, Equiv.apply_symm_apply]
+  simpa only [Tensor.get2_eq_apply] using h
 
 /-- Reassembling and splitting an indexed head family returns the same family. -/
 theorem split_merge {α : Type} [Storage α] {heads rows columns : Nat}
     (blocks : HeadMatrices α heads rows columns) :
     split (merge blocks) = blocks := by
   funext head
-  apply TorchLean.Tensor.Internal.Rep.ext
+  apply Tensor.Rep.ext
   rintro ⟨row, column, ⟨⟩⟩
   have h : get2 (split (merge blocks) head) row column = get2 (blocks head) row column := by
-    simp only [merge, split, Tensor.stackLeading, Spec.get2_dim, Equiv.symm_apply_apply]
-  simpa only [Spec.get2_eq_apply] using h
+    simp only [merge, split, Tensor.matrix, Tensor.get2, Tensor.unstack_dim, Tensor.getScalar_ofFn,
+      Equiv.symm_apply_apply]
+  simpa only [Tensor.get2_eq_apply] using h
 
 /-- Orthogonalize every output-head block independently and restore the projection layout. -/
 def orthogonalize {α : Type} [Storage α] {heads rows columns : Nat}

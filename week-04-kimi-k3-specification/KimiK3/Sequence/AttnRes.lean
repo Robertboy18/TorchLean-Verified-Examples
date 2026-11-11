@@ -25,7 +25,8 @@ https://arxiv.org/abs/2607.24653.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
+open FloatLib.Numerics (MathFunctions)
 open Tensor
 
 namespace AttnRes
@@ -35,7 +36,7 @@ variable {modelDim : Nat}
 
 /-- Positive softmax kernel `exp(qᵀ RMSNorm(k))` from Eq. 9. -/
 def kernel (query key : Tensor α [modelDim]) : α :=
-  MathFunctions.exp (Tensor.dotSpec query (RMSNorm.unit key))
+  MathFunctions.exp (Tensor.dot query (RMSNorm.unit key))
 
 /-- Sum of the exponential scores that normalize the depth-attention weights. -/
 def normalizer (query : Tensor α [modelDim])
@@ -86,13 +87,14 @@ def attendPacked {sources : Nat} (hModel : 0 < modelDim)
     (values : Tensor α [sources, modelDim]) :
     Tensor α [modelDim] :=
   let unitScale := Tensor.ones [modelDim]
-  let normalized := Tensor.stackLeading fun row =>
-    RMSNorm.scalePositive hModel (Spec.get values row) unitScale
-  let scores := vecMatMulSpec query (Tensor.swapAdjacentAxes normalized 0)
-  let kernels := Tensor.expSpec scores
-  let denominator := Tensor.sumSpec kernels
+  let normalized := Tensor.dim fun row =>
+    RMSNorm.scalePositive hModel (Tensor.unstack values row) unitScale
+  let transposed := normalized.permute (Shape.adjacentSwap [sources, modelDim] 0) [modelDim, sources]
+  let scores := Tensor.vecmat query transposed
+  let kernels := Tensor.exp scores
+  let denominator := Tensor.sum kernels
   let weights := Tensor.map (fun weight => weight / denominator) kernels
-  vecMatMulSpec weights values
+  Tensor.vecmat weights values
 
 /-- State retained by Block AttnRes while traversing layers. -/
 structure BlockState (α : Type) [Storage α] (modelDim : Nat) where

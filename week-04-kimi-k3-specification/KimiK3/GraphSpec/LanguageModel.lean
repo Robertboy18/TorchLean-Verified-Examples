@@ -31,13 +31,11 @@ Pattern matching selects one of the four refinement theorems in the `GraphSpec.B
 namespace KimiK3
 namespace GraphSpec
 
-open Spec TorchLean NN.GraphSpec.DAG
+open TorchLean
 
 namespace TokenStep
 
-open Spec TorchLean
-open NN.GraphSpec.DAG
-open Runtime.Autograd.Torch
+open TorchLean
 
 variable {architecture : Config} {decayRank : Nat}
 
@@ -76,7 +74,7 @@ def parameters (model : LanguageModel ℝ architecture.text decayRank) :
         [architecture.text.hiddenDim, architecture.text.vocabSize]] :=
     .cons model.finalQuery <| .cons model.finalNormScale <| .cons model.vocabularyHead .nil
   exact .cons model.tokenEmbedding <|
-    TorchLean.TensorPack.append
+    TorchLean.Pack.append
       (ss₁ := Decoder.ParamsFor model (List.finRange architecture.text.numLayers))
       (ss₂ :=
         [[architecture.text.hiddenDim],
@@ -89,8 +87,8 @@ noncomputable def inputs (pastTokens : Nat) (model : LanguageModel ℝ architect
     (states : TorchLean.TensorPack ℝ
       (Decoder.StateShapesFor pastTokens model (List.finRange architecture.text.numLayers)))
     (mlaScoreScale : ℝ) : TorchLean.TensorPack ℝ (Inputs pastTokens model) :=
-  TorchLean.TensorPack.append states <|
-    TorchLean.TensorPack.append
+  TorchLean.Pack.append states <|
+    TorchLean.Pack.append
       (Decoder.controlsFor model mlaScoreScale (List.finRange architecture.text.numLayers)) <|
         .cons (Tensor.scalar Normalize.l2Epsilon) <| .cons (Tensor.scalar architecture.text.situGateCap) <|
           .cons (Tensor.scalar architecture.text.situUpCap) .nil
@@ -99,7 +97,7 @@ noncomputable def inputs (pastTokens : Nat) (model : LanguageModel ℝ architect
 def initialDepth (embedding : Tensor ℝ [architecture.text.hiddenDim]) :
     TorchLean.TensorPack ℝ
       (DepthSchedule.Shapes architecture.text.attnResBlockSize 0 architecture.text.hiddenDim) :=
-  .cons (Tensor.reshapeSpec embedding (by
+  .cons (Tensor.reshape embedding _ (by
       simp [Shape.size, DepthSchedule.completedCount])) <|
     .cons (Tensor.zeros [architecture.text.hiddenDim]) .nil
 
@@ -110,19 +108,19 @@ def initialDepthTerms {Γ : List Shape}
       (DepthSchedule.Shapes architecture.text.attnResBlockSize 0 architecture.text.hiddenDim) :=
   .cons
     (Term.op
-      (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by
+      (KimiK3.GraphSpec.PrimOp.reshape _ _ (by
         simp [Shape.size, DepthSchedule.completedCount]))
       (.cons embedding .nil)) <|
     .cons (Term.op
-      (NN.GraphSpec.DAG.PrimOp.zero [architecture.text.hiddenDim]) .nil) .nil
+      (KimiK3.GraphSpec.PrimOp.zero [architecture.text.hiddenDim]) .nil) .nil
 
 /-- Evaluating the initial-depth terms gives the mathematical initial AttnRes state. -/
 theorem eval_initialDepthTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
     (embedding : Term Γ [architecture.text.hiddenDim]) :
     Term.evalArgs env (initialDepthTerms (architecture := architecture) embedding) =
       initialDepth (Term.eval env embedding) := by
-  simp only [initialDepthTerms, initialDepth, Term.eval, Term.evalArgs,
-    NN.GraphSpec.DAG.PrimOp.reshape_specFwd, NN.GraphSpec.DAG.PrimOp.zero_specFwd]
+  simp only [initialDepthTerms, initialDepth, Term.eval_op, Term.evalArgs,
+    KimiK3.GraphSpec.PrimOp.reshape_specFwd, KimiK3.GraphSpec.PrimOp.zero_specFwd]
 
 /-- Number of depth representations visible to the final AttnRes query. -/
 def finalSourceCount : Nat :=
@@ -150,7 +148,7 @@ def finalSources
     Tensor.castShape completed (by simp [finalSourceCount, hBoundary])
   else
     let row : Tensor ℝ [1, architecture.text.hiddenDim] :=
-      Tensor.reshapeSpec partialState (by simp [Shape.size])
+      Tensor.reshape partialState _ (by simp [Shape.size])
     Tensor.castShape (Tensor.concat completed row)
       (by simp [finalSourceCount, hBoundary])
 
@@ -167,7 +165,7 @@ def finalSourcesTerm {Γ : List Shape}
     Term.cast completed (by simp [finalSourceCount, hBoundary])
   else
     let row : Term Γ [1, architecture.text.hiddenDim] :=
-      Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
+      Term.op (KimiK3.GraphSpec.PrimOp.reshape _ _ (by simp [Shape.size]))
         (.cons partialState .nil)
     let appended : Term Γ
         [DepthSchedule.completedCount architecture.text.attnResBlockSize architecture.text.numLayers + 1, architecture.text.hiddenDim] :=
@@ -187,15 +185,13 @@ theorem eval_finalSourcesTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ 
       architecture.text.numLayers % architecture.text.attnResBlockSize = 0
   · have hCompleted := Term.eval_get env depth (Var.head)
     simp only [finalSourcesTerm, finalSources, hBoundary, dite_true, Term.eval_cast]
-    rw [hCompleted, Tensor.eqRec_eq_cast_shape]
+    rw [hCompleted]
   · have hCompleted := Term.eval_get env depth (Var.head)
     have hPartial := Term.eval_get env depth (.tail .head)
     simp only [finalSourcesTerm, finalSources, hBoundary, dite_false, Term.eval_cast]
     rw [GraphSpec.eval_concatLeadingTerm]
-    simp only [Term.eval_op, Term.evalArgs, NN.GraphSpec.DAG.PrimOp.reshape_specFwd]
+    simp only [Term.eval_op, Term.evalArgs, KimiK3.GraphSpec.PrimOp.reshape_specFwd]
     rw [hCompleted, hPartial]
-    rw [Tensor.eqRec_eq_cast_shape]
-    rfl
 
 private theorem processedAfter_full :
     Decoder.processedAfter 0 (List.finRange architecture.text.numLayers) =
@@ -227,13 +223,13 @@ noncomputable def finishDecoder (hcfg : architecture.WF)
         DepthSchedule.Shapes architecture.text.attnResBlockSize architecture.text.numLayers
           architecture.text.hiddenDim) :=
     outputsFor_full pastTokens model ▸ decoderResult
-  let parts := TorchLean.TensorPack.split normalizedResult
+  let parts := TorchLean.Pack.split normalizedResult
   let sources := finalSources parts.2
   let retrieved := AttnRes.attendPacked hcfg.hiddenDim_pos
     model.finalQuery sources
   let hidden := RMSNorm.scale retrieved model.finalNormScale
-  let logits := vecMatMulSpec hidden model.vocabularyHead
-  TorchLean.TensorPack.append parts.1 (.cons logits .nil)
+  let logits := Tensor.vecmat hidden model.vocabularyHead
+  TorchLean.Pack.append parts.1 (.cons logits .nil)
 
 /-- Semantics of one autoregressive token step under a supplied route trace. -/
 noncomputable def runSpec (hcfg : architecture.WF)
@@ -244,7 +240,7 @@ noncomputable def runSpec (hcfg : architecture.WF)
     (states : TorchLean.TensorPack ℝ
       (Decoder.StateShapesFor pastTokens model (List.finRange architecture.text.numLayers)))
     (mlaScoreScale : ℝ) : TorchLean.TensorPack ℝ (Outputs pastTokens model) :=
-  let embedding := Spec.get model.tokenEmbedding token
+  let embedding := Tensor.unstack model.tokenEmbedding token
   let decoderResult := Decoder.runSpec hcfg model route pastTokens 0
     (List.finRange architecture.text.numLayers) (initialDepth embedding) states mlaScoreScale
   finishDecoder hcfg model pastTokens decoderResult
@@ -256,7 +252,7 @@ noncomputable def runSpecAuto (hcfg : architecture.WF)
     (states : TorchLean.TensorPack ℝ
       (Decoder.StateShapesFor pastTokens model (List.finRange architecture.text.numLayers)))
     (mlaScoreScale : ℝ) : TorchLean.TensorPack ℝ (Outputs pastTokens model) :=
-  let embedding := Spec.get model.tokenEmbedding token
+  let embedding := Tensor.unstack model.tokenEmbedding token
   let decoderResult := Decoder.runSpecAuto hcfg model pastTokens 0
     (List.finRange architecture.text.numLayers) (initialDepth embedding) states mlaScoreScale
   finishDecoder hcfg model pastTokens decoderResult
@@ -272,7 +268,7 @@ noncomputable def RoutesAgree (hcfg : architecture.WF)
     (mlaScoreScale : ℝ) : Prop :=
   Decoder.RoutesAgree hcfg model route pastTokens 0
     (List.finRange architecture.text.numLayers)
-    (initialDepth (Spec.get model.tokenEmbedding token)) states mlaScoreScale
+    (initialDepth (Tensor.unstack model.tokenEmbedding token)) states mlaScoreScale
 
 /-- A route trace that passes `RoutesAgree` gives the automatically routed token step. -/
 theorem runSpec_eq_runSpecAuto_of_routesAgree (hcfg : architecture.WF)
@@ -289,7 +285,7 @@ theorem runSpec_eq_runSpecAuto_of_routesAgree (hcfg : architecture.WF)
   apply congrArg (finishDecoder hcfg model pastTokens)
   exact Decoder.runSpec_eq_runSpecAuto_of_routesAgree hcfg model route pastTokens 0
     (List.finRange architecture.text.numLayers)
-    (initialDepth (Spec.get model.tokenEmbedding token)) states mlaScoreScale hRoutes
+    (initialDepth (Tensor.unstack model.tokenEmbedding token)) states mlaScoreScale hRoutes
 
 /-- Default tensors of the right shapes for the token-step graph.
 
@@ -302,7 +298,7 @@ def initialParams (hcfg : architecture.WF)
       Route architecture.text.numRoutedExperts architecture.text.activeExperts)
     (pastTokens : Nat) : TorchLean.TensorPack Float (Params languageModel) :=
   .cons (Tensor.zeros [architecture.text.vocabSize, architecture.text.hiddenDim]) <|
-    TorchLean.TensorPack.append
+    TorchLean.Pack.append
       (ss₁ := Decoder.ParamsFor languageModel (List.finRange architecture.text.numLayers))
       (ss₂ :=
         [[architecture.text.hiddenDim],
@@ -363,7 +359,7 @@ theorem eval_decoderParameterTerms {Γ : List Shape} (env : TorchLean.TensorPack
     (languageModel : LanguageModel ℝ architecture.text decayRank)
     (params : Args Γ (Params languageModel)) :
     Term.evalArgs env (decoderParameterTerms languageModel params) =
-      (TorchLean.TensorPack.split
+      (TorchLean.Pack.split
         (match Term.evalArgs env params with
         | .cons _ rest => rest)).1 := by
   cases params with
@@ -374,7 +370,7 @@ theorem eval_finalParameterTerms {Γ : List Shape} (env : TorchLean.TensorPack �
     (languageModel : LanguageModel ℝ architecture.text decayRank)
     (params : Args Γ (Params languageModel)) :
     Term.evalArgs env (finalParameterTerms languageModel params) =
-      (TorchLean.TensorPack.split
+      (TorchLean.Pack.split
         (match Term.evalArgs env params with
         | .cons _ rest => rest)).2 := by
   cases params with
@@ -386,12 +382,12 @@ theorem eval_decoderInputTerms {Γ : List Shape} (env : TorchLean.TensorPack ℝ
     (embedding : Term Γ [architecture.text.hiddenDim])
     (allInputs : Args Γ (Inputs pastTokens languageModel)) :
     Term.evalArgs env (decoderInputTerms pastTokens languageModel embedding allInputs) =
-      let stateAndRest := TorchLean.TensorPack.split
+      let stateAndRest := TorchLean.Pack.split
         (Term.evalArgs env allInputs)
-      let controlAndShared := TorchLean.TensorPack.split stateAndRest.2
-      TorchLean.TensorPack.append (initialDepth (Term.eval env embedding)) <|
-        TorchLean.TensorPack.append stateAndRest.1 <|
-          TorchLean.TensorPack.append controlAndShared.1 controlAndShared.2 := by
+      let controlAndShared := TorchLean.Pack.split stateAndRest.2
+      TorchLean.Pack.append (initialDepth (Term.eval env embedding)) <|
+        TorchLean.Pack.append stateAndRest.1 <|
+          TorchLean.Pack.append controlAndShared.1 controlAndShared.2 := by
   simp only [decoderInputTerms, Term.evalArgs_append, eval_initialDepthTerms,
     eval_splitArgs_left, eval_splitArgs_right]
 
@@ -401,7 +397,7 @@ def graph (hcfg : architecture.WF)
     (route : ∀ _index : Fin architecture.text.numLayers,
       Route architecture.text.numRoutedExperts architecture.text.activeExperts)
     (pastTokens : Nat) (token : Fin architecture.text.vocabSize) :
-    NN.GraphSpec.DAG.MultiModel (Params languageModel) (Inputs pastTokens languageModel)
+    KimiK3.GraphSpec.MultiModel (Params languageModel) (Inputs pastTokens languageModel)
     (Outputs pastTokens languageModel) :=
   { initParams := initialParams hcfg languageModel route pastTokens
     body := by
@@ -437,7 +433,7 @@ def graph (hcfg : architecture.WF)
         let retrieved := AttnRes.term finalSourceCount architecture.text.hiddenDim
           hcfg.hiddenDim_pos finalQuery sources
         let hidden := Term.op
-          (NN.GraphSpec.DAG.PrimOp.rmsNorm [] architecture.text.hiddenDim
+          (KimiK3.GraphSpec.PrimOp.rmsNorm [] architecture.text.hiddenDim
             hcfg.hiddenDim_pos)
           (.cons retrieved (.cons finalNormScale .nil))
         let logits := Term.op
@@ -460,23 +456,23 @@ theorem graph_specFwd_eq_runSpec (hcfg : architecture.WF)
     (graph hcfg languageModel route pastTokens token).specFwd
         (parameters languageModel) (inputs pastTokens languageModel states mlaScoreScale) =
       runSpec hcfg languageModel route pastTokens token states mlaScoreScale := by
-  simp only [NN.GraphSpec.DAG.MultiModel.specFwd, graph, Params, Inputs, Outputs,
+  simp only [KimiK3.GraphSpec.MultiModel.specFwd, graph, Params, Inputs, Outputs,
     parameters, inputs, Decoder.InputsFor]
   rw [Block.eval_andThen]
   rw [Block.eval_cast]
-  rw [NN.GraphSpec.DAG.MultiModel.eval_inline]
+  rw [KimiK3.GraphSpec.MultiModel.eval_inline]
   rw [eval_decoderParameterTerms, eval_decoderInputTerms]
   simp only [eval_splitArgs_left, eval_splitArgs_right,
-    Term.evalArgs_vars, TorchLean.TensorPack.split_append,
+    Term.evalArgs_vars, TorchLean.Pack.split_append,
     Term.eval_get, Env.tget, embeddingTableTerm,
     StableLatentMoE.eval_selectLeadingTerm]
   have hDecoder :
       (Decoder.fullModel hcfg languageModel route pastTokens).specFwd
           (Decoder.parametersFor languageModel (List.finRange architecture.text.numLayers))
-          (TorchLean.TensorPack.append
-            (initialDepth (Spec.get languageModel.tokenEmbedding token)) <|
-              TorchLean.TensorPack.append states <|
-                TorchLean.TensorPack.append
+          (TorchLean.Pack.append
+            (initialDepth (Tensor.unstack languageModel.tokenEmbedding token)) <|
+              TorchLean.Pack.append states <|
+                TorchLean.Pack.append
                   (Decoder.controlsFor languageModel mlaScoreScale
                     (List.finRange architecture.text.numLayers)) <|
                     .cons (Tensor.scalar Normalize.l2Epsilon) <|
@@ -484,21 +480,21 @@ theorem graph_specFwd_eq_runSpec (hcfg : architecture.WF)
                         .cons (Tensor.scalar architecture.text.situUpCap) .nil) =
         Decoder.runSpec hcfg languageModel route pastTokens 0
           (List.finRange architecture.text.numLayers)
-          (initialDepth (Spec.get languageModel.tokenEmbedding token)) states mlaScoreScale := by
+          (initialDepth (Tensor.unstack languageModel.tokenEmbedding token)) states mlaScoreScale := by
     exact Decoder.model_specFwd_eq_runSpec hcfg languageModel route pastTokens 0
       (List.finRange architecture.text.numLayers)
-      (initialDepth (Spec.get languageModel.tokenEmbedding token)) states mlaScoreScale
+      (initialDepth (Tensor.unstack languageModel.tokenEmbedding token)) states mlaScoreScale
   rw [hDecoder]
-  simp only [Block.eval, Term.evalArgs_append, Term.evalArgs,
+  simp only [Block.eval_ret, Term.evalArgs_append, Term.evalArgs,
     Term.evalArgs_rename_inRight, Term.evalArgs_vars, Term.eval_weakenAppend,
     eval_finalParameterTerms, eval_splitArgs_left,
-    eval_splitArgs_right, TorchLean.TensorPack.split_append,
-    Term.eval, Term.eval_get, Env.tget, eval_finalSourcesTerm, AttnRes.eval_term,
-    NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd,
-    PrimOp.broadcastVecMat]
+    eval_splitArgs_right, TorchLean.Pack.split_append,
+    Term.eval_op, Term.eval_get, Env.tget, eval_finalSourcesTerm, AttnRes.eval_term,
+    KimiK3.GraphSpec.PrimOp.rmsNorm_specFwd,
+    PrimOp.broadcastVecMat_specFwd, Tensor.broadcast_self]
   rw [runSpec]
   rw [GraphSpec.rmsNormSpec_scalar_eq_scale]
-  simp [finishDecoder, NN.GraphSpec.DAG.PrimOp.Internal.vecMatCommonBatchSpec, Tensor.zipEach]
+  simp [finishDecoder, KimiK3.GraphSpec.PrimOp.Internal.vecMatCommonBatchSpec, Tensor.zipEach]
 
 /-- For a route trace that passes `RoutesAgree`, the token DAG computes K3's automatically routed
 semantics `runSpecAuto`.

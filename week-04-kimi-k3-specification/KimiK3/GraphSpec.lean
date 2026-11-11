@@ -16,10 +16,10 @@ public import KimiK3.GraphSpec.MoE
 public import KimiK3.GraphSpec.Vision
 
 /-!
-# Executable Kimi K3 graphs
+# Typed tensor programs for Kimi K3
 
-Typed GraphSpec representations of K3 components, with theorems relating their pure graph
-semantics to the mathematical architecture definitions.
+These programs compose TorchLean tensor operations. Their forward evaluations agree with the
+mathematical architecture definitions.
 
 KDA, MLA, AttnRes, SiTU experts, routed MoE, and MoonViT blocks have component-level denotation
 theorems. The assembled decoder theorem targets a fixed-shape, packed one-token semantics, and no

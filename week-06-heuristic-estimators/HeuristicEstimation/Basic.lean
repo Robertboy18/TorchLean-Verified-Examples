@@ -7,8 +7,10 @@ Authors: Robert Joseph George
 module
 
 public import Mathlib.Probability.Moments.Covariance
-public import NN.Proofs.Tensor.Basic.LinearAlgebra
-public import NN.Tensor
+public import TorchLean.Tensor.Context.Real
+public import TorchLean.Tensor.LinearAlgebra.Real
+public import TorchLean.Tensor.Operations
+public import TorchLean.Tensor.Reduce.Real
 
 /-!
 # Shared inputs and expectation identities
@@ -45,8 +47,25 @@ def response {α : Type} [Storage α] [One α] [Mul α] [Add α] [Sub α]
 theorem response_apply {α : Type} [Storage α] [One α] [Mul α] [Add α] [Sub α]
     {shape : Shape} (shared : α) (x z : Tensor α shape) (i : shape.Coord) :
     response shared x z i = x i * (x i * shared + z i * (1 - shared)) := by
-  change Tensor.mulSpec x (Tensor.addSpec (x.scale shared) (z.scale (1 - shared))) i = _
-  simp [Tensor.mulSpec, Tensor.addSpec, Tensor.map2Spec, Tensor.scaleSpec, Tensor.map]
+  simp [response, Tensor.scale]
+
+/-- The scalar sum of a vector equals the finite sum over its indices. -/
+theorem vector_sum_eq {α : Type} [Storage α] [AddCommMonoid α] {n : Nat}
+    (values : Tensor α [n]) :
+    values.sum = ∑ i : Fin n, values.getScalar i := by
+  classical
+  rw [Tensor.sum_eq_coord_sum, Fintype.sum_prod_type]
+  simp [Tensor.getScalar_eq_apply]
+
+/-- Reduce the sole axis of a vector to its scalar mean. -/
+def vectorMean {α : Type} [Storage α] [Context α] {n : Nat} (values : Tensor α [n]) : α :=
+  Tensor.item (Tensor.castShape (Tensor.mean values (List.finRange (Shape.rank [n])) false)
+    (Shape.reduce_finRange [n]))
+
+/-- The real vector mean divides the coordinate sum by the totalized vector length. -/
+theorem vectorMean_eq {n : Nat} (values : Tensor ℝ [n]) :
+    vectorMean values = (∑ i : Fin n, values.getScalar i) / (Tensor.meanDenominator [n] : ℝ) := by
+  rw [vectorMean, Tensor.mean_finRange_item, Context.divNat_real, vector_sum_eq]
 
 /-- First coordinates of the four equally likely sign pairs. -/
 def signs {α : Type} [Storage α] [One α] [Neg α] : Tensor α [4] :=
@@ -59,21 +78,19 @@ def independentSigns {α : Type} [Storage α] [One α] [Neg α] : Tensor α [4] 
 
 /-- Averaged over the four pairs, the response is `shared`, for every real `shared`. -/
 theorem response_mean (shared : ℝ) :
-    Tensor.mean (response shared (signs : Tensor ℝ [4]) independentSigns) = shared := by
-  rw [Tensor.mean, Tensor.meanSpec, Spec.sum_spec_vec]
+    vectorMean (response shared (signs : Tensor ℝ [4]) independentSigns) = shared := by
+  rw [vectorMean_eq]
   simp [Tensor.getScalar_eq_apply, response_apply, signs, independentSigns, Tensor.ofFn,
     Fin.sum_univ_succ, Tensor.meanDenominator, Shape.size]
   ring
 
 /-- Over the four pairs, the response has population variance `(1 - shared) ^ 2`. -/
 theorem response_variance (shared : ℝ) :
-    Tensor.mean (Tensor.square
+    vectorMean (Tensor.square
       (response shared (signs : Tensor ℝ [4]) independentSigns - Tensor.full [4] shared)) =
       (1 - shared) ^ 2 := by
-  change Tensor.mean (Tensor.map (fun x => x * x)
-    (Tensor.subSpec (response shared signs independentSigns) (Tensor.full [4] shared))) = _
-  rw [Tensor.mean, Tensor.meanSpec, Spec.sum_spec_vec]
-  simp [Tensor.getScalar_eq_apply, Tensor.map, Tensor.subSpec, Tensor.map2Spec,
+  rw [vectorMean_eq]
+  simp [Tensor.getScalar_eq_apply, Tensor.square,
     response_apply, signs, independentSigns, Tensor.ofFn, Fin.sum_univ_succ,
     Tensor.meanDenominator, Shape.size]
   ring

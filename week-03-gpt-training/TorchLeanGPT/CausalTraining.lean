@@ -6,9 +6,9 @@ Released under the MIT license.
 module
 
 public import TorchLeanGPT.Model
-public import NN.Proofs.Models.Attention.CausalMask
+public import TorchLean.NN.Attention.CausalMask
 public import Mathlib.Algebra.BigOperators.Fin
-import NN.Proofs.Analysis.Softmax
+import TorchLean.NN.Softmax
 
 /-!
 # Weighted rows and causal attention
@@ -29,9 +29,6 @@ open TorchLean
 open scoped BigOperators
 
 namespace TorchLeanGPT
-
-open NN.Proofs.Models.Attention
-open Spec
 
 /--
 Two row-wise quantities that agree wherever the weight is nonzero have the same weighted sum.
@@ -55,18 +52,18 @@ private theorem softmax_backward_get2_zero_at_zero_weight
     {m n : Nat}
     (weights dWeights : Tensor ℝ [m, n])
     (i : Fin m) (j : Fin n)
-    (hWeight : Spec.get2 weights i j = 0) :
-    Spec.get2
-      (Spec.softmaxBackwardFromWeightsSpec weights dWeights) i j = 0 := by
+    (hWeight : Tensor.get2 weights i j = 0) :
+    Tensor.get2
+      (Softmax.backwardFromWeights weights dWeights) i j = 0 := by
   cases m with
   | zero => exact Fin.elim0 i
   | succ m =>
-    have hrow := Proofs.getScalar_softmaxBackwardFromWeightsSpec
+    have hrow := Softmax.getScalar_backwardFromWeights
       (weights.unstack i) (dWeights.unstack i) j
     have hzero : (weights.unstack i).getScalar j = 0 := hWeight
     rw [hzero, zero_mul] at hrow
-    simpa only [Spec.get2_eq_getScalar_get, Spec.softmaxBackwardFromWeightsSpec,
-      Spec.get_dim] using hrow
+    simpa only [Tensor.get2_eq_getScalar_unstack, Softmax.backwardFromWeights,
+      Tensor.unstack_dim] using hrow
 
 /--
 Strict-future attention coordinates carry neither forward weight nor backward score gradient.
@@ -80,16 +77,16 @@ theorem causal_attention_blocks_future_forward_and_backward
     (i j : Fin context)
     (future : i.val < j.val) :
     let weights :=
-      Spec.hardMaskedSoftmaxSpec scores (Spec.causalMask context)
-    Spec.get2 weights i j = 0 ∧
-      Spec.get2
-        (Spec.softmaxBackwardFromWeightsSpec weights dWeights) i j = 0 := by
+      Softmax.hardMasked scores (Attention.causalMask context)
+    Tensor.get2 weights i j = 0 ∧
+      Tensor.get2
+        (Softmax.backwardFromWeights weights dWeights) i j = 0 := by
   dsimp
   have hForward :=
-    hardMaskedSoftmaxSpec_causal_future_zero scores i j future
+    Softmax.hardMasked_causalMask_eq_zero scores i j future
   exact ⟨hForward,
     softmax_backward_get2_zero_at_zero_weight
-      (Spec.hardMaskedSoftmaxSpec scores (Spec.causalMask context))
+      (Softmax.hardMasked scores (Attention.causalMask context))
       dWeights i j hForward⟩
 
 end TorchLeanGPT

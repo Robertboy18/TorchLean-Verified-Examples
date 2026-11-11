@@ -48,7 +48,7 @@ def recentTokens (ids : List Nat) (window : Nat) : List Nat :=
 /--
 Generate a continuation from a prompt with TorchLean's ordinary sampling policy.
 
-Like the full-prefix generator, it calls `text.next`, which applies the repeat penalty
+Like the full-prefix generator, it calls `Text.next`, which applies the repeat penalty
 (`config.repeatPenalty` over `config.repeatWindow` ids) before greedy or top-k selection. The
 learned position table is never restarted, so a prompt and continuation that exceed the model's
 context are rejected. It returns the new tokens, never `stopToken`.
@@ -68,9 +68,9 @@ def generateIds
   let prefillStart ← IO.monoNanosNow
   let mut logits ← decoder.prefill promptIds
   let prefillFinish ← IO.monoNanosNow
-  let options : text.GenerationOptions :=
+  let options : Text.GenerationOptions :=
     { prompt := ""
-      newTokenCount := steps
+      continuationLength := steps
       temperature := config.temperature
       topK := config.topK
       repeatPenalty := config.repeatPenalty
@@ -94,7 +94,7 @@ def generateIds
             throw <| IO.userError
               s!"cached generation: expected {decoder.config.vocabularySize} logits, got {scores.size}"
         let token ← CLI.orThrow "cached generation" <|
-          text.next scoreTensor options counter recentTensor
+          Text.next scoreTensor options counter recentTensor
         if token.val = stopToken then
           pure suffix
         else

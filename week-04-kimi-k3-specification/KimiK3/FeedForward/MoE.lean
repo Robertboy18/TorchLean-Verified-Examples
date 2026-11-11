@@ -8,7 +8,8 @@ module
 
 public import KimiK3.FeedForward.Expert
 public import KimiK3.FeedForward.Routing
-import NN.Proofs.Gradients.Activation
+import TorchLean.NN.Gradients.Activation
+import TorchLean.Tensor.LinearAlgebra.Real
 
 /-!
 # Stable LatentMoE
@@ -24,7 +25,8 @@ Reference: https://arxiv.org/abs/2607.24653, Section 2.3, Eqs. 11--13.
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
+open FloatLib.Numerics (MathFunctions)
 open Tensor
 
 /-- Parameters for Kimi K3's Stable LatentMoE layer. -/
@@ -55,7 +57,7 @@ def rawRouterScores
     (moe : StableLatentMoE α modelDim latentDim sharedHidden routedHidden numShared numRouted
       activeExperts)
     (x : Tensor α [modelDim]) : Tensor α [numRouted] :=
-  Activation.sigmoidSpec (vecMatMulSpec x moe.routerWeight)
+  Tensor.sigmoid (Tensor.vecmat x moe.routerWeight)
 
 /-- Every raw routing score is strictly positive, since it is a sigmoid output. -/
 theorem rawRouterScores_pos
@@ -63,8 +65,8 @@ theorem rawRouterScores_pos
       activeExperts)
     (x : Tensor ℝ [modelDim]) (expert : Fin numRouted) :
     0 < Tensor.getScalar (moe.rawRouterScores x) expert := by
-  rw [rawRouterScores, Activation.sigmoidSpec, Tensor.getScalar_map,
-    Proofs.sigmoid_eq_inv_exp]
+  rw [rawRouterScores, Tensor.sigmoid, Tensor.getScalar_map,
+    Context.sigmoid_eq_inv_exp]
   positivity
 
 /-- Bias-adjusted scores used for top-k selection (Eq. 13). -/
@@ -82,7 +84,7 @@ def routeWeights
     (x : Tensor α [modelDim]) : Tensor α [activeExperts] :=
   let raw := moe.rawRouterScores x
   Normalize.probabilities <|
-    Tensor.stackLeading (fun slot => Tensor.scalar (Tensor.getScalar raw (route slot)))
+    Tensor.ofFn fun slot => Tensor.getScalar raw (route slot)
 
 /-- For a nonempty route, the selected raw routing scores have positive total. -/
 theorem selectedRouterScoreTotal_pos
@@ -90,12 +92,11 @@ theorem selectedRouterScoreTotal_pos
       activeExperts)
     (route : Route numRouted activeExperts) (x : Tensor ℝ [modelDim])
     (hActive : 0 < activeExperts) :
-    0 < Tensor.sumSpec
-    (Tensor.stackLeading fun slot => Tensor.scalar
-        (Tensor.getScalar (moe.rawRouterScores x) (route slot))) := by
+    0 < Tensor.sum
+    (Tensor.ofFn fun slot => Tensor.getScalar (moe.rawRouterScores x) (route slot)) := by
   let _ : Nonempty (Fin activeExperts) := Fin.pos_iff_nonempty.mp hActive
-  rw [Spec.sum_spec_vec]
-  simp only [Tensor.stackLeading, Tensor.getScalar_dim]
+  rw [Tensor.sum_vec]
+  simp only [Tensor.getScalar_ofFn]
   exact Finset.sum_pos
     (fun slot _ => moe.rawRouterScores_pos x (route slot))
     Finset.univ_nonempty
@@ -109,12 +110,11 @@ theorem routeWeights_apply
     (hActive : 0 < activeExperts) (slot : Fin activeExperts) :
     Tensor.getScalar (moe.routeWeights route x) slot =
       Tensor.getScalar (moe.rawRouterScores x) (route slot) /
-        Tensor.sumSpec
-          (Tensor.stackLeading fun selected => Tensor.scalar
-            (Tensor.getScalar (moe.rawRouterScores x) (route selected))) := by
+        Tensor.sum
+          (Tensor.ofFn fun selected => Tensor.getScalar (moe.rawRouterScores x) (route selected)) := by
   rw [routeWeights, Normalize.probabilities_of_sum_pos _
     (moe.selectedRouterScoreTotal_pos route x hActive)]
-  simp only [Tensor.getScalar_map, Tensor.stackLeading, Tensor.getScalar_dim]
+  simp only [Tensor.getScalar_map, Tensor.getScalar_ofFn]
 
 /-- Routing weights of a nonempty route sum to one. -/
 theorem routeWeights_sum_eq_one
@@ -122,18 +122,17 @@ theorem routeWeights_sum_eq_one
       activeExperts)
     (route : Route numRouted activeExperts) (x : Tensor ℝ [modelDim])
     (hActive : 0 < activeExperts) :
-    Tensor.sumSpec (moe.routeWeights route x) = 1 := by
-  rw [Spec.sum_spec_vec]
+    Tensor.sum (moe.routeWeights route x) = 1 := by
+  rw [Tensor.sum_vec]
   simp_rw [moe.routeWeights_apply route x hActive]
   rw [← Finset.sum_div]
   have hTotal := moe.selectedRouterScoreTotal_pos route x hActive
   have hNumerator :
       (∑ slot, Tensor.getScalar (moe.rawRouterScores x) (route slot)) =
-        Tensor.sumSpec
-          (Tensor.stackLeading fun slot => Tensor.scalar
-            (Tensor.getScalar (moe.rawRouterScores x) (route slot))) := by
-    rw [Spec.sum_spec_vec]
-    simp only [Tensor.stackLeading, Tensor.getScalar_dim]
+        Tensor.sum
+          (Tensor.ofFn fun slot => Tensor.getScalar (moe.rawRouterScores x) (route slot)) := by
+    rw [Tensor.sum_vec]
+    simp only [Tensor.getScalar_ofFn]
   rw [hNumerator]
   exact div_self hTotal.ne'
 
@@ -153,7 +152,7 @@ def routedAggregate
       activeExperts)
     (route : Route numRouted activeExperts) (gateCap upCap : α)
     (x : Tensor α [modelDim]) : Tensor α [latentDim] :=
-  let latent := vecMatMulSpec x moe.downProject
+  let latent := Tensor.vecmat x moe.downProject
   let weights := moe.routeWeights route x
   (List.finRange activeExperts).foldl
     (fun total slot =>
@@ -172,7 +171,7 @@ def forward
     (x : Tensor α [modelDim]) : Tensor α [modelDim] :=
   let shared := moe.sharedOutput gateCap upCap x
   let routed := moe.routedAggregate route gateCap upCap x
-  shared + vecMatMulSpec (RMSNorm.scale routed moe.routedNormScale) moe.upProject
+  shared + Tensor.vecmat (RMSNorm.scale routed moe.routedNormScale) moe.upProject
 
 /-- Route a real-valued token using Eq. 13's bias-adjusted scores. -/
 noncomputable def route
@@ -235,18 +234,18 @@ structure MXExecution {latentBlocks hiddenBlocks : Nat} (format : Microscaling.F
   /-- Per-expert MXFP4 block scales. -/
   scales : Fin numRouted → MXFP4Expert.Scales latentBlocks hiddenBlocks (latentBlocks * 32)
   gateScaleCovers : ∀ expert output inputBlock offset,
-    |get2 (moe.routed expert).gateWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
+    |Tensor.get2 (moe.routed expert).gateWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
       6 * Microscaling.scaleValue ((scales expert).gate output inputBlock)
   upScaleCovers : ∀ expert output inputBlock offset,
-    |get2 (moe.routed expert).upWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
+    |Tensor.get2 (moe.routed expert).upWeight (finProdFinEquiv (inputBlock, offset)) output| ≤
       6 * Microscaling.scaleValue ((scales expert).up output inputBlock)
   downScaleCovers : ∀ expert output hiddenBlock offset,
-    |get2 (moe.routed expert).downWeight (finProdFinEquiv (hiddenBlock, offset)) output| ≤
+    |Tensor.get2 (moe.routed expert).downWeight (finProdFinEquiv (hiddenBlock, offset)) output| ≤
       6 * Microscaling.scaleValue ((scales expert).down output hiddenBlock)
   /-- Certified microscaled execution for each selected expert. -/
   selected : ∀ slot,
     MXFP4Expert.Execution format (scales (route slot)) (moe.routed (route slot))
-      gateCap upCap (vecMatMulSpec input moe.downProject)
+      gateCap upCap (Tensor.vecmat input moe.downProject)
 
 /-- Weighted latent output of the selected microscaled experts. -/
 noncomputable def routedAggregateMX {latentBlocks hiddenBlocks : Nat}
@@ -277,7 +276,7 @@ noncomputable def forwardMX {latentBlocks hiddenBlocks : Nat}
     Tensor ℝ [modelDim] :=
   let shared := moe.sharedOutput gateCap upCap input
   let routed := moe.routedAggregateMX route gateCap upCap input execution
-  shared + vecMatMulSpec (RMSNorm.scale routed moe.routedNormScale) moe.upProject
+  shared + Tensor.vecmat (RMSNorm.scale routed moe.routedNormScale) moe.upProject
 
 end StableLatentMoE
 

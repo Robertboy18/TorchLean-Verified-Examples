@@ -323,13 +323,14 @@ tiny_cpu=$(lake query TorchLean/torchlean_tensor_cpu_shared)
 lake env lean --load-dynlib="$tiny_cpu" week-06-heuristic-estimators/experiments/Tiny.lean
 python3 week-06-heuristic-estimators/experiments/tiny.py \
   --output /tmp/tiny-results.json
-lake env lean --run week-06-heuristic-estimators/experiments/Digits.lean \
-  .lake/packages/TorchLean/NN/Examples/Verification/Robustness/digits_linear_weights.json \
-  .lake/packages/TorchLean/NN/Examples/Verification/Robustness/digits_test.json
+digits_source=https://raw.githubusercontent.com/lean-dojo/TorchLean/f37cbc5aca8e79943b0ef0e3d3499ca9719d7c2b/NN/Examples/Verification/Robustness
+curl -fsSLo /tmp/digits_linear_weights.json "$digits_source/digits_linear_weights.json"
+curl -fsSLo /tmp/digits_test.json "$digits_source/digits_test.json"
+lake env lean --load-dynlib="$tiny_cpu" --run week-06-heuristic-estimators/experiments/Digits.lean \
+  /tmp/digits_linear_weights.json /tmp/digits_test.json
 ```
 
-The two digits files ship with the TorchLean package that Lake fetches into `.lake/packages`,
-and their hashes match the recorded ones. Both source artifacts are read-only.
+The digits files come from the TorchLean revision used for the original experiment.
 [The expanded record](results-models.json) includes all nine GPT settings, the digits results
 and independent validation summaries, and source/data hashes.
 [The small-transformer record](results-tiny.json) also separates calibration, evaluation,

@@ -6,7 +6,6 @@ Authors: TorchLean Team
 
 module
 
-public import KimiK3.Common
 public import Mathlib.Analysis.SpecialFunctions.Log.Basic
 
 /-!
@@ -24,10 +23,6 @@ https://arxiv.org/abs/2607.24653.
 @[expose] public section
 
 namespace KimiK3
-
-open Spec TorchLean
-open Tensor
-open scoped BigOperators
 
 namespace MOPD
 
@@ -58,7 +53,7 @@ theorem reward_mem_interval {maxReward : ℝ} (h : 0 ≤ maxReward)
       reward maxReward teacherProbability studentProbability ≤ maxReward := by
   constructor
   · exact le_max_left _ _
-  · exact max_le (by linarith) (min_le_left _ _)
+  · exact max_le ((neg_nonpos.mpr h).trans h) (min_le_left _ _)
 
 /-- A teacher and student assigning the same probability receive zero MOPD reward. -/
 @[simp]

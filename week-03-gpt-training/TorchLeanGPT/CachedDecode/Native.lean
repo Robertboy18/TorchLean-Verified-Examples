@@ -5,8 +5,8 @@ Released under the MIT license.
 
 module
 
-public import NN.Runtime.Autograd.Engine.LibTorch.Buffer
-public import NN.Runtime.Autograd.Engine.LibTorch.Kernels
+public import TorchLean.CUDA.LibTorch.Buffer
+public import TorchLean.CUDA.LibTorch.Kernels
 
 /-!
 # Native storage for incremental decoding
@@ -30,7 +30,7 @@ namespace TorchLeanGPT
 namespace CachedDecode
 namespace Native
 
-open Runtime.Autograd.LibTorch
+open TorchLean.LibTorch
 
 /-- Opaque, reference-counted handle to the native key/value storage. -/
 opaque CacheImpl : NonemptyType
@@ -72,7 +72,7 @@ def layerNorm
       (← Buffer.sizeIO beta) != width then
     throw <| IO.userError "cached decoder: LayerNorm width mismatch"
   let (output, normalized, inverseStd) ← IO.lazyPure fun _ =>
-    Buffer.layerNormFwd input gamma beta 1 width (1 / Float.ofNat width.toNat) epsilon
+    Buffer.layerNorm input gamma beta 1 width epsilon
   let _ ← Buffer.releaseIO normalized
   let _ ← Buffer.releaseIO inverseStd
   pure output

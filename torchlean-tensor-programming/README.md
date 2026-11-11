@@ -14,16 +14,15 @@ To refresh compiler type information and the CPU command outputs, then rebuild t
 
 ```bash
 python -m pip install -r site/requirements.txt
-lake build BatchInvariantInference VerifiableTransformers TorchLeanGPT \
-  KimiK3 Nemotron HeuristicEstimation NN
+lake build
+lake build @TorchLean/TorchLean.Tensor @TorchLean/TorchLean.NN
 python3 site/lean.py
 python3 site/build.py
 ```
 
-`site/lean.py` asks Lean's server about modules that are already built, so build the six weeks
-and TorchLean's `NN` library first. Output goes to `build/site`.
+`site/lean.py` records the examples from the repository's Lake workspace. Output goes to `build/site`.
 
-Every CPU output on the page comes from Lean. Definitions that select `gpu` are typechecked, and
+Every CPU output on the page comes from Lean. Definitions that select `.cuda` are typechecked, and
 `site/lean.py` rejects one whose GPU compilation failed during elaboration (such a call
 typechecks, then fails when it runs). But recording the page doesn't run those definitions or
 measure GPU performance. For device setup and the full custom-computation API, see

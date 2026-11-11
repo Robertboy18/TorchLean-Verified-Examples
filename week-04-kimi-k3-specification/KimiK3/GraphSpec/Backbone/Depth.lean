@@ -7,6 +7,7 @@ Authors: Robert Joseph George
 module
 
 public import KimiK3.GraphSpec.AttnRes
+public import KimiK3.GraphSpec.Primitives
 public import KimiK3.Model
 
 /-!
@@ -22,10 +23,8 @@ four decoder-layer graphs all use the parameter and input shapes below.
 namespace KimiK3
 namespace GraphSpec
 
-open Spec TorchLean
+open TorchLean
 open TorchLean.Tensor
-open NN.GraphSpec.DAG
-open Runtime.Autograd.Torch
 
 namespace PackedDepth
 
@@ -44,7 +43,7 @@ def sequenceSources {α : Type} [Storage α] [Context α] {completedCount modelD
   | false => completed
   | true =>
       let partialRow : Tensor α [1, modelDim] :=
-        Tensor.reshapeSpec partialState (by simp [Shape.size])
+        Tensor.reshape partialState _ (by simp [Shape.size])
       Tensor.concat completed partialRow
 
 /-- Depth sources for the channel mixer: the completed blocks, then the partial block with the
@@ -55,7 +54,7 @@ def channelSources {α : Type} [Storage α] [Context α] {completedCount modelDi
     Tensor α [completedCount + 1, modelDim] :=
   let current := partialState + sequenceOutput
   let currentRow : Tensor α [1, modelDim] :=
-    Tensor.reshapeSpec current (by simp [Shape.size])
+    Tensor.reshape current _ (by simp [Shape.size])
   Tensor.concat completed currentRow
 
 /-- Packed counterpart of `BackboneLayer`'s first AttnRes retrieval and RMS normalization. -/
@@ -97,25 +96,21 @@ def sequenceSourcesTerm {Γ : List Shape} (completedCount modelDim : Nat)
   | false => completed
   | true =>
       let partialRow : Term Γ [1, modelDim] :=
-        Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
+        Term.op (KimiK3.GraphSpec.PrimOp.reshape _ _ (by simp [Shape.size]))
           (.cons partialState .nil)
-      Term.op (NN.GraphSpec.DAG.PrimOp.concatAxis
-          [completedCount, modelDim] 0 completedCount 1)
-        (.cons completed (.cons partialRow .nil))
+      concatLeadingTerm completedCount 1 [modelDim] completed partialRow
 
 /-- Graph term that appends the current sequence residual to completed depth blocks. -/
 def channelSourcesTerm {Γ : List Shape} (completedCount modelDim : Nat)
     (completed : Term Γ [completedCount, modelDim])
     (partialState sequenceOutput : Term Γ [modelDim]) :
     Term Γ [completedCount + 1, modelDim] :=
-  let current := Term.op (NN.GraphSpec.DAG.PrimOp.add [modelDim])
+  let current := Term.op (KimiK3.GraphSpec.PrimOp.add [modelDim])
     (.cons partialState (.cons sequenceOutput .nil))
   let currentRow : Term Γ [1, modelDim] :=
-    Term.op (NN.GraphSpec.DAG.PrimOp.reshape _ _ (by simp [Shape.size]))
+    Term.op (KimiK3.GraphSpec.PrimOp.reshape _ _ (by simp [Shape.size]))
       (.cons current .nil)
-  Term.op (NN.GraphSpec.DAG.PrimOp.concatAxis
-      [completedCount, modelDim] 0 completedCount 1)
-    (.cons completed (.cons currentRow .nil))
+  concatLeadingTerm completedCount 1 [modelDim] completed currentRow
 
 /-- Graph term for the first AttnRes retrieval and RMS normalization in a decoder layer. -/
 def sequenceInputTerm {Γ : List Shape} (completedCount modelDim : Nat)
@@ -129,7 +124,7 @@ def sequenceInputTerm {Γ : List Shape} (completedCount modelDim : Nat)
     omega
   let retrieved := AttnRes.term (sourceCount completedCount partialPresent) modelDim hModel
     query sources
-  Term.op (NN.GraphSpec.DAG.PrimOp.rmsNorm [] modelDim hModel)
+  Term.op (KimiK3.GraphSpec.PrimOp.rmsNorm [] modelDim hModel)
     (.cons retrieved (.cons scale .nil))
 
 /-- Graph term for the second AttnRes retrieval and RMS normalization in a decoder layer. -/
@@ -140,16 +135,16 @@ def channelInputTerm {Γ : List Shape} (completedCount modelDim : Nat)
     Term Γ [modelDim] :=
   let sources := channelSourcesTerm completedCount modelDim completed partialState sequenceOutput
   let retrieved := AttnRes.term (completedCount + 1) modelDim hModel query sources
-  Term.op (NN.GraphSpec.DAG.PrimOp.rmsNorm [] modelDim hModel)
+  Term.op (KimiK3.GraphSpec.PrimOp.rmsNorm [] modelDim hModel)
     (.cons retrieved (.cons scale .nil))
 
 /-- Graph term that accumulates sequence and channel outputs into the current depth block. -/
 def finishPartialTerm {Γ : List Shape} (modelDim : Nat)
     (partialState sequenceOutput channelOutput : Term Γ [modelDim]) :
     Term Γ [modelDim] :=
-  let withSequence := Term.op (NN.GraphSpec.DAG.PrimOp.add [modelDim])
+  let withSequence := Term.op (KimiK3.GraphSpec.PrimOp.add [modelDim])
     (.cons partialState (.cons sequenceOutput .nil))
-  Term.op (NN.GraphSpec.DAG.PrimOp.add [modelDim])
+  Term.op (KimiK3.GraphSpec.PrimOp.add [modelDim])
     (.cons withSequence (.cons channelOutput .nil))
 
 @[simp] theorem eval_sequenceSourcesTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
@@ -186,9 +181,9 @@ theorem eval_sequenceInputTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ
         partialPresent hCompleted hModel (Term.eval env query) (Term.eval env scale)
         (Term.eval env completed) (Term.eval env partialState) := by
   simp only [sequenceInputTerm, sequenceInput, Term.eval_op, Term.evalArgs,
-    NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd]
+    KimiK3.GraphSpec.PrimOp.rmsNorm_specFwd]
   rw [AttnRes.eval_term, eval_sequenceSourcesTerm]
-  change NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSpec hModel _ _ = _
+  change KimiK3.GraphSpec.PrimOp.Internal.rmsNormVectorSpec hModel _ _ = _
   exact GraphSpec.rmsNormVectorSpec_eq_scale hModel _ _
 
 theorem eval_channelInputTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)
@@ -203,9 +198,9 @@ theorem eval_channelInputTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ 
         hModel (Term.eval env query) (Term.eval env scale)
         (Term.eval env completed) (Term.eval env partialState) (Term.eval env sequenceOutput) := by
   simp only [channelInputTerm, channelInput, Term.eval_op, Term.evalArgs,
-    NN.GraphSpec.DAG.PrimOp.rmsNorm_specFwd]
+    KimiK3.GraphSpec.PrimOp.rmsNorm_specFwd]
   rw [AttnRes.eval_term, eval_channelSourcesTerm]
-  change NN.GraphSpec.DAG.PrimOp.Internal.rmsNormVectorSpec hModel _ _ = _
+  change KimiK3.GraphSpec.PrimOp.Internal.rmsNormVectorSpec hModel _ _ = _
   exact GraphSpec.rmsNormVectorSpec_eq_scale hModel _ _
 
 @[simp] theorem eval_finishPartialTerm {Γ : List Shape} (env : TorchLean.TensorPack ℝ Γ)

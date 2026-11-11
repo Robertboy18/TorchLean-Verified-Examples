@@ -6,7 +6,7 @@ Authors: Robert Joseph George
 
 import HeuristicEstimation.Sketch
 import Lean.Data.Json.Printer
-import NN.Runtime.Autograd.Torch.Core.CheckpointIO
+import TorchLean.NN.Checkpoint.Format
 
 /-!
 # Exact certificates for an extracted attention head
@@ -20,7 +20,7 @@ that the external checkpoint extractor or its floating-point execution is correc
 
 open TorchLean Lean HeuristicEstimation
 open scoped BigOperators
-open Runtime.Autograd.Torch.Internal.CheckpointIO (readExact readNat64)
+open TorchLean.Checkpoint (readExact readNat64)
 
 namespace AttentionCertificate
 

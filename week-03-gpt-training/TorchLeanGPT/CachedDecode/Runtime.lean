@@ -33,7 +33,7 @@ namespace TorchLeanGPT
 namespace CachedDecode
 namespace Runtime
 
-open _root_.Runtime.Autograd.LibTorch
+open TorchLean.LibTorch
 
 /-- A borrowed parameter buffer together with the shape checked by TorchLean. -/
 structure ParameterBuffer where
@@ -47,7 +47,7 @@ Ownership stays with the TorchLean module: the cached decoder borrows the mirror
 releases it.
 -/
 def parameterBuffer {shape : Shape}
-    (parameter : _root_.Runtime.Autograd.Torch.Param Float shape) :
+    (parameter : TorchLean.Param Float shape) :
     IO ParameterBuffer := do
   let deviceValue ←
     match ← parameter.cudaValue.get with
@@ -57,14 +57,14 @@ def parameterBuffer {shape : Shape}
         else
           throw <| IO.userError <|
             "cached decoder: parameter CUDA shape mismatch (expected " ++
-              Spec.Shape.pretty shape ++ ", got " ++ Spec.Shape.pretty value.s ++ ")"
+              toString shape ++ ", got " ++ toString value.s ++ ")"
     | none =>
         let host ← parameter.value.get
         let uploaded ←
-          _root_.Runtime.Autograd.Torch.Internal.CudaBridge.toSomeBuffer
+          TensorTransfer.toSomeBuffer
             (α := Float) (s := shape) host
         parameter.cudaValue.set (some uploaded)
-        parameter.hostCurrent.set true
+        parameter.hostSynced.set true
         pure uploaded
   let actualSize ← Buffer.sizeIO deviceValue.buf
   let expectedSize := UInt32.ofNat (Shape.size shape)
@@ -73,17 +73,17 @@ def parameterBuffer {shape : Shape}
       "cached decoder: parameter is too large for the native UInt32 buffer ABI"
   if actualSize != expectedSize then
     throw <| IO.userError <|
-      "cached decoder: parameter buffer length mismatch for " ++ Spec.Shape.pretty shape
+      "cached decoder: parameter buffer length mismatch for " ++ toString shape
   pure { shape, buffer := deviceValue.buf }
 
 /-- Flatten TorchLean's heterogeneous parameter list without discarding shape metadata. -/
 def collectParameterBuffers :
     {shapes : List Shape} →
-      _root_.Runtime.Autograd.Torch.ParamList Float shapes →
+      TorchLean.ParamList Float shapes →
       IO (Array ParameterBuffer) :=
   let rec go :
       {shapes : List Shape} →
-        _root_.Runtime.Autograd.Torch.ParamList Float shapes →
+        TorchLean.ParamList Float shapes →
         Array ParameterBuffer → IO (Array ParameterBuffer)
     | List.nil, .nil, result => pure result
     | List.cons _ _, .cons parameter parameters, result => do
@@ -101,7 +101,7 @@ def natToUInt32 (label : String) (value : Nat) : IO UInt32 := do
 
 /-- Diagnostic labels and shapes for the tied-token model's fixed parameter order. -/
 def expectedLayout
-    (cfg : nn.models.CausalTransformer.Config) : Array (String × Shape) := Id.run do
+    (cfg : nn.CausalTransformer.Config) : Array (String × Shape) := Id.run do
   let width := cfg.modelWidth
   let mut result := #[
     ("token_embedding", ([cfg.vocabularySize, width] : Shape)),
@@ -144,7 +144,7 @@ def expectedLayout
 
 /-- Validate every parameter position and shape before interpreting the flat pack. -/
 def validateLayout
-    (cfg : nn.models.CausalTransformer.Config)
+    (cfg : nn.CausalTransformer.Config)
     (parameters : Array ParameterBuffer) : IO Unit := do
   let expected := expectedLayout cfg
   if parameters.size != expected.size then
@@ -155,8 +155,8 @@ def validateLayout
     | some (name, shape), some actual =>
         if actual.shape != shape then
           throw <| IO.userError <|
-            s!"cached decoder: {name} has shape {Spec.Shape.pretty actual.shape}; " ++
-              s!"expected {Spec.Shape.pretty shape}"
+            s!"cached decoder: {name} has shape {toString actual.shape}; " ++
+              s!"expected {toString shape}"
     | _, _ =>
         throw <| IO.userError
           s!"cached decoder: internal layout index {index} disappeared during validation"
@@ -192,7 +192,7 @@ Parameter buffers are borrowed from the TorchLean module. `nativeCache` is owned
 The `closed` flag makes repeated cleanup harmless and rejects later use.
 -/
 structure Decoder where
-  config : nn.models.CausalTransformer.Config
+  config : nn.CausalTransformer.Config
   tokenEmbedding : Buffer
   positionEmbedding : Buffer
   tokenOutputWeight : Buffer
@@ -212,7 +212,7 @@ def bufferAt (parameters : Array ParameterBuffer) (index : Nat) : IO Buffer := d
   pure (← parameterAt parameters index).buffer
 
 /-- Reject model variants whose parameterization differs from the decoder equations. -/
-def validateModelConfig (cfg : nn.models.CausalTransformer.Config) : IO Unit := do
+def validateModelConfig (cfg : nn.CausalTransformer.Config) : IO Unit := do
   if cfg.sequenceLength = 0 || cfg.vocabularySize = 0 || cfg.headCount = 0 ||
       cfg.headWidth = 0 || cfg.layerCount = 0 || cfg.feedForwardWidth = 0 then
     throw <| IO.userError "cached decoder: all model dimensions must be positive"
@@ -223,7 +223,7 @@ def validateModelConfig (cfg : nn.models.CausalTransformer.Config) : IO Unit := 
   if !cfg.attentionOutputBias then
     throw <| IO.userError "cached decoder: this executable expects attention output biases"
   match cfg.activation with
-  | .gelu => pure ()
+  | .geluTanh => pure ()
   | _ =>
       throw <| IO.userError "cached decoder: this executable expects GELU feed-forward blocks"
 
@@ -233,9 +233,9 @@ Construct a decoder from a live TorchLean parameter list.
 The model module must remain alive until `close` because most buffers are borrowed from it.
 -/
 def Decoder.initialize
-    (cfg : nn.models.CausalTransformer.Config)
+    (cfg : nn.CausalTransformer.Config)
     {parameterShapes : List Shape}
-    (parameterList : _root_.Runtime.Autograd.Torch.ParamList Float parameterShapes) :
+    (parameterList : TorchLean.ParamList Float parameterShapes) :
     IO Decoder := do
   validateModelConfig cfg
   let parameters ← collectParameterBuffers parameterList
@@ -314,7 +314,7 @@ def releaseBuffers (buffers : List Buffer) : IO Unit := do
 def Decoder.matmul
     (_decoder : Decoder) (input weight : Buffer)
     (inputWidth outputWidth : UInt32) : Buffer :=
-  Buffer.bmmRightTranspose input weight 1 1 inputWidth outputWidth
+  Buffer.bmm input weight 1 1 inputWidth outputWidth (transposeB := 1)
 
 /--
 Apply an attention projection stored in `(inputWidth, outputWidth)` order.
@@ -372,7 +372,7 @@ def Decoder.push
           throw <| IO.userError
             s!"cached decoder: missing layer {layerIndex} during execution"
     let norm1 ← Native.layerNorm hidden layer.norm1Gamma layer.norm1Beta
-      decoder.widthU32 (Context.ofRat (TorchLeanGPT.normalizationEpsilon true) : Float)
+      decoder.widthU32 (Rat.cast (TorchLeanGPT.normalizationEpsilon true) : Float)
     -- Attention weights are input-by-output, affine feed-forward weights output-by-input.
     let query := decoder.attentionProjection norm1 layer.queryWeight
     let key := decoder.attentionProjection norm1 layer.keyWeight
@@ -391,7 +391,7 @@ def Decoder.push
     let afterAttention := Buffer.releaseManyThen #[hidden, biased] afterAttention0
 
     let norm2 ← Native.layerNorm afterAttention layer.norm2Gamma layer.norm2Beta
-      decoder.widthU32 (Context.ofRat (TorchLeanGPT.normalizationEpsilon true) : Float)
+      decoder.widthU32 (Rat.cast (TorchLeanGPT.normalizationEpsilon true) : Float)
     let expanded0 :=
       decoder.matmul norm2 layer.ffnInputWeight decoder.widthU32 decoder.hiddenU32
     let expanded1 := Buffer.add expanded0 layer.ffnInputBias
@@ -409,7 +409,7 @@ def Decoder.push
   decoder.nextPosition.set (position + 1)
   if produceLogits then
     let normalized ← Native.layerNorm hidden decoder.finalNormGamma decoder.finalNormBeta
-      decoder.widthU32 (Context.ofRat (TorchLeanGPT.normalizationEpsilon true) : Float)
+      decoder.widthU32 (Rat.cast (TorchLeanGPT.normalizationEpsilon true) : Float)
     let _ ← Buffer.releaseIO hidden
     let logits :=
       decoder.matmul normalized decoder.tokenOutputWeight decoder.widthU32 decoder.vocabU32

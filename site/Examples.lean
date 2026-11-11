@@ -2,19 +2,21 @@ import BatchInvariantInference.Core
 import KimiK3.FeedForward.Activation
 import KimiK3.GraphSpec.Expert
 import KimiK3.Sequence.KDA
+import TorchLean.Tensor.Algebra
 import Nemotron.SSM
-import NN.API
-import NN.Tensor
-import NN.Kernel
-import NN.Tactic.Autograd
-import NN.Proofs.Tensor.Algebra
+import TorchLean.NN.Trainer.Constructor
+import TorchLean.NN.Builder
+import TorchLean.Tensor.Literal
+import TorchLean.Tensor.Einops.Elab.Einsum
+import TorchLean.Tensor.Einops.Elab.Transform
+import TorchLean.NN.Kernel.Function
+import TorchLean.NN.Tactic.Autograd
 import TorchLeanGPT.TrainingCorrectness
 import VerifiableTransformers.Certificate.FiniteEval
 import HeuristicEstimation
 import ProgramEquilibrium.Bots
 import BoundedLob.Theory.Dupoc
-import BoundedLob.Agents.Search
-import BoundedLob.Agents.Sources
+import BoundedLob.Agents.Outcomes
 import ProgramEquilibrium.Bounded
 
 /-! Small runnable calculations embedded in the articles. The website records Lean's types
@@ -28,11 +30,10 @@ def signX : Tensor Rat [4] := signs
 def signZ : Tensor Rat [4] := independentSigns
 
 #eval response (1 / 2 : Rat) signX signZ
-#eval Tensor.mean (response (1 / 2 : Rat) signX signZ)
+#eval (response (1 / 2 : Rat) signX signZ).sum / 4
 
 -- Multiplying the two input means loses their shared dependence.
-#eval Tensor.mean signX * Tensor.mean
-  (signX.scale (1 / 2 : Rat) + signZ.scale (1 / 2 : Rat))
+#eval (signX.sum / 4) * ((signX.scale (1 / 2 : Rat) + signZ.scale (1 / 2 : Rat)).sum / 4)
 -- ANCHOR_END: sharedExpectation
 
 -- ANCHOR: discardedSignal
@@ -41,9 +42,9 @@ open TorchLean HeuristicEstimation
 def signal : Tensor Rat [4] := signs
 
 -- Replacing this mean-zero intermediate by zero changes the later product's mean.
-#eval Tensor.mean signal
-#eval Tensor.mean (signal * signal)
-#eval Tensor.mean (signal * Tensor.zeros [4])
+#eval signal.sum / 4
+#eval (signal * signal).sum / 4
+#eval (signal * Tensor.zeros [4]).sum / (4 : Rat)
 -- ANCHOR_END: discardedSignal
 
 -- ANCHOR: attentionMoments
@@ -61,8 +62,10 @@ def crossCovariance : Tensor Rat [2, 2] := Tensor.matrix fun i j =>
   (∑ c : Fin 4, (queries[(c, i)] - queryMean.getScalar i) *
     (keys[(c, j)] - keyMean.getScalar j)) / 4
 
-#eval Tensor.mean (Tensor.ofFn fun (c : Fin 4) =>
-  Attention.score (Tensor.unstack queries c) (Tensor.unstack keys c))
+def scores : Tensor Rat [4] := Tensor.ofFn fun c =>
+  Attention.score (Tensor.unstack queries c) (Tensor.unstack keys c)
+
+#eval scores.sum / 4
 
 -- The query and key means vanish. Their cross-covariance diagonal does not.
 #eval Attention.score queryMean keyMean
@@ -70,8 +73,7 @@ def crossCovariance : Tensor Rat [2, 2] := Tensor.matrix fun i j =>
 
 -- Lean's kernel checks the same three values.
 theorem attention_values :
-    Tensor.mean (Tensor.ofFn fun (c : Fin 4) =>
-        Attention.score (Tensor.unstack queries c) (Tensor.unstack keys c)) = 3 / 4 ∧
+    scores.sum / 4 = 3 / 4 ∧
       Attention.score queryMean keyMean = 0 ∧
       Attention.estimate queryMean keyMean crossCovariance = 3 / 4 := by
   decide +kernel
@@ -187,21 +189,6 @@ def token : KimiK3.KDA.Input Float32 2 1 :=
 #check KimiK3.KDA.step
 -- ANCHOR_END: kda
 
--- ANCHOR: ssm
-open TorchLean
-
--- A rank-one write updates a two-coordinate state, then reads its first coordinate.
-def ssmMemory : Nemotron.SSM.State Float32 1 2 := [[10, 0]]
-def ssmToken : Nemotron.SSM.Input Float32 1 2 :=
-  { retention := 1
-    value := [2]
-    write := [1, 0]
-    read := [1, 0] }
-
-#eval (Nemotron.SSM.step ssmMemory ssmToken).2.getScalar ⟨0, by decide⟩
-#check Nemotron.SSM.step
--- ANCHOR_END: ssm
-
 -- ANCHOR: expert
 open TorchLean
 
@@ -233,29 +220,43 @@ open scoped BigOperators
 example {d h o : Nat} (expert : KimiK3.Expert ℝ d h o)
     (input : Tensor ℝ [d]) (k : Fin o) :
     |(expert.forward 4 25 input).getScalar k| ≤
-      100 * ∑ j : Fin h, |Spec.get2 expert.downWeight j k| := by
+      100 * ∑ j : Fin h, |Tensor.get2 expert.downWeight j k| := by
   let z := KimiK3.SiTU.vector 4 25
-    (Spec.vecMatMulSpec input expert.gateWeight)
-    (Spec.vecMatMulSpec input expert.upWeight)
+    (Tensor.vecmat input expert.gateWeight) (Tensor.vecmat input expert.upWeight)
   have hz (j : Fin h) : |z.getScalar j| ≤ 100 := by
-    simpa [z, KimiK3.SiTU.vector, Tensor.stackLeading] using
+    simpa only [z, KimiK3.SiTU.vector, Tensor.getScalar_zipWith] using
       KimiK3.SiTU.paper_caps_bound
-        ((Spec.vecMatMulSpec input expert.gateWeight).getScalar j)
-        ((Spec.vecMatMulSpec input expert.upWeight).getScalar j)
-  change |(Spec.vecMatMulSpec z expert.downWeight).getScalar k| ≤ _
-  rw [Proofs.TensorAlgebra.getScalar_vec_mat_mul_spec]
+        ((Tensor.vecmat input expert.gateWeight).getScalar j)
+        ((Tensor.vecmat input expert.upWeight).getScalar j)
+  change |(Tensor.vecmat z expert.downWeight).getScalar k| ≤ _
+  rw [Tensor.vecmat, Tensor.getScalar_contract_vecMat_eq_sum]
   calc
-    |∑ j : Fin h, z.getScalar j * Spec.get2 expert.downWeight j k| ≤
-        ∑ j : Fin h, |z.getScalar j * Spec.get2 expert.downWeight j k| :=
+    |∑ j : Fin h, z.getScalar j * Tensor.get2 expert.downWeight j k| ≤
+        ∑ j : Fin h, |z.getScalar j * Tensor.get2 expert.downWeight j k| :=
       Finset.abs_sum_le_sum_abs _ _
-    _ ≤ ∑ j : Fin h, 100 * |Spec.get2 expert.downWeight j k| := by
+    _ ≤ ∑ j : Fin h, 100 * |Tensor.get2 expert.downWeight j k| := by
       apply Finset.sum_le_sum
       intro j _
       rw [abs_mul]
       exact mul_le_mul_of_nonneg_right (hz j) (abs_nonneg _)
-    _ = 100 * ∑ j : Fin h, |Spec.get2 expert.downWeight j k| := by
+    _ = 100 * ∑ j : Fin h, |Tensor.get2 expert.downWeight j k| := by
       rw [Finset.mul_sum]
 -- ANCHOR_END: expertBound
+
+-- ANCHOR: ssm
+open TorchLean
+
+-- A rank-one write updates a two-coordinate state, then reads its first coordinate.
+def ssmMemory : Nemotron.SSM.State Float32 1 2 := [[10, 0]]
+def ssmToken : Nemotron.SSM.Input Float32 1 2 :=
+  { retention := 1
+    value := [2]
+    write := [1, 0]
+    read := [1, 0] }
+
+#eval (Nemotron.SSM.step ssmMemory ssmToken).2.getScalar ⟨0, by decide⟩
+#check Nemotron.SSM.step
+-- ANCHOR_END: ssm
 
 -- ANCHOR: tensorFunction
 open TorchLean
@@ -264,8 +265,8 @@ def square {α : Type} [Mul α] (x : α) : α := x * x
 def input : Tensor Float32 [3] := [1, 2, 3]
 
 -- The device belongs to the call, so the function stays unchanged.
-def onGpu : IO (Tensor Float32 [3]) := square.run input (device := gpu)
-#eval square.run input (device := cpu)
+def onGpu : IO (Tensor Float32 [3]) := square.run input (device := .cuda)
+#eval square.run input (device := .cpu)
 -- ANCHOR_END: tensorFunction
 
 -- ANCHOR: tensorGradient
@@ -280,7 +281,7 @@ def trainingInput : Tensor Float32 [3] := [1, 2, 3]
   IO.println result.value
   IO.println (← result.backward)
 
-def gpuEnergy := energy.run trainingInput (device := gpu) (grad := true)
+def gpuEnergy := energy.run trainingInput (device := .cuda) (grad := true)
 -- ANCHOR_END: tensorGradient
 
 -- ANCHOR: tensorRecurrence
@@ -294,7 +295,7 @@ def evolve {α : Type} [One α] [Mul α] [Add α] (x : α) : Nat → α
       previous * previous + 1
 
 def starts : Tensor Float32 [2] := [1, 2]
-def evolution (steps : UInt64) (device : NN.Backend.Device := cpu) :=
+def evolution (steps : UInt64) (device : Backend.Device := .cpu) :=
   (fun x => evolve x steps.toNat).run starts (device := device)
 
 #eval evolution 2
@@ -306,8 +307,8 @@ def evolution (steps : UInt64) (device : NN.Backend.Device := cpu) :=
 -- ANCHOR_END: tensorRecurrence
 
 -- ANCHOR: tensorRows
-open TorchLean NN.Kernel
-open scoped NN.Kernel
+open TorchLean TorchLean.Kernel
+open scoped TorchLean.Kernel
 
 def rowSum (width : UInt64) : Program Float32 :=
   Program.of (fun (read : Reader Float32) (row : UInt64) =>
@@ -316,10 +317,10 @@ def rowSum (width : UInt64) : Program Float32 :=
       pure (acc + x)) width.toNat 0 0)
 
 def matrix : Tensor Float32 [2, 3] := [[1, 2, 3], [4, 5, 6]]
-#eval (rowSum 3).run (Arguments.empty.push matrix) [2]
+#eval (rowSum 3).run (.singleton matrix) [2]
 
 def gpuRows : IO (Tensor Float32 [2]) :=
-  (rowSum 3).run (Arguments.empty.push matrix) [2] (device := gpu)
+  (rowSum 3).run (.singleton matrix) [2] (device := .cuda)
 
 #check Program.eval_eq_reference
 #check Program.lower_correct
@@ -339,7 +340,7 @@ def square {α : Type} [Mul α] (x : α) : α := x * x
 -- Construct the extra digit from a rational, without passing through binary64.
 def a : Wide := Rat.cast (1 + 1 / (2 ^ 100 : Nat) : Rat)
 def wideInput : Tensor Wide [1] := [a]
-def gpuWide : IO (Tensor Wide [1]) := square.run wideInput (device := gpu)
+def gpuWide : IO (Tensor Wide [1]) := square.run wideInput (device := .cuda)
 
 #eval do
   let output ← square.run wideInput
@@ -367,7 +368,7 @@ def right : Tensor Float32 [3] := [8, 4, 0]
 
 #eval (blend 0.25).zip left right
 def gpuBlend : IO (Tensor Float32 [3]) :=
-  (blend 0.25).zip left right (device := gpu)
+  (blend 0.25).zip left right (device := .cuda)
 -- ANCHOR_END: tensorBlend
 
 -- ANCHOR: tensorRelaxation
@@ -381,7 +382,7 @@ def relax {α : Type} [Add α] [Sub α] [Mul α] (rate target x : α) : Nat → 
       previous + rate * (target - previous)
 
 def initial : Tensor Float32 [3] := [0, 2, 4]
-def approach (steps : UInt64) (device : NN.Backend.Device := cpu) :
+def approach (steps : UInt64) (device : Backend.Device := .cpu) :
     IO (Tensor Float32 [3]) :=
   (fun x => relax (0.5 : Float32) 2 x steps.toNat).run initial (device := device)
 
@@ -416,7 +417,7 @@ def loss (prediction : Tensor Float32 [3]) : Float32 :=
   IO.println next
   IO.println (loss next)
 
-def gpuLoss := loss.run predictions (device := gpu) (grad := true)
+def gpuLoss := loss.run predictions (device := .cuda) (grad := true)
 
 -- This is the real derivative of one loss coordinate, with its target fixed.
 example (target x : ℝ) :
@@ -508,14 +509,14 @@ open TorchLean
 def model :=
   nn.Sequential![
     nn.linear 2 8,
-    nn.relu,
+    nn.op .relu,
     nn.linear 8 1
   ]
 
-def trainer := Trainer.new model
-  { objective := Trainer.Objective.mse
+def trainer := Trainer.create model
+  { objective := .mse
     optimizer := optim.adam { lr := 0.03 }
-    device := cpu }
+    device := .cpu }
 -- ANCHOR_END: tensorModel
 
 -- ANCHOR: tensorChainRule

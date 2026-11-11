@@ -7,7 +7,7 @@ Authors: Robert Joseph George
 module
 
 public import HeuristicEstimation.Basic
-public import NN.Proofs.Autograd.Core.SemiringCorrectness
+public import TorchLean.NN.Op.Piecewise
 
 /-!
 # Expected error at a ReLU boundary
@@ -26,20 +26,19 @@ correlation with the boundary event is kept.
 namespace HeuristicEstimation.Boundary
 
 open TorchLean
-open Proofs.Autograd.Algebra (reluCorrect)
 open scoped BigOperators
 
 /-- What remains of `relu (center + perturbation)` after linearizing ReLU at `center`. The
 slope at zero is taken to be zero. -/
 noncomputable def remainder (center perturbation : ℝ) : ℝ :=
-  Activation.Math.reluSpec (center + perturbation) - Activation.Math.reluSpec center -
+  Activation.relu (center + perturbation) - Activation.relu center -
     if 0 < center then perturbation else 0
 
 /-- The remainder is nonnegative: ReLU lies above its linearization at every center, zero
 included. -/
 theorem remainder_nonneg (center perturbation : ℝ) : 0 ≤ remainder center perturbation := by
   unfold remainder
-  simp only [Activation.Math.reluSpec_eq_max]
+  simp only [Activation.relu_eq_max]
   by_cases hcenter : 0 < center
   · rw [ite_eq_left hcenter, max_eq_left hcenter.le]
     have h := le_max_left (center + perturbation) 0
@@ -55,7 +54,7 @@ theorem remainder_le (center perturbation radius : ℝ) (hperturbation : |pertur
     remainder center perturbation ≤ max 0 (radius - |center|) := by
   have hbounds := abs_le.mp hperturbation
   unfold remainder
-  simp only [Activation.Math.reluSpec_eq_max]
+  simp only [Activation.relu_eq_max]
   by_cases hcenter : 0 < center
   · rw [ite_eq_left hcenter, max_eq_left hcenter.le, abs_of_pos hcenter]
     by_cases hpositive : 0 ≤ center + perturbation
@@ -83,20 +82,26 @@ theorem remainder_le_boundary (center perturbation radius : ℝ)
   · rw [ite_eq_right h]
     exact max_le le_rfl (sub_nonpos.mpr (le_of_not_ge h))
 
+/-- The Jacobian-vector product registered for TorchLean's ReLU. -/
+noncomputable def reluJvp {shape : Shape} (reference direction : Tensor ℝ shape) :
+    Tensor ℝ shape :=
+  let rule := ((Op.relu (s := shape)).rule? (α := ℝ)).get (by rw [Op.rule?_relu]; rfl)
+  let applyJvp := rule.jvp?.get rfl
+  (applyJvp (reference, ()) (direction, ())).1
+
 /-- Subtracting TorchLean's ReLU JVP from the change in output leaves `remainder` in every
 coordinate, so `remainder` and the JVP use the same slope at zero. -/
 theorem relu_remainder_eq {shape : Shape} (actual reference : Tensor ℝ shape) :
-    Tensor.subSpec
-        (Tensor.subSpec (reluCorrect.op.forward actual) (reluCorrect.op.forward reference))
-        (reluCorrect.jvp reference (Tensor.subSpec actual reference)) =
-      Tensor.map2Spec remainder reference (Tensor.subSpec actual reference) := by
-  apply Tensor.Internal.Rep.ext
+    Tensor.relu actual - Tensor.relu reference - reluJvp reference (actual - reference) =
+      Tensor.zipWith remainder reference (actual - reference) := by
+  apply Tensor.Rep.ext
   intro coordinate
   have hshift : reference coordinate + (actual coordinate - reference coordinate) =
       actual coordinate := by ring
-  simp only [reluCorrect, Spec.reluOp, Activation.reluDerivSpec, Tensor.subSpec,
-    Tensor.mulSpec, Tensor.map2Spec, Tensor.map, Tensor.Internal.Rep.zipWith_apply,
-    Tensor.Internal.Rep.map_apply, remainder, Activation.Math.reluDerivSpec]
+  change (Tensor.relu actual - Tensor.relu reference -
+      Tensor.map Activation.reluDeriv reference * (actual - reference)) coordinate = _
+  simp only [Tensor.relu, Tensor.map_apply, Tensor.mul_apply, Tensor.Rep.hSub_apply,
+    Tensor.zipWith_apply, Activation.reluDeriv, remainder]
   by_cases h : 0 < reference coordinate <;> simp [h, hshift]
 
 /-- Paired with a cotangent `seed`, the ReLU remainder is at most
@@ -104,17 +109,13 @@ theorem relu_remainder_eq {shape : Shape} (actual reference : Tensor ℝ shape) 
 theorem relu_error_le {shape : Shape} (actual reference radius seed : Tensor ℝ shape)
     (hperturbation : ∀ coordinate : shape.Coord,
       |actual coordinate - reference coordinate| ≤ radius coordinate) :
-    |Proofs.TensorAlgebra.dot
-      (Tensor.subSpec
-        (Tensor.subSpec (reluCorrect.op.forward actual) (reluCorrect.op.forward reference))
-        (reluCorrect.jvp reference (Tensor.subSpec actual reference))) seed| ≤
+    |Tensor.Rep.dot
+      (Tensor.relu actual - Tensor.relu reference - reluJvp reference (actual - reference)) seed| ≤
       ∑ coordinate : shape.Coord, |seed coordinate| *
         max 0 (radius coordinate - |reference coordinate|) := by
   classical
-  rw [relu_remainder_eq, ← Spec.dot_eq_tensorAlgebra_dot, Spec.dot,
-    Spec.sum_spec_eq_coord_sum]
-  simp only [Tensor.mulSpec, Tensor.subSpec, Tensor.map2Spec,
-    Tensor.Internal.Rep.zipWith_apply]
+  rw [relu_remainder_eq]
+  simp only [Tensor.Rep.dot, Tensor.zipWith_apply, Tensor.Rep.hSub_apply]
   calc
     _ ≤ ∑ coordinate : shape.Coord,
         |remainder (reference coordinate) (actual coordinate - reference coordinate) *
@@ -143,8 +144,8 @@ theorem mean_error_le {retained discarded : Nat}
       |perturbation[(i, j)]| ≤ radius.getScalar i) :
     |∑ i : Fin retained, weights.getScalar i * sensitivity.getScalar i *
       ((∑ j : Fin discarded, law[(i, j)] *
-        Activation.Math.reluSpec (center.getScalar i + perturbation[(i, j)])) -
-          Activation.Math.reluSpec (center.getScalar i))| ≤
+        Activation.relu (center.getScalar i + perturbation[(i, j)])) -
+          Activation.relu (center.getScalar i))| ≤
       ∑ i : Fin retained, weights.getScalar i * |sensitivity.getScalar i| *
         max 0 (radius.getScalar i - |center.getScalar i|) := by
   classical
@@ -154,8 +155,8 @@ theorem mean_error_le {retained discarded : Nat}
     max 0 (radius.getScalar i - |center.getScalar i|)
   have heq (i : Fin retained) :
       (∑ j : Fin discarded, law[(i, j)] *
-        Activation.Math.reluSpec (center.getScalar i + perturbation[(i, j)])) -
-          Activation.Math.reluSpec (center.getScalar i) = residual i := by
+        Activation.relu (center.getScalar i + perturbation[(i, j)])) -
+          Activation.relu (center.getScalar i) = residual i := by
     dsimp [residual]
     by_cases h : 0 < center.getScalar i <;>
       simp [remainder, h, mul_sub, Finset.sum_sub_distrib, ← Finset.sum_mul, hmass, hmean]

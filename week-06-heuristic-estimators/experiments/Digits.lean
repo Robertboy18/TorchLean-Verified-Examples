@@ -7,8 +7,9 @@ Authors: Robert Joseph George
 import HeuristicEstimation.Sketch
 import Lean.Data.Json.Parser
 import Lean.Data.Json.Printer
-import NN.Runtime.Autograd.Model.Metrics
-import NN.Spec.Layers.Linear
+import TorchLean.Tensor.ArgMax
+import TorchLean.Tensor.Constructors
+import TorchLean.Tensor.Layers.Linear
 
 /-!
 # Removing pixels from a trained digits classifier
@@ -28,6 +29,7 @@ binary formats. Its forward arithmetic remains rational; this does not measure F
 -/
 
 open TorchLean Lean HeuristicEstimation
+open FloatLib.Floats.Formats.BinaryInterchange (FloatFormat)
 open scoped BigOperators
 
 namespace DigitsExperiment
@@ -42,7 +44,7 @@ private def vector (n : Nat) (json : Json) : Except String (Tensor Rat [n]) := d
   Tensor.generateFlatM [n] fun i => scalar entries[i.val]!
 
 private def load (weightsPath datasetPath : String) :
-    IO (Spec.LinearSpec Rat 64 10 × Array (Tensor Rat [64] × Nat)) := do
+    IO (TorchLean.Linear Rat 64 10 × Array (Tensor Rat [64] × Nat)) := do
   let weights ← IO.ofExcept (Json.parse (← IO.FS.readFile weightsPath))
   let rows ← IO.ofExcept ((← IO.ofExcept (weights.getObjVal? "layers.0.weight")).getArr?)
   unless rows.size == 10 do throw <| IO.userError "expected ten weight rows"
@@ -62,6 +64,9 @@ private def load (weightsPath datasetPath : String) :
 private def rational (x : Rat) : Json :=
   Json.mkObj [("exact", .str (toString x)),
     ("approximate", toJson (Float.ofInt x.num / Float.ofNat x.den))]
+
+private def predictedClass (logits : Tensor Rat [10]) : Fin 10 :=
+  (Tensor.argmax logits ⟨0, Nat.one_pos⟩ false).item
 
 private def sha256 (path : String) : IO String := do
   let result ← IO.Process.output { cmd := "sha256sum", args := #[path] }
@@ -83,7 +88,7 @@ private theorem winner_preserved {n : Nat} (full estimate error : Tensor Rat [n]
   linarith
 
 /-- The covariance Gram is the calibration mean squared output error for a removed mask. -/
-private def fit (model : Spec.LinearSpec Rat 64 10)
+private def fit (model : TorchLean.Linear Rat 64 10)
     (samples : Array (Tensor Rat [64] × Nat)) :
     Tensor Rat [64] × Tensor Rat [64, 64] × Tensor Rat [64] :=
   let mean := Tensor.ofFn fun i : Fin 64 =>
@@ -113,12 +118,12 @@ private def greedy (gram : Tensor Rat [64, 64]) : Array (Fin 64) := Id.run do
 private def select (order : Array (Fin 64)) (retained : Nat) : Tensor Bool [64] :=
   Tensor.ofFn fun i => !(order.extract 0 (64 - retained)).contains i
 
-private def evaluate (model : Spec.LinearSpec Rat 64 10) (mean : Tensor Rat [64])
+private def evaluate (model : TorchLean.Linear Rat 64 10) (mean : Tensor Rat [64])
     (samples : Array (Tensor Rat [64] × Nat)) (keep : Tensor Bool [64]) : IO Json := do
   let coordinates := (Array.finRange 64).filter fun i => keep.getScalar i
   let packed := Tensor.matrix fun (c : Fin 10) (i : Fin coordinates.size) =>
     model.weights[(c, coordinates[i])]
-  let anchor := Spec.linearSpec model mean
+  let anchor := model.forward mean
   let domain := Tensor.matrix fun c j : Fin 10 => ∑ i : Fin 64,
     if keep.getScalar i then 0 else
       |model.weights[(c, i)] - model.weights[(j, i)]| *
@@ -132,7 +137,7 @@ private def evaluate (model : Spec.LinearSpec Rat 64 10) (mean : Tensor Rat [64]
   let mut domainCertified := 0
   for index in [0:samples.size] do
     let (input, label) := samples[index]!
-    let full := Spec.linearSpec model input
+    let full := model.forward input
     let centered := Tensor.ofFn fun i : Fin coordinates.size =>
       input.getScalar coordinates[i] - mean.getScalar coordinates[i]
     let approximation : Tensor Rat [10] := Tensor.matvec packed centered + anchor
@@ -141,10 +146,8 @@ private def evaluate (model : Spec.LinearSpec Rat 64 10) (mean : Tensor Rat [64]
     let error := Tensor.matvec model.weights residual
     unless Tensor.foldl (fun ok x => ok && x == 0) true (full - approximation - error) do
       throw <| IO.userError "linear residual identity failed"
-    let winner : Fin 10 := Fin.cast (by decide)
-      ((Metrics.argmax? approximation).getD ⟨0, by decide⟩)
-    let original : Fin 10 := Fin.cast (by decide)
-      ((Metrics.argmax? full).getD ⟨0, by decide⟩)
+    let winner := predictedClass approximation
+    let original := predictedClass full
     let gapBound := fun j : Fin 10 => ∑ i : Fin 64,
       |model.weights[(winner, i)] - model.weights[(j, i)]| * |residual.getScalar i|
     let checked := (Array.finRange 10).all fun j => j == winner || decide
@@ -175,8 +178,8 @@ private def evaluate (model : Spec.LinearSpec Rat 64 10) (mean : Tensor Rat [64]
     ("evaluation_with_checks_ns", toJson (finished - started)), ("examples", .arr records)]
 
 /-- Quantize parameters once, then measure their effect with exact forward arithmetic. -/
-private def quantization (format : FloatLib.Floats.Formats.BinaryInterchange.FloatFormat)
-    (model : Spec.LinearSpec Rat 64 10) (samples : Array (Tensor Rat [64] × Nat)) : IO Json := do
+private def quantization (format : FloatFormat)
+    (model : TorchLean.Linear Rat 64 10) (samples : Array (Tensor Rat [64] × Nat)) : IO Json := do
   let convert : Rat → Except String Rat := fun x => do
     let rounded : FloatLib.Floats.ExecFloat.Binary format.expWidth format.fracWidth
         format.encoding format.exponentBias format.expWidth_ge_two format.fracWidth_pos
@@ -186,7 +189,7 @@ private def quantization (format : FloatLib.Floats.Formats.BinaryInterchange.Flo
     | none => throw "parameter quantization produced NaN or infinity"
   let weights ← IO.ofExcept (Tensor.mapM convert model.weights)
   let bias ← IO.ofExcept (Tensor.mapM convert model.bias)
-  let rounded : Spec.LinearSpec Rat 64 10 := ⟨weights, bias⟩
+  let rounded : TorchLean.Linear Rat 64 10 := ⟨weights, bias⟩
   let deltaW : Tensor Rat [10, 64] := model.weights - weights
   let deltaB : Tensor Rat [10] := model.bias - bias
   let mut correct := 0
@@ -196,15 +199,13 @@ private def quantization (format : FloatLib.Floats.Formats.BinaryInterchange.Flo
   let mut records : Array Json := #[]
   for index in [0:samples.size] do
     let (input, label) := samples[index]!
-    let full := Spec.linearSpec model input
-    let approximate := Spec.linearSpec rounded input
+    let full := model.forward input
+    let approximate := rounded.forward input
     let error : Tensor Rat [10] := Tensor.matvec deltaW input + deltaB
     unless Tensor.foldl (fun ok x => ok && x == 0) true (full - approximate - error) do
       throw <| IO.userError "parameter perturbation identity failed"
-    let winner : Fin 10 := Fin.cast (by decide)
-      ((Metrics.argmax? approximate).getD ⟨0, by decide⟩)
-    let original : Fin 10 := Fin.cast (by decide)
-      ((Metrics.argmax? full).getD ⟨0, by decide⟩)
+    let winner := predictedClass approximate
+    let original := predictedClass full
     let bound := fun j : Fin 10 => |deltaB.getScalar winner - deltaB.getScalar j| +
       ∑ i : Fin 64, |deltaW[(winner, i)] - deltaW[(j, i)]| * |input.getScalar i|
     let checked := (Array.finRange 10).all fun j => j == winner || decide
@@ -253,10 +254,9 @@ def run (weights dataset : String) : IO Json := do
         ("method", toJson method), ("retained", toJson retained),
         ("evaluation", ← evaluate model mean evaluation (select order retained))]
   let baseline := evaluation.foldl (fun correct (input, label) =>
-    if ((Metrics.argmax? (Spec.linearSpec model input)).getD ⟨0, by decide⟩).val == label
+    if (predictedClass (model.forward input)).val == label
       then correct + 1 else correct) 0
-  let formats := #[FloatLib.Floats.ExecFloat.Binary.format 5 10,
-    FloatLib.Floats.ExecFloat.Binary.format 8 7, FloatLib.Floats.ExecFloat.Binary.format 4 3]
+  let formats := #[FloatFormat.binary16, FloatFormat.bfloat16, FloatFormat.ieee 4 3]
   let rounded ← formats.mapM fun format => quantization format model evaluation
   return Json.mkObj [
     ("weights_sha256", toJson (← sha256 weights)),

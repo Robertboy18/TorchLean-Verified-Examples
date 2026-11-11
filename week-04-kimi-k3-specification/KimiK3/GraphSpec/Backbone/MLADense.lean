@@ -22,10 +22,8 @@ dense SiTU expert. The denotation theorem identifies every returned state and ou
 namespace KimiK3
 namespace GraphSpec
 
-open Spec TorchLean
+open TorchLean
 open TorchLean.Tensor
-open NN.GraphSpec.DAG
-open Runtime.Autograd.Torch
 
 namespace Backbone
 
@@ -54,7 +52,7 @@ def model (pastTokens completedCount modelDim heads queryLatentDim kvLatentDim c
     sharedKeyDim valueDim denseHidden : Nat) (partialPresent : Bool)
     (hCompleted : 0 < completedCount) (hModel : 0 < modelDim)
     (hQueryLatent : 0 < queryLatentDim) (hKVLatent : 0 < kvLatentDim) :
-    NN.GraphSpec.DAG.MultiModel
+    KimiK3.GraphSpec.MultiModel
       (Params modelDim heads queryLatentDim kvLatentDim contentKeyDim sharedKeyDim valueDim
         denseHidden)
       (Inputs pastTokens completedCount modelDim kvLatentDim sharedKeyDim)
@@ -121,10 +119,10 @@ def model (pastTokens completedCount modelDim heads queryLatentDim kvLatentDim c
   let nextPartial := PackedDepth.finishPartialTerm modelDim (original partialState)
     sequenceOutput channelOutput
   { initParams :=
-      TorchLean.TensorPack.append
+      TorchLean.Pack.append
         (MLA.initialLayerParams modelDim heads queryLatentDim kvLatentDim contentKeyDim
           sharedKeyDim valueDim)
-        (TorchLean.TensorPack.append (initialDepthParams modelDim)
+        (TorchLean.Pack.append (initialDepthParams modelDim)
           (Expert.initialParams modelDim denseHidden modelDim))
     body := mixerBlock.andThen <| Block.ret <|
       .cons nextLatentCache <| .cons nextSharedKeyCache <| .cons sequenceOutput <|
@@ -165,8 +163,8 @@ def parameters {cfg : TextConfig} {decayRank : Nat}
     TorchLean.TensorPack ℝ
       (Params cfg.hiddenDim cfg.numHeads cfg.queryLatentDim cfg.kvLatentDim
         cfg.qkNopeHeadDim cfg.qkReservedHeadDim cfg.valueHeadDim cfg.denseHiddenDim) :=
-  TorchLean.TensorPack.append (MLA.layerParameters mla)
-    (TorchLean.TensorPack.append (depthParameters backbone)
+  TorchLean.Pack.append (MLA.layerParameters mla)
+    (TorchLean.Pack.append (depthParameters backbone)
       (Expert.parameters expert))
 
 /-- Package one dense MLA decoder state in graph order. -/
@@ -180,7 +178,7 @@ def inputs {cfg : TextConfig} {pastTokens completedCount : Nat}
     TorchLean.TensorPack ℝ
       (Inputs pastTokens completedCount cfg.hiddenDim cfg.kvLatentDim
         cfg.qkReservedHeadDim) :=
-  TorchLean.TensorPack.append (depthInputs completed partialState) <|
+  TorchLean.Pack.append (depthInputs completed partialState) <|
     .cons pastLatentCache <| .cons pastSharedKeyCache <| .cons (Tensor.scalar scoreScale) <|
       .cons (Tensor.scalar gateCap) <| .cons (Tensor.scalar upCap) .nil
 
@@ -209,16 +207,16 @@ theorem model_specFwd_eq_specStep
         backbone.sequenceQuery backbone.sequenceNormScale backbone.channelQuery
         backbone.channelNormScale completed partialState pastLatentCache pastSharedKeyCache
         scoreScale gateCap upCap := by
-  simp only [NN.GraphSpec.DAG.MultiModel.specFwd, model]
+  simp only [KimiK3.GraphSpec.MultiModel.specFwd, model]
   rw [Block.eval_andThen]
-  rw [NN.GraphSpec.DAG.MultiModel.eval_inline]
+  rw [KimiK3.GraphSpec.MultiModel.eval_inline]
   simp only [parameters, inputs]
   simp only [Args.get_rename, Args.get_vars, Term.evalArgs_rename_inLeft,
     Term.evalArgs_vars, Term.eval_rename_inRight, Term.evalArgs]
-  simp only [depthParameters, depthInputs, Term.eval, Env.tget,
+  simp only [depthParameters, depthInputs, Term.eval_var, Env.tget,
     PackedDepth.eval_sequenceInputTerm]
   simp only [Term.eval_rename_inLeft, Term.eval_rename_inRight]
-  simp only [Term.eval, Env.tget]
+  simp only [Term.eval_var, Env.tget]
   let sequenceInput := PackedDepth.sequenceInput partialPresent hCompleted hModel
     backbone.sequenceQuery backbone.sequenceNormScale completed partialState
   have hMixer :
@@ -246,10 +244,10 @@ theorem model_specFwd_eq_specStep
       Expert.specFwd_eq_forward expert channelInput gateCap upCap
   change Block.eval _ _ = _
   rw [hMixer]
-  simp only [Block.eval, Term.evalArgs, Term.eval_weakenAppend, Term.eval,
+  simp only [Block.eval_ret, Term.evalArgs, Term.eval_weakenAppend, Term.eval_var,
     Env.tget_append_inRight, PackedDepth.eval_channelInputTerm,
     PackedDepth.eval_finishPartialTerm,
-    NN.GraphSpec.DAG.Model.eval_inline, Term.evalArgs_rename_inLeft,
+    KimiK3.GraphSpec.Model.eval_inline, Term.evalArgs_rename_inLeft,
     Term.evalArgs_rename_inRight, Term.evalArgs_vars, Term.eval_rename_inLeft,
     Term.eval_rename_inRight, Env.tget, specStep]
   rw [hChannel]

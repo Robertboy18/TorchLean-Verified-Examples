@@ -7,8 +7,8 @@ Authors: TorchLean Team
 module
 
 public import Nemotron.SSM
-public import NN.Spec.Layers.Activation
-import NN.Proofs.Gradients.Activation
+public import TorchLean.Tensor.Layers.Activation
+import TorchLean.NN.Gradients.Activation
 import Mathlib.Tactic.NormNum
 
 /-!
@@ -37,7 +37,7 @@ so quantizing the cache does not change the readout.
 
 namespace Nemotron.Architecture.Mamba2
 
-open Spec TorchLean
+open TorchLean
 
 /-- Contiguous group assignment, as expand-then-reshape gives in the source. Writing the head
 count as `groups * headsPerGroup` builds in divisibility. -/
@@ -65,10 +65,10 @@ structure Token (groups headsPerGroup headDim stateDim : Nat) where
 source's lower clamp. PyTorch's large-input threshold branch and finite precision are not
 modeled. -/
 noncomputable def timeStep (minimum raw bias : ℝ) : ℝ :=
-  max (Activation.Math.softplusSpec (raw + bias)) minimum
+  max (Activation.softplus (raw + bias)) minimum
 
-private theorem softplus_pos (x : ℝ) : 0 < Activation.Math.softplusSpec x := by
-  rw [Proofs.softplus_spec_eq_log_one_add_exp]
+private theorem softplus_pos (x : ℝ) : 0 < Activation.softplus x := by
+  rw [Activation.softplus_eq_log_one_add_exp]
   exact Real.log_pos (lt_add_of_pos_right 1 (Real.exp_pos _))
 
 theorem timeStep_pos (minimum raw bias : ℝ) : 0 < timeStep minimum raw bias :=
@@ -76,7 +76,7 @@ theorem timeStep_pos (minimum raw bias : ℝ) : 0 < timeStep minimum raw bias :=
 
 /-- Without a positive floor the clamp does nothing: this is the decode path's plain softplus. -/
 theorem timeStep_of_nonpos (minimum raw bias : ℝ) (hminimum : minimum ≤ 0) :
-    timeStep minimum raw bias = Activation.Math.softplusSpec (raw + bias) :=
+    timeStep minimum raw bias = Activation.softplus (raw + bias) :=
   max_eq_left (hminimum.trans (softplus_pos _).le)
 
 /-- Per-head decay `exp(delta * A)` with the source's `A = -exp(logA)`. -/
@@ -102,7 +102,7 @@ noncomputable def prepareHead {groups headsPerGroup headDim stateDim : Nat}
   let group := groupIndex hHeadsPerGroup head
   { retention := retention delta (parameters.logA.getScalar head)
     value := Tensor.unstack input.value head
-    write := Tensor.scaleSpec (Tensor.unstack input.B group) delta
+    write := Tensor.scale (Tensor.unstack input.B group) delta
     read := Tensor.unstack input.C group }
 
 /-- Every prepared head has retention at most `1` in absolute value. -/
@@ -133,8 +133,7 @@ theorem updateHead_apply {groups headsPerGroup headDim stateDim : Nat}
       state (valueIndex, stateIndex, PUnit.unit) * retention delta (parameters.logA.getScalar head) +
         (Tensor.unstack input.value head).getScalar valueIndex *
           ((Tensor.unstack input.B (groupIndex hHeadsPerGroup head)).getScalar stateIndex * delta) := by
-  simp [SSM.update, prepareHead, Tensor.addSpec, Tensor.scaleSpec, Tensor.outerProductSpec,
-    Tensor.map2Spec, Tensor.map, Tensor.getScalar_eq_apply]
+  simp [SSM.update, prepareHead, Tensor.scale, Tensor.matrix, Tensor.getScalar_eq_apply]
 
 /-- Update every head's state matrix with its own prepared input, reusing `SSM.update`. -/
 noncomputable def updateHeads {groups headsPerGroup headDim stateDim : Nat}
@@ -143,7 +142,7 @@ noncomputable def updateHeads {groups headsPerGroup headDim stateDim : Nat}
     (input : Token groups headsPerGroup headDim stateDim)
     (state : Tensor ℝ [groups * headsPerGroup, headDim, stateDim]) :
     Tensor ℝ [groups * headsPerGroup, headDim, stateDim] :=
-  Tensor.stackLeading fun head => SSM.update (Tensor.unstack state head)
+  Tensor.dim fun head => SSM.update (Tensor.unstack state head)
     (prepareHead hHeadsPerGroup parameters input head)
 
 /-- One mixer step: update every head, read the new state against C, and add the D skip. -/
@@ -155,11 +154,10 @@ noncomputable def step {groups headsPerGroup headDim stateDim : Nat}
     Tensor ℝ [groups * headsPerGroup, headDim, stateDim] ×
       Tensor ℝ [groups * headsPerGroup, headDim] :=
   let next := updateHeads hHeadsPerGroup parameters input state
-  (next, Tensor.stackLeading fun head =>
-    Tensor.addSpec
-      (Tensor.matVecMulSpec (Tensor.unstack next head)
-        (Tensor.unstack input.C (groupIndex hHeadsPerGroup head)))
-      (Tensor.scaleSpec (Tensor.unstack input.value head) (parameters.skip.getScalar head)))
+  (next, Tensor.dim fun head =>
+    Tensor.matvec (Tensor.unstack next head)
+      (Tensor.unstack input.C (groupIndex hHeadsPerGroup head)) +
+      Tensor.scale (Tensor.unstack input.value head) (parameters.skip.getScalar head))
 
 /-- One update over all heads does not increase a coordinate error in the prior state, since
 every prepared retention is at most `1`. Both sides use the same token and parameters. -/
@@ -180,6 +178,6 @@ theorem updateHeads_within {groups headsPerGroup headDim stateDim : Nat}
     (Tensor.unstack y coordinate.1)
     (prepareHead hHeadsPerGroup parameters input coordinate.1) 1 e (by norm_num)
     (prepareHead_bounded hHeadsPerGroup parameters input coordinate.1) hhead
-  simpa [updateHeads, Tensor.stackLeading, Tensor.dim] using hnext coordinate.2
+  simpa [updateHeads, Tensor.dim, Tensor.dim] using hnext coordinate.2
 
 end Nemotron.Architecture.Mamba2

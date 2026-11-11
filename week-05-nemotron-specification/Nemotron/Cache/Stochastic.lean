@@ -28,7 +28,7 @@ when `den` divides the number of words (`uniformResidues_range`).
 
 namespace Nemotron.Cache.Stochastic
 
-open Spec TorchLean FloatLib.Floats.Formats.BinaryInterchange
+open TorchLean FloatLib.Floats.Formats.BinaryInterchange
 
 private theorem roundQuot_eq (sign : Bool) (entropy num den : Nat) :
     Model.Policy.roundQuot .stochastic sign entropy num den =
@@ -165,14 +165,14 @@ theorem round_ensemble_mean (quantum : ℝ) (sign : Bool) (num den : Nat) (hden 
 numerator, and entropy word, so mixed signs and cells are allowed. -/
 noncomputable def roundTensor {shape : Shape} (quantum : Tensor ℝ shape)
     (sign : Tensor Bool shape) (den numerators entropy : Tensor Nat shape) : Tensor ℝ shape :=
-  TorchLean.Tensor.Internal.Rep.ofFn fun coordinate =>
+  TorchLean.Tensor.Rep.ofFn fun coordinate =>
     round (quantum coordinate) (sign coordinate) (entropy coordinate) (numerators coordinate)
       (den coordinate)
 
 /-- Signed value of each coordinate's grid cell before rounding. -/
 noncomputable def unrounded {shape : Shape} (quantum : Tensor ℝ shape)
     (sign : Tensor Bool shape) (den numerators : Tensor Nat shape) : Tensor ℝ shape :=
-  TorchLean.Tensor.Internal.Rep.ofFn fun coordinate =>
+  TorchLean.Tensor.Rep.ofFn fun coordinate =>
     (if sign coordinate then -1 else 1) * quantum coordinate *
       ((numerators coordinate : ℝ) / den coordinate)
 
@@ -201,22 +201,21 @@ private theorem sum_apply {ι : Type} [Fintype ι] {shape : Shape}
 
 /-- Coordinatewise mean of a finite tensor ensemble. Mean laws require a nonempty sample axis. -/
 noncomputable def mean {samples : Nat} {shape : Shape}
-    (values : Tensor ℝ (shape.prependDim samples)) : Tensor ℝ shape :=
+    (values : Tensor ℝ (samples :: shape)) : Tensor ℝ shape :=
   (samples : ℝ)⁻¹ • ∑ i : Fin samples, Tensor.unstack values i
 
 private theorem mean_apply {samples : Nat} {shape : Shape}
-    (values : Tensor ℝ (shape.prependDim samples)) (coordinate : Shape.Coord shape) :
+    (values : Tensor ℝ (samples :: shape)) (coordinate : Shape.Coord shape) :
     mean values coordinate =
       (∑ i : Fin samples, Tensor.unstack values i coordinate) / samples := by
   simp [mean, sum_apply, div_eq_mul_inv, mul_comm]
 
 private theorem mean_add {samples : Nat} {shape : Shape}
-    (x y : Tensor ℝ (shape.prependDim samples)) :
-    mean (Tensor.addSpec x y) = Tensor.addSpec (mean x) (mean y) := by
-  apply TorchLean.Tensor.Internal.Rep.ext
+    (x y : Tensor ℝ (samples :: shape)) :
+    mean (x + y) = mean x + mean y := by
+  apply TorchLean.Tensor.Rep.ext
   intro coordinate
-  simp [mean_apply, Tensor.addSpec, Tensor.map2Spec, Tensor.unstack,
-    Finset.sum_add_distrib, add_div]
+  simp [mean_apply, Tensor.add_def, Finset.sum_add_distrib, add_div]
 
 /-- Each coordinate is unbiased when its own entropy residues are uniform. Nothing is assumed
 about how the words of different coordinates are related. One word shared by every coordinate
@@ -228,9 +227,9 @@ theorem roundTensor_mean {samples : Nat} {shape : Shape} (quantum : Tensor ℝ s
     (hden : ∀ coordinate, 0 < den coordinate)
     (huniform : ∀ coordinate,
       UniformResidues (den coordinate) fun i => entropy i coordinate) :
-    mean (Tensor.stackLeading fun i => roundTensor quantum sign den numerators (entropy i)) =
+    mean (Tensor.dim fun i => roundTensor quantum sign den numerators (entropy i)) =
       unrounded quantum sign den numerators := by
-  apply TorchLean.Tensor.Internal.Rep.ext
+  apply TorchLean.Tensor.Rep.ext
   intro coordinate
   simpa [mean_apply, roundTensor, unrounded] using
     round_ensemble_mean (quantum coordinate) (sign coordinate) (numerators coordinate)
@@ -264,7 +263,7 @@ theorem roundTensor_mean_shared {shape : Shape} (quantum : Tensor ℝ shape)
     (sign : Tensor Bool shape) (den numerators : Tensor Nat shape) (words : Nat)
     (hwords : 0 < words) (hden : ∀ coordinate, 0 < den coordinate)
     (hdvd : ∀ coordinate, den coordinate ∣ words) :
-    mean (Tensor.stackLeading fun e : Fin words =>
+    mean (Tensor.dim fun e : Fin words =>
       roundTensor quantum sign den numerators (Tensor.full shape e.val)) =
       unrounded quantum sign den numerators := by
   apply roundTensor_mean quantum sign den numerators _ hwords hden
@@ -310,14 +309,14 @@ different coordinates get independent uniform words. -/
 noncomputable def independentEntropy {shape : Shape} (den : Tensor Nat shape) :
     Fin (Fintype.card ((coordinate : Shape.Coord shape) → Fin (den coordinate))) →
       Tensor Nat shape :=
-  fun i => TorchLean.Tensor.Internal.Rep.ofFn fun coordinate =>
+  fun i => TorchLean.Tensor.Rep.ofFn fun coordinate =>
     ((Fintype.equivFin _).symm i coordinate).val
 
 /-- Independent uniform residues, one per coordinate, also give exact coordinate means. -/
 theorem roundTensor_mean_independent {shape : Shape} (quantum : Tensor ℝ shape)
     (sign : Tensor Bool shape) (den numerators : Tensor Nat shape)
     (hden : ∀ coordinate, 0 < den coordinate) :
-    mean (Tensor.stackLeading fun i =>
+    mean (Tensor.dim fun i =>
       roundTensor quantum sign den numerators (independentEntropy den i)) =
       unrounded quantum sign den numerators := by
   classical
@@ -338,13 +337,12 @@ theorem update_mean {samples valueDim stateDim : Nat}
     (states : Tensor ℝ [samples, valueDim, stateDim])
     (input : SSM.Input ℝ valueDim stateDim) (hsamples : 0 < samples) :
     SSM.update (mean states) input =
-      mean (Tensor.stackLeading fun i => SSM.update (Tensor.unstack states i) input) := by
-  apply TorchLean.Tensor.Internal.Rep.ext
+      mean (Tensor.dim fun i => SSM.update (Tensor.unstack states i) input) := by
+  apply TorchLean.Tensor.Rep.ext
   intro coordinate
   have hn : (samples : ℝ) ≠ 0 := by exact_mod_cast Nat.ne_of_gt hsamples
-  simp only [SSM.update, Tensor.addSpec, Tensor.scaleSpec, Tensor.map2Spec_apply,
-    Tensor.map, TorchLean.Tensor.Internal.Rep.map_apply,
-    mean_apply, Tensor.unstack_stackLeading]
+  simp only [SSM.update, Tensor.add_apply, Tensor.scale, Tensor.map_apply,
+    mean_apply, Tensor.unstack_dim]
   rw [Finset.sum_add_distrib, ← Finset.sum_mul]
   simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
   field_simp
@@ -353,7 +351,7 @@ end Nemotron.Cache.Stochastic
 
 namespace Nemotron.SSM
 
-open Spec TorchLean KimiK3
+open TorchLean KimiK3
 open Cache.Stochastic
 
 /-- If the ensemble mean follows one `update` per token, it follows the whole scan. `states`
@@ -381,8 +379,8 @@ theorem scan_mean {samples valueDim stateDim : Nat}
     (inputs : List (Input ℝ valueDim stateDim))
     (states errors : Nat → Tensor ℝ [samples, valueDim, stateDim]) (hsamples : 0 < samples)
     (hstep : ∀ i : Fin inputs.length, states (i.val + 1) =
-      Tensor.addSpec (Tensor.stackLeading fun sample =>
-        update (Tensor.unstack (states i.val) sample) inputs[i.val]) (errors i.val))
+      (Tensor.dim fun sample =>
+        update (Tensor.unstack (states i.val) sample) inputs[i.val]) + errors i.val)
     (herrors : ∀ i : Fin inputs.length,
       mean (errors i.val) = Tensor.full [valueDim, stateDim] 0) :
     mean (states inputs.length) = (CausalScan.run step (mean (states 0)) inputs).1 := by
@@ -390,8 +388,8 @@ theorem scan_mean {samples valueDim stateDim : Nat}
   intro i
   rw [hstep i, Cache.Stochastic.mean_add, herrors i]
   rw [← update_mean (states i.val) inputs[i.val] hsamples]
-  apply TorchLean.Tensor.Internal.Rep.ext
+  apply TorchLean.Tensor.Rep.ext
   intro coordinate
-  simp [Tensor.addSpec, Tensor.map2Spec]
+  simp
 
 end Nemotron.SSM

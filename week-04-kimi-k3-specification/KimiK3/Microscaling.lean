@@ -7,9 +7,9 @@ Authors: TorchLean Team
 module
 
 public import FloatLib.Floats.Formats.OCP.MX.Standard.Core
-public import NN.Proofs.Tensor.Basic.LinearAlgebra
-public import NN.Spec.Core.TensorReductionShape
-public import NN.Tensor.Operations
+public import TorchLean.Tensor.Context.Real
+public import TorchLean.Tensor.Algebra
+public import TorchLean.Tensor.Operations
 
 /-!
 # OCP microscaling formats used by Kimi K3
@@ -38,11 +38,9 @@ namespace KimiK3
 namespace Microscaling
 
 open TorchLean
-open Spec
 open Tensor
 
 open FloatLib.Floats.Formats.OCP
-attribute [local simp] Tensor.stackLeading
 
 /-- A finite E8M0 scale code. OCP reserves the encoding `255` for NaN, so finite scales are
 represented by the remaining 255 codes. -/
@@ -226,9 +224,9 @@ abbrev BlockVector (Code : Type) (blocks : Nat) := Fin blocks → Block Code
 /-- Decode a blocked vector to the shape used by TorchLean's tensor specifications. -/
 noncomputable def decodeVector {Code : Type} {blocks : Nat} (decodeElement : Code → ℝ)
     (vector : BlockVector Code blocks) : Tensor ℝ [blocks * 32] :=
-  Tensor.stackLeading fun index =>
+  Tensor.ofFn fun index =>
     let position := finProdFinEquiv.symm index
-    Tensor.scalar ((vector position.1).decode decodeElement position.2)
+    (vector position.1).decode decodeElement position.2
 
 /-- An MXFP8 vector in one chosen private-element format. -/
 abbrev MXFP8Vector (format : FP8Format) (blocks : Nat) :=
@@ -280,10 +278,9 @@ namespace BlockMatrix
 noncomputable def decode {Code : Type} {inputBlocks outputDim : Nat}
     (decodeElement : Code → ℝ) (matrix : BlockMatrix Code inputBlocks outputDim) :
     Tensor ℝ [inputBlocks * 32, outputDim] :=
-  Tensor.stackLeading fun input =>
+  Tensor.matrix fun input output =>
     let position := finProdFinEquiv.symm input
-    Tensor.stackLeading fun output =>
-      Tensor.scalar ((matrix output position.1).decode decodeElement position.2)
+    (matrix output position.1).decode decodeElement position.2
 
 /-- A decoded matrix coordinate reads its output column and consecutive 32-value input block. -/
 @[simp] theorem get2_decode {Code : Type} {inputBlocks outputDim : Nat}
@@ -292,7 +289,7 @@ noncomputable def decode {Code : Type} {inputBlocks outputDim : Nat}
     get2 (matrix.decode decodeElement) input output =
       (matrix output (finProdFinEquiv.symm input).1).decode decodeElement
         (finProdFinEquiv.symm input).2 := by
-  simp [decode, Spec.get2, Spec.get]
+  simp [decode, Tensor.matrix, Tensor.get2]
 
 /-- Every decoded MXFP4 matrix coordinate is bounded by six times the scale of its block. -/
 theorem abs_decode_mxfp4_le {inputBlocks outputDim : Nat}
@@ -347,13 +344,13 @@ theorem vecMatMul_quantizeMXFP4Matrix_error_le {inputBlocks outputDim : Nat}
         6 * scaleValue (scale output inputBlock))
     (input : Tensor ℝ [inputBlocks * 32]) (output : Fin outputDim) :
     |Tensor.getScalar
-          (vecMatMulSpec input ((quantizeMXFP4Matrix scale weights).decode decodeE2M1)) output -
-        Tensor.getScalar (vecMatMulSpec input weights) output| ≤
+          (Tensor.vecmat input ((quantizeMXFP4Matrix scale weights).decode decodeE2M1)) output -
+        Tensor.getScalar (Tensor.vecmat input weights) output| ≤
       ∑ index : Fin (inputBlocks * 32),
         |Tensor.getScalar input index| *
           scaleValue (scale output (finProdFinEquiv.symm index).1) := by
-  rw [Spec.getScalar_vec_mat_mul_spec, Spec.getScalar_vec_mat_mul_spec,
-    ← Finset.sum_sub_distrib]
+  simp only [Tensor.vecmat, Tensor.getScalar_contract_vecMat_eq_sum]
+  rw [← Finset.sum_sub_distrib]
   calc
     |∑ index : Fin (inputBlocks * 32),
         (Tensor.getScalar input index *
@@ -402,16 +399,16 @@ theorem vecMatMul_mxfp8_mxfp4_error_le {format : FP8Format}
       |get2 weights (finProdFinEquiv (inputBlock, offset)) output| ≤
         6 * scaleValue (scale output inputBlock))
     (output : Fin outputDim) :
-    |Tensor.getScalar (vecMatMulSpec input.decode
+    |Tensor.getScalar (Tensor.vecmat input.decode
           ((quantizeMXFP4Matrix scale weights).decode decodeE2M1)) output -
-        Tensor.getScalar (vecMatMulSpec sourceInput weights) output| ≤
+        Tensor.getScalar (Tensor.vecmat sourceInput weights) output| ≤
       ∑ index : Fin (inputBlocks * 32),
         (Tensor.getScalar input.errorBound index *
             (6 * scaleValue (scale output (finProdFinEquiv.symm index).1)) +
           |Tensor.getScalar sourceInput index| *
             scaleValue (scale output (finProdFinEquiv.symm index).1)) := by
-  rw [Spec.getScalar_vec_mat_mul_spec, Spec.getScalar_vec_mat_mul_spec,
-    ← Finset.sum_sub_distrib]
+  simp only [Tensor.vecmat, Tensor.getScalar_contract_vecMat_eq_sum]
+  rw [← Finset.sum_sub_distrib]
   calc
     |∑ index : Fin (inputBlocks * 32),
         (Tensor.getScalar input.decode index *

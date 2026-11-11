@@ -32,13 +32,10 @@ theorem affine_mean {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
     (∫ ω, Tensor.getScalar (Tensor.matvec weights (values ω) + bias) i ∂μ) =
       Tensor.getScalar (Tensor.matvec weights
         (Tensor.ofFn fun j => ∫ ω, (values ω).getScalar j ∂μ) + bias) i := by
-  change (∫ ω, (Tensor.addSpec (Tensor.matvec weights (values ω)) bias).getScalar i ∂μ) =
-    (Tensor.addSpec (Tensor.matvec weights (Tensor.ofFn fun j =>
-      ∫ ω, (values ω).getScalar j ∂μ)) bias).getScalar i
-  simp only [Spec.getScalar_add_spec, Tensor.matvec, Spec.getScalar_mat_vec_mul_spec,
+  simp only [Tensor.getScalar_add, Tensor.matvec, Tensor.getScalar_contract_matVec_eq_sum,
     Tensor.getScalar_ofFn]
-  have hint (j : Fin inputs) := (h j).const_mul (Spec.get2 weights i j)
-  rw [integral_add (f := fun ω => ∑ j, Spec.get2 weights i j * (values ω).getScalar j)
+  have hint (j : Fin inputs) := (h j).const_mul (Tensor.get2 weights i j)
+  rw [integral_add (f := fun ω => ∑ j, Tensor.get2 weights i j * (values ω).getScalar j)
     (g := fun _ => bias.getScalar i) (integrable_finsetSum _ fun j _ => hint j)
     (integrable_const _)]
   rw [integral_finsetSum Finset.univ (fun j _ => hint j)]
@@ -58,12 +55,9 @@ theorem affine_covariance {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
         ∑ k : Fin inputs, ∑ l : Fin inputs,
           left[(i, k)] * covariance (fun ω => (values ω).getScalar k)
             (fun ω => (values ω).getScalar l) μ * right[(j, l)] := by
-  change covariance
-    (fun ω => (Tensor.addSpec (Tensor.matvec left (values ω)) leftBias).getScalar i)
-    (fun ω => (Tensor.addSpec (Tensor.matvec right (values ω)) rightBias).getScalar j) μ = _
-  simp only [Spec.getScalar_add_spec, Tensor.matvec, Spec.getScalar_mat_vec_mul_spec]
-  have hleft (k : Fin inputs) := (h k).const_mul (Spec.get2 left i k)
-  have hright (k : Fin inputs) := (h k).const_mul (Spec.get2 right j k)
+  simp only [Tensor.getScalar_add, Tensor.matvec, Tensor.getScalar_contract_matVec_eq_sum]
+  have hleft (k : Fin inputs) := (h k).const_mul (Tensor.get2 left i k)
+  have hright (k : Fin inputs) := (h k).const_mul (Tensor.get2 right j k)
   rw [covariance_add_const_left
     ((memLp_finsetSum Finset.univ (fun k _ => hleft k)).integrable (by norm_num))]
   rw [covariance_add_const_right
@@ -74,21 +68,21 @@ theorem affine_covariance {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
   intro k _
   apply Finset.sum_congr rfl
   intro l _
-  change _ = Spec.get2 left i k * _ * Spec.get2 right j l
+  change _ = Tensor.get2 left i k * _ * Tensor.get2 right j l
   ring
 
 /-- Two equally weighted four-point distributions share mean `0` and second moment `1`, but
 their fourth moments are `1` and `2`. -/
 theorem moments_do_not_determine_fourth :
     ∃ a b : Tensor ℝ [4],
-      Tensor.mean a = 0 ∧ Tensor.mean b = 0 ∧
-      Tensor.mean (Tensor.square a) = 1 ∧ Tensor.mean (Tensor.square b) = 1 ∧
-      Tensor.mean (Tensor.square (Tensor.square a)) = 1 ∧
-      Tensor.mean (Tensor.square (Tensor.square b)) = 2 := by
+      vectorMean a = 0 ∧ vectorMean b = 0 ∧
+      vectorMean (Tensor.square a) = 1 ∧ vectorMean (Tensor.square b) = 1 ∧
+      vectorMean (Tensor.square (Tensor.square a)) = 1 ∧
+      vectorMean (Tensor.square (Tensor.square b)) = 2 := by
   refine ⟨signs, Tensor.ofFn (fun i =>
     if i.val = 0 then -Real.sqrt 2 else if i.val = 3 then Real.sqrt 2 else 0), ?_⟩
-  norm_num [Tensor.mean, Tensor.meanSpec, Spec.sum_spec_vec, Tensor.getScalar_eq_apply,
-    Tensor.square, Tensor.squareSpec, Tensor.map, signs, Tensor.ofFn, Fin.sum_univ_succ,
+  norm_num [vectorMean_eq, Tensor.getScalar_eq_apply,
+    Tensor.square, signs, Tensor.ofFn, Fin.sum_univ_succ,
     Tensor.meanDenominator, Shape.size, Real.mul_self_sqrt (by norm_num : (0 : ℝ) ≤ 2)]
 
 end HeuristicEstimation.Moments

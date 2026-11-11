@@ -52,9 +52,9 @@ def usage : String :=
 /-- Generate one assistant reply and return its new text, cut at the end of the turn. -/
 def answer
     (config : Chat.Config)
-    (modelCfg : nn.models.CausalTransformer.Config) [NeZero modelCfg.vocabularySize]
+    (modelCfg : nn.CausalTransformer.Config) [NeZero modelCfg.vocabularySize]
     (predict : Run.Predictor modelCfg 1)
-    (tokenizer : text.GPT2BPE.Tokenizer)
+    (tokenizer : Text.GPT2BPE.Tokenizer)
     (promptIds : List Nat) : IO String := do
   let stopToken ← CLI.orThrow exeName <| Chat.endOfTextToken tokenizer
   let steps ← CLI.orThrow exeName <|
@@ -68,15 +68,15 @@ def answer
         activity := some "interactive-chat"
         stepIndex := some steps })
   let suffix := Chat.beforeToken stopToken (allIds.drop promptIds.length)
-  let decoded ← CLI.orThrow exeName <| text.GPT2BPE.decode tokenizer suffix.toArray
+  let decoded ← CLI.orThrow exeName <| Text.GPT2BPE.decode tokenizer suffix.toArray
   pure <| Chat.trimGeneratedTurn decoded
 
 /-- Prompt loop that re-encodes the whole transcript each turn, advancing the seed per turn. -/
 partial def loop
     (config : Chat.Config)
-    (modelCfg : nn.models.CausalTransformer.Config) [NeZero modelCfg.vocabularySize]
+    (modelCfg : nn.CausalTransformer.Config) [NeZero modelCfg.vocabularySize]
     (predict : Run.Predictor modelCfg 1)
-    (tokenizer : text.GPT2BPE.Tokenizer) : IO Unit := do
+    (tokenizer : Text.GPT2BPE.Tokenizer) : IO Unit := do
   IO.println "Enter :q or an empty line to stop."
   let stdin ← IO.getStdin
   let rec go (turns : List Chat.Turn) : IO Unit := do
@@ -95,7 +95,7 @@ partial def loop
   go []
 
 /-- Load the model and checkpoint, then run one response or enter the interactive loop. -/
-def run (opts : Runtime.Config) (args : List String) : IO Unit := do
+def run (opts : Session.Config) (args : List String) : IO Unit := do
   let config ← Chat.Config.parse exeName opts.seed args
   let cfg := config.model.toTorchLean
   if cfg.sequenceLength = 0 then
@@ -107,16 +107,16 @@ def run (opts : Runtime.Config) (args : List String) : IO Unit := do
   else
     letI : NeZero cfg.vocabularySize := ⟨hVocab⟩
     do
-      _root_.TorchLean.rand.manualSeed config.seed
+      Random.manualSeed config.seed
       let model := nn.build config.seed (buildModel cfg 1 opts)
       let actualParameterCount :=
         (model.stateShapes).foldl
           (fun total shape => total + Shape.size shape) 0
       let tokenizer ← LeanProfiler.span "tokenizer.load"
-        (text.GPT2BPE.load config.tokenizerVocab config.tokenizerMerges
+        (Text.GPT2BPE.load config.tokenizerVocab config.tokenizerMerges
           (progress := true) (label := exeName))
         (metadata := { phase := some "data", activity := some "tokenizer" })
-      let evalDef := nn.models.CausalTransformer.objective cfg model (mode := .eval)
+      let evalDef := nn.CausalTransformer.objective cfg model (mode := .eval)
       let runtimeModule ← LeanProfiler.span "model.initialize"
         (Module.instantiate evalDef opts (α := Float))
         (metadata :=
@@ -124,12 +124,12 @@ def run (opts : Runtime.Config) (args : List String) : IO Unit := do
             activity := some "parameters"
             backend := some (Run.backendProfileName opts)
             dtype := some "Float"
-            device := some opts.deviceName })
+            device := some opts.device.cliName })
       LeanProfiler.span "checkpoint.load"
-        (Checkpoint.load runtimeModule config.checkpoint)
+        (Run.loadModelParams runtimeModule config.checkpoint)
         (metadata := { phase := some "checkpoint", activity := some "load" })
       let predict ← runtimeModule.indexedPredictor model
-      IO.println s!"loaded {actualParameterCount} parameters on {opts.deviceName}"
+      IO.println s!"loaded {actualParameterCount} parameters on {opts.device.cliName}"
       match config.message? with
       | some message =>
           let promptIds ← CLI.orThrow exeName <|

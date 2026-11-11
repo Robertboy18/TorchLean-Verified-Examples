@@ -53,7 +53,7 @@ Lean's address lemmas use natural-number indices. On buffers laid out as `[B, 8]
 stores the FMA chain over its own row, that its loads and store stay in bounds, and that distinct
 threads write distinct words. You still need the conditions above before any of that applies to a
 live launch. And the full native attention bridge carries its own proof of equality with
-TorchLean's FlashAttention result, because this small reduction certificate leaves that separate
+TorchLean's scaled dot-product attention result, because this reduction certificate leaves that separate
 refinement obligation in place.
 
 ## Files

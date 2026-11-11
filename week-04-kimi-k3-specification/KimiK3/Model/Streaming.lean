@@ -8,25 +8,23 @@ module
 
 public import KimiK3.Model
 public import Mathlib.Data.List.OfFn
+public import TorchLean.Tensor.Operations
 
 /-!
 # Sequence evaluation and streaming
 
 Full-sequence evaluation runs each layer over all tokens before the next layer, while a streaming
 decoder runs all layers on one token before reading the next. Both share parameters, routing,
-and the layer transition, and we prove that both orders give the same vocabulary logits. Streaming
+and the layer transition. Over the reals, both orders give the same vocabulary logits. Streaming
 state holds each layer's KDA recurrence or MLA cache. Input and output sequences are TorchLean
 tensors.
-
-This equivalence concerns the public real-valued model. GraphSpec's lowered tensor-cache graph
-still needs its own packing/refinement theorem, and neither result verifies an external GPU kernel.
 -/
 
 @[expose] public section
 
 namespace KimiK3.LanguageModel
 
-open Spec TorchLean
+open TorchLean
 
 variable {cfg : TextConfig} {decayRank : Nat}
 
@@ -95,16 +93,17 @@ noncomputable def step (model : LanguageModel ℝ cfg decayRank) (state : model.
   let result := Layers.step model (List.finRange cfg.numLayers) state
     (BackboneLayer.initialDepthState embedding)
   let hidden := RMSNorm.scale (result.2.retrieve model.finalQuery) model.finalNormScale
-  (result.1, vecMatMulSpec hidden model.vocabularyHead)
+  (result.1, Tensor.vecmat hidden model.vocabularyHead)
 
 /-- Run a fixed-length embedding tensor and return the state needed by the next chunk. -/
 noncomputable def run {length : Nat} (model : LanguageModel ℝ cfg decayRank)
     (state : model.CausalState) (embeddings : Tensor ℝ [length, cfg.hiddenDim]) :
     model.CausalState × Tensor ℝ [length, cfg.vocabSize] :=
-  let result := CausalScan.run model.step state (List.ofFn fun index => Spec.get embeddings index)
+  let result := CausalScan.run model.step state
+    (List.ofFn fun index => embeddings.unstack index)
   have hLength : result.2.length = length := by
     rw [CausalScan.outputs_length, List.length_ofFn]
-  (result.1, Tensor.stackLeading fun index => result.2.get ⟨index.val, by rw [hLength]; exact index.isLt⟩)
+  (result.1, Tensor.dim fun index => result.2.get ⟨index.val, by rw [hLength]; exact index.isLt⟩)
 
 /-- Streaming from the initial state reproduces the full-sequence logits. It holds for every
 sequence length and every parameter value, with sparse layers taking the model's own
@@ -112,12 +111,12 @@ deterministic routes. -/
 theorem run_eq_logits {length : Nat} (model : LanguageModel ℝ cfg decayRank)
     (embeddings : Tensor ℝ [length, cfg.hiddenDim]) :
     (model.run model.initialState embeddings).2 = model.logits embeddings := by
-  let inputs := List.ofFn fun index => Spec.get embeddings index
+  let inputs := List.ofFn fun index => Tensor.unstack embeddings index
   let final := (List.finRange cfg.numLayers).foldl
     (fun states index => (model.layer index).forward model.activeExperts_le states)
     (inputs.map BackboneLayer.initialDepthState)
   let finish := fun depth : AttnRes.BlockState ℝ cfg.hiddenDim =>
-    vecMatMulSpec (RMSNorm.scale (depth.retrieve model.finalQuery) model.finalNormScale)
+    Tensor.vecmat (RMSNorm.scale (depth.retrieve model.finalQuery) model.finalNormScale)
       model.vocabularyHead
   have hOutputs : (CausalScan.run model.step model.initialState inputs).2 = final.map finish := by
     -- Separate embedding preparation and logit projection from the shared decoder scan.
@@ -130,7 +129,7 @@ theorem run_eq_logits {length : Nat} (model : LanguageModel ℝ cfg decayRank)
     simp only
     exact congrArg (List.map finish)
       (Layers.scan_eq_fold model (List.finRange cfg.numLayers) _)
-  simp only [run, logits, forwardHidden, Tensor.stackLeading, Spec.get_dim]
+  simp only [run, logits, forwardHidden, Tensor.unstack_dim]
   congr 1
   funext index
   change (CausalScan.run model.step model.initialState inputs).2.get _ =
@@ -138,22 +137,22 @@ theorem run_eq_logits {length : Nat} (model : LanguageModel ℝ cfg decayRank)
   simp only [hOutputs, List.get_eq_getElem, List.getElem_map]
 
 private theorem concat_rows {α : Type} [Storage α] {leftLength rightLength : Nat}
-    {shape : Shape} (left : Tensor α (shape.prependDim leftLength))
-    (right : Tensor α (shape.prependDim rightLength)) :
+    {shape : Shape} (left : Tensor α (leftLength :: shape))
+    (right : Tensor α (rightLength :: shape)) :
     Tensor.concat left right =
-      Tensor.stackLeading (Fin.append (fun index => Spec.get left index)
-        (fun index => Spec.get right index)) := by
-  apply Tensor.Internal.Rep.ext
-  rintro ⟨index, coordinate⟩
-  by_cases h : index.val < leftLength
-  · simp [Tensor.concat, Tensor.concatAxisSpec, Tensor.Internal.Rep.concatenateAxis,
-      Tensor.Internal.Rep.castShape, Tensor.stackLeading, Tensor.dim, Spec.get, Tensor.unstack,
-      Fin.append, Fin.addCases, h, Tensor.Internal.Coord.appendEquiv]
-    rfl
-  · simp [Tensor.concat, Tensor.concatAxisSpec, Tensor.Internal.Rep.concatenateAxis,
-      Tensor.Internal.Rep.castShape, Tensor.stackLeading, Tensor.dim, Spec.get, Tensor.unstack,
-      Fin.append, Fin.addCases, h, Tensor.Internal.Coord.appendEquiv]
-    rfl
+      Tensor.dim (Fin.append (fun index => Tensor.unstack left index)
+        (fun index => Tensor.unstack right index)) := by
+  calc
+    Tensor.concat left right = Tensor.dim (Tensor.concat left right).unstack :=
+      (Tensor.dim_unstack _).symm
+    _ = _ := by
+      congr 1
+      funext index
+      refine Fin.addCases (fun i => ?_) (fun j => ?_) index
+      · rw [Fin.append_left]
+        simpa only [Fin.castAdd, Fin.castLE] using Tensor.unstack_concat_left left right i
+      · rw [Fin.append_right]
+        simpa only [Fin.natAdd] using Tensor.unstack_concat_right left right j
 
 /-- Chunking an embedding tensor preserves every logit and the complete final decoder state.
 The second chunk must start from the state returned by the first. -/
@@ -164,31 +163,31 @@ theorem run_append {leftLength rightLength : Nat} (model : LanguageModel ℝ cfg
       let first := model.run state left
       let second := model.run first.1 right
       (second.1, Tensor.concat first.2 second.2) := by
-  let first := CausalScan.run model.step state (List.ofFn fun index => Spec.get left index)
-  let second := CausalScan.run model.step first.1 (List.ofFn fun index => Spec.get right index)
+  let first := CausalScan.run model.step state (List.ofFn fun index => Tensor.unstack left index)
+  let second := CausalScan.run model.step first.1 (List.ofFn fun index => Tensor.unstack right index)
   have hFirst : first.2.length = leftLength := by
     rw [CausalScan.outputs_length, List.length_ofFn]
-  have hInputs : (List.ofFn fun index => Spec.get (Tensor.concat left right) index) =
-      (List.ofFn fun index => Spec.get left index) ++
-        (List.ofFn fun index => Spec.get right index) := by
+  have hInputs : (List.ofFn fun index => Tensor.unstack (Tensor.concat left right) index) =
+      (List.ofFn fun index => Tensor.unstack left index) ++
+        (List.ofFn fun index => Tensor.unstack right index) := by
     rw [concat_rows]
-    simp only [Tensor.stackLeading, Spec.get_dim, List.ofFn_fin_append]
+    simp only [Tensor.unstack_dim, List.ofFn_fin_append]
   have hScan : CausalScan.run model.step state
-      (List.ofFn fun index => Spec.get (Tensor.concat left right) index) =
+      (List.ofFn fun index => Tensor.unstack (Tensor.concat left right) index) =
       (second.1, first.2 ++ second.2) := by
     rw [hInputs, CausalScan.run_append]
   dsimp only [run]
   apply Prod.ext
   · change (CausalScan.run model.step state
-      (List.ofFn fun index => Spec.get (Tensor.concat left right) index)).1 =
+      (List.ofFn fun index => Tensor.unstack (Tensor.concat left right) index)).1 =
         second.1
     have hState := congrArg Prod.fst hScan
     exact hState
   · dsimp only
     conv_rhs => rw [concat_rows]
-    apply congrArg Tensor.stackLeading
+    apply congrArg Tensor.dim
     funext index
-    simp only [List.get_eq_getElem, Tensor.stackLeading, Spec.get_dim]
+    simp only [List.get_eq_getElem, Tensor.unstack_dim]
     rw [List.getElem_of_eq (congrArg Prod.snd hScan)]
     change (first.2 ++ second.2).get _ = _
     by_cases h : index.val < leftLength

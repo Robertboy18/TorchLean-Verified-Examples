@@ -7,8 +7,8 @@ Authors: TorchLean Team
 module
 
 public import Nemotron.Cache.Replay
-public import NN.Spec.Core.Context.Real
-public import NN.Spec.Core.Tensor
+public import TorchLean.Tensor.Context.Real
+public import TorchLean.Tensor.Datatype
 public import Mathlib.Algebra.Order.Ring.Abs
 import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.Ring
@@ -26,7 +26,7 @@ arithmetic also needs local arithmetic-error bounds.
 
 namespace Nemotron.Cache
 
-open Spec TorchLean KimiK3
+open TorchLean KimiK3
 
 /-- Every coordinate of `x` is within `error` of `y` (vacuous when a dimension is empty). -/
 def Within {shape : Shape} (error : ℝ) (x y : Tensor ℝ shape) : Prop :=

@@ -8,11 +8,15 @@ module
 
 public import KimiK3.Common
 public import KimiK3.Config
-public import NN.Spec.Models.Transformer
-public import NN.Tensor
-public import NN.Spec.Core.Erf
-import NN.Proofs.Tensor.Basic.Folds
-import NN.Proofs.Tensor.Basic.LinearAlgebra
+public import TorchLean.Tensor.Layers.Attention
+public import TorchLean.Tensor.Einops.Elab.Einsum
+public import TorchLean.Tensor.Einops.Elab.Transform
+public import TorchLean.Tensor.Literal
+public import TorchLean.Tensor.Erf
+import TorchLean.Tensor.Reduce.Real
+public import TorchLean.Tensor.Elementwise
+public import TorchLean.Tensor.Layers.Activation
+import TorchLean.Tensor.LinearAlgebra.Real
 
 /-!
 # MoonViT-V2 specification
@@ -53,7 +57,8 @@ https://arxiv.org/abs/2607.24653, and the released code above. Dimensions are re
 
 namespace KimiK3
 
-open Spec TorchLean
+open TorchLean
+open FloatLib.Numerics (MathFunctions)
 open Tensor
 
 namespace MoonViT
@@ -77,37 +82,6 @@ machine epsilon `2⁻²³` for float32, bfloat16 and float16 inputs (`aten/src/A
 layer_norm.cpp`, `rms_norm_composite`, and the fused CUDA kernel in `layer_norm_kernel.cu`). -/
 def encoderNormEpsilon {α : Type} [RatCast α] : α :=
   Rat.cast (1 / 8388608 : Rat)
-
-/-! ## Exact GELU -/
-
-/-- A scalar error function.
-
-PyTorch's default `nn.GELU()` is `x * (1 + erf (x / √2)) / 2`. The scalar specification asks for
-this total operation separately from `Context`'s error-reporting pointwise interface. -/
-class Erf (α : Type) where
-  /-- The error function. -/
-  erf : α → α
-
-/-- Real error function `erf x = 2 / √π * ∫₀ˣ exp (-t²) dt`. -/
-noncomputable abbrev realErf (x : ℝ) : ℝ := Spec.erf x
-
-noncomputable instance : Erf ℝ := ⟨realErf⟩
-
-/-- `erf 0 = 0`. -/
-@[simp] theorem realErf_zero : realErf 0 = 0 := Spec.erf_zero
-
-/-- PyTorch's default GELU, `nn.GELU()` with `approximate='none'`. -/
-def geluExact {α : Type} [Context α] [Erf α] (x : α) : α :=
-  x * ((1 + Erf.erf (x / MathFunctions.sqrt ((1 : α) + 1))) / ((1 : α) + 1))
-
-/-- Coordinatewise exact GELU. -/
-def geluExactSpec {α : Type} [Storage α] [Context α] [Erf α] {s : Shape} (t : Tensor α s) :
-    Tensor α s :=
-  Tensor.map geluExact t
-
-/-- The exact real GELU vanishes at zero. -/
-@[simp] theorem geluExact_zero : geluExact (0 : ℝ) = 0 := by
-  simp [geluExact]
 
 /-! ## Patch grids, position tables, and rotary tables -/
 
@@ -156,8 +130,8 @@ def resizeTable {sourceRows sourceColumns rows columns width : Nat}
       Shape.size [rows, sourceColumns, width] := by
     simp [Shape.size]
   let alongRows : Tensor α [rows, sourceColumns, width] :=
-    Tensor.reshapeSpec (matMulSpec rowWeights (Tensor.reshapeSpec table hFlat)) hUnflat
-  Tensor.dim fun row => matMulSpec columnWeights (Tensor.unstack alongRows row)
+    Tensor.reshape (Tensor.matmul rowWeights (Tensor.reshape table _ hFlat)) _ hUnflat
+  Tensor.dim fun row => Tensor.matmul columnWeights (Tensor.unstack alongRows row)
 
 /-- Frequency `1 / base ^ (index / half)` of the sine-cosine frame embedding. -/
 def frameFrequency (width index : Nat) : α :=
@@ -217,8 +191,8 @@ On every pair this is the complex product `(x₀ + i x₁) * (cos θ + i sin θ)
 `apply_rope` (see `applyRope_even` and `applyRope_odd`). -/
 def applyRope {tokens width : Nat} (cosTable sinTable input : Tensor α [tokens, width]) :
     Tensor α [tokens, width] :=
-  Tensor.addSpec (Tensor.mulSpec input cosTable)
-    (Tensor.mulSpec (matMulSpec input (pairRotation width)) sinTable)
+  Tensor.zipWith (· + ·) (Tensor.zipWith (· * ·) input cosTable)
+    (Tensor.zipWith (· * ·) (Tensor.matmul input (pairRotation width)) sinTable)
 
 /-- Patch embedding with its resize matrices and frame rows supplied: the projected patches, plus
 the resized learned table at every frame, plus the frame row at every patch. -/
@@ -232,17 +206,10 @@ def embedPatches {frames rows columns patchFeatures sourceRows sourceColumns hid
     Grid α frames rows columns hidden :=
   let projected := einsum patches, patchWeight
     "frame row column pixel, pixel feature -> frame row column feature"
-  let spatial := Tensor.broadcastTo
-    (Shape.CanBroadcastTo.expand_dims (Shape.CanBroadcastTo.refl _))
-    (resizeTable rowWeights columnWeights positionWeight)
-  let temporalSource : Tensor α [frames, 1, 1, hidden] :=
-    Tensor.reshapeSpec frameRows (by simp [Shape.size])
-  let temporal := Tensor.broadcastTo
-    (Shape.CanBroadcastTo.dim_eq <|
-      Shape.CanBroadcastTo.dim_1_to_n <|
-        Shape.CanBroadcastTo.dim_1_to_n (Shape.CanBroadcastTo.refl _))
-    temporalSource
-  Tensor.addSpec (Tensor.addSpec projected spatial) temporal
+  let spatial := Tensor.repeatLeading frames (resizeTable rowWeights columnWeights positionWeight)
+  let temporal := Tensor.dim fun frame =>
+    Tensor.repeatLeading rows (Tensor.repeatLeading columns (Tensor.unstack frameRows frame))
+  projected + spatial + temporal
 
 /-- RMSNorm of every row with a supplied epsilon. -/
 def normRows {rowCount width : Nat} (hWidth : 0 < width) (epsilon : α)
@@ -256,53 +223,49 @@ end Tables
 
 section TableTheorems
 
-private theorem get2_mulSpec {m n : Nat} (a b : Tensor ℝ [m, n]) (i : Fin m) (j : Fin n) :
-    Spec.get2 (Tensor.mulSpec a b) i j = Spec.get2 a i j * Spec.get2 b i j := by
-  simp [Tensor.mulSpec]
-
 /-- At an even head coordinate, `x R` reads minus the partner coordinate. -/
 theorem get2_matMul_pairRotation_even {tokens width : Nat} (x : Tensor ℝ [tokens, width])
     (token : Fin tokens) (j : Nat) (hj : 2 * j + 1 < width) :
-    Spec.get2 (matMulSpec x (pairRotation width)) token ⟨2 * j, by omega⟩ =
-      -Spec.get2 x token ⟨2 * j + 1, hj⟩ := by
-  rw [Spec.get2_mat_mul_spec, Finset.sum_eq_single ⟨2 * j + 1, hj⟩]
+    Tensor.get2 (Tensor.matmul x (pairRotation width)) token ⟨2 * j, by omega⟩ =
+      -Tensor.get2 x token ⟨2 * j + 1, hj⟩ := by
+  rw [Tensor.get2_matmul_eq_sum, Finset.sum_eq_single ⟨2 * j + 1, hj⟩]
   · simp [pairRotation]
   · intro m _ hm
     have hm' : m.val ≠ 2 * j + 1 := fun h => hm (Fin.ext h)
-    simp only [pairRotation, Spec.get2_dim]
+    simp only [pairRotation, Tensor.get2_dim]
     split_ifs with h₁ h₂ <;> first | omega | simp
   · simp
 
 /-- At an odd head coordinate, `x R` reads the partner coordinate. -/
 theorem get2_matMul_pairRotation_odd {tokens width : Nat} (x : Tensor ℝ [tokens, width])
     (token : Fin tokens) (j : Nat) (hj : 2 * j + 1 < width) :
-    Spec.get2 (matMulSpec x (pairRotation width)) token ⟨2 * j + 1, hj⟩ =
-      Spec.get2 x token ⟨2 * j, by omega⟩ := by
-  rw [Spec.get2_mat_mul_spec, Finset.sum_eq_single ⟨2 * j, by omega⟩]
+    Tensor.get2 (Tensor.matmul x (pairRotation width)) token ⟨2 * j + 1, hj⟩ =
+      Tensor.get2 x token ⟨2 * j, by omega⟩ := by
+  rw [Tensor.get2_matmul_eq_sum, Finset.sum_eq_single ⟨2 * j, by omega⟩]
   · simp [pairRotation]
   · intro m _ hm
     have hm' : m.val ≠ 2 * j := fun h => hm (Fin.ext h)
-    simp only [pairRotation, Spec.get2_dim]
+    simp only [pairRotation, Tensor.get2_dim]
     split_ifs with h₁ h₂ <;> first | omega | simp
   · simp
 
 /-- First coordinate of a rotated pair: the real part of `(x₀ + i x₁)(cos θ + i sin θ)`. -/
 theorem applyRope_even {tokens width : Nat} (cosTable sinTable x : Tensor ℝ [tokens, width])
     (token : Fin tokens) (j : Nat) (hj : 2 * j + 1 < width) :
-    Spec.get2 (applyRope cosTable sinTable x) token ⟨2 * j, by omega⟩ =
-      Spec.get2 x token ⟨2 * j, by omega⟩ * Spec.get2 cosTable token ⟨2 * j, by omega⟩ -
-        Spec.get2 x token ⟨2 * j + 1, hj⟩ * Spec.get2 sinTable token ⟨2 * j, by omega⟩ := by
-  rw [applyRope, Spec.get2_addSpec, get2_mulSpec, get2_mulSpec,
+    Tensor.get2 (applyRope cosTable sinTable x) token ⟨2 * j, by omega⟩ =
+      Tensor.get2 x token ⟨2 * j, by omega⟩ * Tensor.get2 cosTable token ⟨2 * j, by omega⟩ -
+        Tensor.get2 x token ⟨2 * j + 1, hj⟩ * Tensor.get2 sinTable token ⟨2 * j, by omega⟩ := by
+  rw [applyRope, Tensor.get2_zipWith, Tensor.get2_zipWith, Tensor.get2_zipWith,
     get2_matMul_pairRotation_even x token j hj]
   ring
 
 /-- Second coordinate of a rotated pair: the imaginary part of `(x₀ + i x₁)(cos θ + i sin θ)`. -/
 theorem applyRope_odd {tokens width : Nat} (cosTable sinTable x : Tensor ℝ [tokens, width])
     (token : Fin tokens) (j : Nat) (hj : 2 * j + 1 < width) :
-    Spec.get2 (applyRope cosTable sinTable x) token ⟨2 * j + 1, hj⟩ =
-      Spec.get2 x token ⟨2 * j + 1, hj⟩ * Spec.get2 cosTable token ⟨2 * j + 1, hj⟩ +
-        Spec.get2 x token ⟨2 * j, by omega⟩ * Spec.get2 sinTable token ⟨2 * j + 1, hj⟩ := by
-  rw [applyRope, Spec.get2_addSpec, get2_mulSpec, get2_mulSpec,
+    Tensor.get2 (applyRope cosTable sinTable x) token ⟨2 * j + 1, hj⟩ =
+      Tensor.get2 x token ⟨2 * j + 1, hj⟩ * Tensor.get2 cosTable token ⟨2 * j + 1, hj⟩ +
+        Tensor.get2 x token ⟨2 * j, by omega⟩ * Tensor.get2 sinTable token ⟨2 * j + 1, hj⟩ := by
+  rw [applyRope, Tensor.get2_zipWith, Tensor.get2_zipWith, Tensor.get2_zipWith,
     get2_matMul_pairRotation_odd x token j hj]
 
 /-- Both coordinates of a pair inside one head share their rotary angle. -/
@@ -352,8 +315,8 @@ theorem interpolationWeight_self (n i a : Nat) (hi : i < n) :
 
 /-- Entries of the resize matrix for an axis kept at its own length. -/
 theorem get2_interpolationMatrix_self (n : Nat) (i a : Fin n) :
-    Spec.get2 (interpolationMatrix n n : Tensor ℝ [n, n]) i a = if a = i then 1 else 0 := by
-  simp only [interpolationMatrix, Spec.get2_dim]
+    Tensor.get2 (interpolationMatrix n n : Tensor ℝ [n, n]) i a = if a = i then 1 else 0 := by
+  simp only [interpolationMatrix, Tensor.get2_dim]
   rw [interpolationWeight_self n i a i.isLt]
   simp [Fin.ext_iff]
 
@@ -393,35 +356,30 @@ def splitQKV (packed : Tensor α [tokens, 3 * (heads * headDim)]) :
   have hSize : Shape.size [tokens, 3 * (heads * headDim)] =
       Shape.size [tokens, 3, heads * headDim] := by
     simp [Shape.size]
-  Tensor.swapAdjacentAxes (Tensor.reshapeSpec packed hSize) 0
+  let tokenMajor := Tensor.reshape packed [tokens, 3, heads * headDim] hSize
+  tokenMajor.permute (Shape.adjacentSwap _ 0) [3, tokens, heads * headDim]
 
 /-- Self-attention of one media item: packed projection, 2-D RoPE on queries and keys, non-causal
 scaled dot-product attention in every head, and the output projection. -/
 def attention (block : Block α heads hiddenDim headDim intermediateDim)
     (cosTable sinTable : Tensor α [tokens, heads * headDim])
-    (input : Tensor α [tokens, hiddenDim]) (hTokens : tokens ≠ 0) :
+    (input : Tensor α [tokens, hiddenDim]) (_hTokens : tokens ≠ 0) :
     Tensor α [tokens, hiddenDim] :=
-  let packed := splitQKV (matMulSpec input block.qkvWeight)
+  let packed := splitQKV (Tensor.matmul input block.qkvWeight)
   let query := applyRope cosTable sinTable (Tensor.unstack packed 0)
   let key := applyRope cosTable sinTable (Tensor.unstack packed 1)
   let value := Tensor.unstack packed 2
-  let queryHeads := Spec.splitHeadsSpec query heads headDim rfl
-  let keyHeads := Spec.splitHeadsSpec key heads headDim rfl
-  let valueHeads := Spec.splitHeadsSpec value heads headDim rfl
-  let attended : Tensor α [heads, tokens, headDim] :=
-    Tensor.dim fun head =>
-      let context : Spec.AttentionContext α tokens tokens headDim hTokens hTokens :=
-        { Q := Tensor.unstack queryHeads head
-          K := Tensor.unstack keyHeads head
-          V := Tensor.unstack valueHeads head
-          mask := none }
-      Spec.scaledDotProductAttention context
-  matMulSpec (Spec.combineHeadsSpec attended) block.outputWeight
+  let queryHeads := MultiHeadAttention.splitHeads query heads headDim rfl
+  let keyHeads := MultiHeadAttention.splitHeads key heads headDim rfl
+  let valueHeads := MultiHeadAttention.splitHeads value heads headDim rfl
+  let scale := 1 / (if headDim = 0 then 1 else Context.sqrtNat headDim)
+  let attended := Tensor.attention (batch := [heads]) queryHeads keyHeads valueHeads scale
+  Tensor.matmul (MultiHeadAttention.combineHeads attended) block.outputWeight
 
 /-- Bias-free MLP with PyTorch's tanh GELU (`PytorchGELUTanh`). -/
 def feedForwardPass (feedForward : MLP α hiddenDim intermediateDim hiddenDim)
     (input : Tensor α [tokens, hiddenDim]) : Tensor α [tokens, hiddenDim] :=
-  matMulSpec (Activation.geluSpec (matMulSpec input feedForward.inputWeight))
+  Tensor.matmul (Tensor.map Activation.geluTanh (Tensor.matmul input feedForward.inputWeight))
     feedForward.outputWeight
 
 /-- `MoonViTEncoderLayer.forward`: two pre-norm residual branches. -/
@@ -429,10 +387,10 @@ def forward (block : Block α heads hiddenDim headDim intermediateDim)
     (epsilon : α) (cosTable sinTable : Tensor α [tokens, heads * headDim])
     (input : Tensor α [tokens, hiddenDim]) (hTokens : tokens ≠ 0) (hHidden : 0 < hiddenDim) :
     Tensor α [tokens, hiddenDim] :=
-  let attended := Tensor.addSpec input
+  let attended := Tensor.zipWith (· + ·) input
     (block.attention cosTable sinTable (normRows hHidden epsilon input block.attentionNormScale)
       hTokens)
-  Tensor.addSpec attended
+  Tensor.zipWith (· + ·) attended
     (feedForwardPass block.feedForward
       (normRows hHidden epsilon attended block.feedForwardNormScale))
 
@@ -516,11 +474,11 @@ merged spatial location, and the frame axis is pooled away.
 -/
 def mergeAndProject [Erf α] (model : Model α cfg patchFeatures)
     (grid : Grid α frames (rows * cfg.mergeHeight) (columns * cfg.mergeWidth) cfg.hiddenDim)
-    (hFrames : 0 < frames)
+    (_hFrames : 0 < frames)
     (hText : 0 < cfg.textHiddenDim) :
     Tensor α [rows * columns, cfg.textHiddenDim] :=
   let pooled : Tensor α [rows * cfg.mergeHeight, columns * cfg.mergeWidth, cfg.hiddenDim] :=
-    Tensor.reduceMean 0 grid (Shape.hasNonemptyAxisZeroOfPos hFrames).proof
+    Tensor.mean grid [⟨0, by simp⟩] false
   let interleavedShape : Shape :=
     [rows, cfg.mergeHeight, columns, cfg.mergeWidth, cfg.hiddenDim]
   let groupedShape : Shape :=
@@ -533,14 +491,12 @@ def mergeAndProject [Erf α] (model : Model α cfg patchFeatures)
     simp [interleavedShape, Shape.size, Nat.mul_assoc]
   have hMerged : Shape.size groupedShape = Shape.size mergedShape := by
     simp [groupedShape, mergedShape, mergedDim, Shape.size, Nat.mul_assoc]
-  let interleaved := Tensor.reshapeSpec pooled hInterleaved
-  have hGrouped : interleavedShape.swapAdjacentAtDepth 1 = groupedShape := by
-    simp [interleavedShape, groupedShape, Shape.swapAdjacentAtDepth]
-  let grouped : Tensor α groupedShape :=
-    hGrouped ▸ Tensor.swapAdjacentAxes interleaved 1
-  let merged := Tensor.reshapeSpec grouped hMerged
-  let hidden := geluExactSpec (matMulSpec merged model.projector.firstWeight)
-  let projected := matMulSpec hidden model.projector.secondWeight
+  let interleaved := Tensor.reshape pooled _ hInterleaved
+  let grouped := interleaved.permute (Shape.adjacentSwap interleavedShape 1) groupedShape (by
+    rw [Shape.permute_adjacentSwap])
+  let merged := Tensor.reshape grouped _ hMerged
+  let hidden := Tensor.gelu (Tensor.matmul merged model.projector.firstWeight)
+  let projected := Tensor.matmul hidden model.projector.secondWeight
   RMSNorm.rows hText projected model.projector.outputNormScale
 
 /-- Complete reference path for one media item: from flattened patches of at most four frames to
@@ -562,12 +518,12 @@ def forward [Erf α] (model : Model α cfg patchFeatures)
     simpa [tokens, height, width, Nat.mul_assoc] using Nat.ne_of_gt hPositive
   let heads := cfg.numHeads
   let headDim := cfg.qkvHiddenDim / cfg.numHeads
-  let sequence := Tensor.reshapeSpec (model.embed patches hMaxFrames) hGridTokens
+  let sequence := Tensor.reshape (model.embed patches hMaxFrames) _ hGridTokens
   let encoded := model.encode
     (ropeTable MathFunctions.cos frames height width heads headDim)
     (ropeTable MathFunctions.sin frames height width heads headDim)
     sequence hTokens hHidden
-  model.mergeAndProject (Tensor.reshapeSpec encoded hGridTokens.symm) hFrames hText
+  model.mergeAndProject (Tensor.reshape encoded _ hGridTokens.symm) hFrames hText
 
 /-- A video given as `chunks` items of `frames` frames each. Items never attend to each other, so
 each chunk is encoded and pooled on its own. Its visual tokens form one row of the result. -/
@@ -588,9 +544,9 @@ def forwardChunks [Erf α] (model : Model α cfg patchFeatures) {chunks : Nat}
     (hFrames : 0 < frames) (hMaxFrames : frames ≤ maxFrames)
     (hSpatial : 0 < (rows * cfg.mergeHeight) * (columns * cfg.mergeWidth))
     (hHidden : 0 < cfg.hiddenDim) (hText : 0 < cfg.textHiddenDim) (chunk : Fin chunks) :
-    Spec.get (model.forwardChunks video hFrames hMaxFrames hSpatial hHidden hText) chunk =
-      model.forward (Spec.get video chunk) hFrames hMaxFrames hSpatial hHidden hText := by
-  simp [forwardChunks, Spec.get]
+    Tensor.unstack (model.forwardChunks video hFrames hMaxFrames hSpatial hHidden hText) chunk =
+      model.forward (Tensor.unstack video chunk) hFrames hMaxFrames hSpatial hHidden hText := by
+  simp [forwardChunks]
 
 end Model
 
