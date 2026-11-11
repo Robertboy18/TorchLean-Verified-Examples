@@ -125,17 +125,13 @@ has different precision (and may round differently and run at a different speed)
 the configurations in the [development notes](development.html), but the metric files and
 checkpoints of these runs aren't in the repository.
 
-A token budget here counts scheduled training positions. With batch size 8 and context length
-1,024, one update schedules 8,192 positions, and multiplying by 122,071 gives the first run's
-1,000,005,632 tokens. Since the runner picks a whole number of updates, it can overshoot a
-requested budget by less than one batch. It counts positions processed, so it says nothing about
-whether every token came from a different document or appeared exactly once.
-
-Checkpoint history is just as concrete. Updates after step 100,000 in the first run never reached
-the continuation, because the continuation was initialized from that earlier checkpoint, so
-if you added the complete first-run total, you'd be counting updates the continued parameters
-never received. I use the saved step's token count instead, which is why the total along this
-parameter history is about 2.32 billion (and not 2.50 billion).
+A token budget here counts scheduled training positions, not distinct pieces of training
+data. With batch size 8 and context length 1,024, one update schedules 8,192 positions, and
+multiplying by 122,071 gives the first run's 1,000,005,632 tokens. Whole updates can overshoot
+the requested budget by less than one batch. For the continuation, though, we need the saved
+step's count: updates after step 100,000 never reached those parameters. Adding the complete
+first-run total would count updates they never received, which is why this parameter history
+contains about 2.32 billion tokens, not 2.50 billion.
 
 Validation evaluates held-out windows without updating the model, but a recorded loss is still a
 measurement on those chosen windows. (In the instruction-tuning runs below, validation uses a
@@ -151,9 +147,8 @@ Next I trained the model on a `User:`/`Assistant:` transcript format, in two rou
 round scheduled about ten million token rows from [smol-smoltalk](https://huggingface.co/datasets/HuggingFaceTB/smol-smoltalk),
 and the second started from that round's best saved checkpoint and scheduled about fifty million
 rows from a [SmolTalk2](https://huggingface.co/datasets/HuggingFaceTB/smoltalk2) mixture. Loss
-was charged only to assistant targets (the prompt stayed available as context).
-
-Within each round the sampled validation loss fell, from 2.673017 to 2.135422 in the first and
+was charged only to assistant targets (the prompt stayed available as context). Within each
+round the sampled validation loss fell, from 2.673017 to 2.135422 in the first and
 from 2.818384 to 2.216872 in the second. Don't compare the two final values, though. Since
 the validation shards differ, you'd be mixing a model change with a dataset change.
 

@@ -20,9 +20,9 @@ system with Critch's properties, `Checker` builds one such system as a real proo
 - [`Dupoc`](BoundedLob/Theory/Dupoc.lean) describes DUPOC over an arbitrary checker: it can't be
   exploited, a guess in front of a complete search behaves like the search, and a guess alone
   does not.
-- [`Dimcid`](BoundedLob/Theory/Dimcid.lean) answers Open Problem 6: DUPOC against DIMCID is mutual
-  defection for every large `k`, in any sound system with these properties that proves the
-  agents' code and `¬A → (A → B)`.
+- [`Dimcid`](BoundedLob/Theory/Dimcid.lean) proves mutual defection for DUPOC against DIMCID
+  (Open Problem 6) for every large `k`, conditional on a sound system with these properties
+  that proves the agents' code and `¬A → (A → B)`.
 - [`Robust`](BoundedLob/Theory/Robust.lean) is Critch's robust cooperation of fair agents, for
   agents sharing the parameter `k`.
 

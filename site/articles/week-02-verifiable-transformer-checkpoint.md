@@ -5,12 +5,10 @@ has a task I really like: match a quote or close a bracket. There are only 256 p
 prompts. So we can examine every one and check which delimiter the model prefers. Neel
 designs the calculations as circuits for a satisfiability modulo theories (SMT) solver,
 a tool that reasons about logical and arithmetic constraints. I trained his model with his own
-training code and wanted to bring the checkpoint and its evidence into Lean.
-
-I imported the checkpoint and its exported scores, then added a forward pass that uses those
-weights, so now we can compare the saved decisions with the ones we recompute in Lean. I also
-check that the export contains the right prompts. Repeating an easy case in place of a difficult
-one shouldn't count as checking the whole task.
+training code, imported the checkpoint and its exported scores, then added a forward pass
+that uses those weights. Now we can compare the saved decisions with the ones we recompute
+in Lean. I also check that the export contains the right prompts. Repeating an easy case in
+place of a difficult one shouldn't count as checking the whole task.
 
 There are two checks to follow here. Lean's kernel verifies that the exported integer-score
 records cover the task and give every intended candidate a positive margin, and separately, a
@@ -133,16 +131,12 @@ described upstream).
 
 <div id="choosing-operators-the-solver-can-represent"></div>
 
-To suit an SMT encoding, Neel's model changes three familiar transformer operations: sparsemax
-replaces softmax, SignedL1BandNorm replaces LayerNorm, and LeakyReLU replaces GELU. (The
-upstream project supplies the model family, task, training code, circuit extraction, and solver
-workflow.)
-
-An SMT solver checks formulas that combine logical conditions with theories such as
-arithmetic. For this model the upstream encoder describes each operator with explicit
-comparisons and arithmetic branches, and a solver can then reason about the encoded task.
-Since the operator choices determine those formulas, we'll examine them before checking the
-exported evidence.
+Neel's model uses sparsemax instead of softmax, SignedL1BandNorm instead of LayerNorm, and
+LeakyReLU instead of GELU. The upstream encoder describes them with explicit comparisons
+and arithmetic branches that an SMT solver can reason about. These choices determine the
+formulas the solver sees, so we need to understand them before interpreting its results.
+The upstream project supplies the model family, task, training code, circuit extraction,
+and solver workflow.
 
 <div id="sparsemax-can-give-a-token-zero-attention-weight"></div>
 
@@ -287,15 +281,12 @@ solver evidence is still the upstream SMT solver's job.
 
 <div id="what-survives-changing-the-producer"></div>
 
-So these checks let us inspect the inputs behind an exported accuracy number: we know the
-canonical prompt and token IDs occur at each index, and we know the recorded margins are
-positive. What we still need is the separate connection from those scores to the checkpoint.
-
-If you rewrite the Python exporter, the new evidence still has to pass the same Lean
-checks for the domain, targets, and candidate margins. Adding another prompt requires
-changing the expected enumeration too, because changing a label in the export can't enlarge
-the theorem. These checks establish what the saved records say about the task.
-But do the weights actually produce those decisions? Let's run the model itself.
+These checks tell us which canonical prompt occurs at each index and that every recorded
+candidate margin is positive. A rewritten Python exporter still has to meet those same
+conditions; adding another prompt requires changing the expected enumeration, because a new
+label in the export can't enlarge the theorem. What we still need is the connection from
+the scores to the checkpoint. Do the weights actually produce those decisions? Let's run
+the model itself.
 
 <div id="running-the-imported-weights-in-lean"></div>
 

@@ -96,10 +96,9 @@ The answer is `[1, 4, 9]`. Each output needs only its own input, so the three
 calculations are independent, and a tensor with a million entries would expose the same kind
 of work. Shape stays where it belongs, on the tensor. Square each entry of a matrix and
 every result lands in the same row and column, so you can use this function on different tensor
-shapes without naming a new operation for every rank.
-
-This definition also leaves the number type open. So who picks it? In the code, `α` is the
-type of an entry and `[Mul α]` asks for multiplication on that type, so it's the input that picks `Float32`
+shapes without naming a new operation for every rank. This definition also leaves the number
+type open. So who picks it? In the code, `α` is the type of an entry and `[Mul α]` asks for
+multiplication on that type, so it's the input that picks `Float32`
 for this example. Later we'll use the same generic `square` with a wider FloatLib format.
 
 We choose `.cpu` or `.cuda` when we run the function. CPU evaluates the Lean calculation.
@@ -243,11 +242,9 @@ We can write a whole-tensor function through the same interface, so let's add up
 For `[1, 2, 3]` the energy is fourteen and the gradient is `[2, 4, 6]`: increasing a
 coordinate $x_i$ changes its contribution $x_i^2$ at rate $2x_i$. Since the function takes a
 tensor and returns one number, its forward result has scalar shape `[]`, while the gradient has
-the input's shape `[3]`.
-
-Each multiplication uses the input twice. Backward accumulates a contribution from both
-uses, and then the sum passes its output sensitivity to every coordinate. Larger models reuse these
-same local derivative rules whenever they call the operations.
+the input's shape `[3]`. Each multiplication uses the input twice. Backward accumulates a
+contribution from both uses, and then the sum passes its output sensitivity to every
+coordinate. Larger models reuse these same local derivative rules whenever they call the operations.
 
 By default the backward seed differentiates the sum of the output entries (for a scalar
 energy, that means a seed of one). For a tensor-valued function, `result.backward seed` lets us say
@@ -432,7 +429,7 @@ There's a compiler connection worth looking at too. On the executable side, the 
 its operands directly and accumulate each output without ever constructing a full tensor of
 intermediate products. Generated code carries certificates identifying its indexing
 and ordered arithmetic with the reference evaluator, and the
-[lowering theorem](https://github.com/lean-dojo/TorchLean/blob/main/NN/Tensor/Internal/Lowering/Einsum.lean)
+[lowering theorem](https://github.com/lean-dojo/TorchLean/blob/main/TorchLean/Tensor/Einops/Lowering/Einsum.lean)
 then connects that evaluator to the independent contraction definition. Its general
 ordered-fold theorem only needs addition and multiplication operations, with no claim that
 they obey exact-real algebraic laws, and since reordering a contraction does require more laws, the
@@ -461,7 +458,7 @@ part of that same plan. Nothing materializes a broadcast tensor or a tensor of a
 products. For the proof, the reference product tensor is still there in the mathematical
 semantics.
 
-`einsumTensorKernel_correct` is the theorem that connects the generated result to that reference.
+`einsumKernel_correct` is the theorem that connects the generated result to that reference.
 It needs storage, addition, multiplication, zero and one, and it doesn't require floating
 addition to be associative, because the operand products and contracted additions keep their
 specified order. That's especially useful for FloatLib scalars, where changing the order
@@ -477,7 +474,7 @@ have to be measured separately.
 
 Contractions make the axes visible, and when I'm building a network I also want
 the layer composition to be easy to read. Here's the public API used by the
-[MLP quickstart](https://github.com/lean-dojo/TorchLean/blob/main/NN/Examples/Quickstart/SimpleMlpTrain.lean):
+[MLP quickstart](https://github.com/lean-dojo/TorchLean/blob/main/TorchLeanExamples/Quickstart/MLP.lean):
 
 <pre data-lean-example="tensorModel"></pre>
 
@@ -734,7 +731,7 @@ domain conditions hold), and a new named function can expose its definition or r
 proved rule for the `autograd` tactic to reuse. I like this because the proof can explain
 why a derivative calculation works, assumptions and all, instead of leaving me with
 only a printed Hessian. You can see the scalar and tensor statements in the
-[tactic examples](https://github.com/lean-dojo/TorchLean/blob/main/NN/Tactic/README.md),
+[tactic examples](https://github.com/lean-dojo/TorchLean/blob/main/TorchLean/NN/Tactic/README.md),
 and the
 [scientific-model example](https://lean-dojo.github.io/TorchLean/examples/scientific-ml/)
 uses differentiation in models for numerical problems.
@@ -775,7 +772,7 @@ named function, unfolding its definition or registering a proved rule is enough 
 tactic to work with it (no new differentiation language needed).
 
 A different objective shows up in the
-[Burgers FNO example](https://github.com/lean-dojo/TorchLean/blob/main/NN/Examples/Models/Operators/Fno1dBurgers.lean),
+[Burgers FNO example](https://github.com/lean-dojo/TorchLean/blob/main/TorchLeanExamples/Models/Operators/FNOBurgers.lean),
 which learns a map from an initial field to a later solution, with Fourier transforms and
 frequency mixing as layers in that model. Both examples use
 the tensor and training APIs. But what would we prove about a trained PDE
@@ -788,20 +785,20 @@ scalar in the samples, model state, predictions, gradients and losses.
 `trainer.openTyped` opens that CPU session, and its checkpoint encoding preserves the
 scalar words through saving and loading. There's more on these operations and the conversion
 boundaries in the
-[precision API](https://github.com/lean-dojo/TorchLean/blob/main/NN/API/Precision.lean).
+[precision API](https://github.com/lean-dojo/TorchLean/blob/main/TorchLean/NN/Trainer/Session.lean).
 
 There are still choices to make at the beginning of the calculation, because widening seeded
 `Float` parameters can't create random bits that weren't there, and the trainer's optimizer
 settings also start as `Float` values before conversion. If the learning rate itself
 needs extra precision, the typed `nn.sgdStep` call accepts it in the selected scalar type.
-In the [affine example](https://github.com/lean-dojo/TorchLean/blob/main/NN/Examples/Quickstart/TypedTraining.lean)
+In the [affine example](https://github.com/lean-dojo/TorchLean/blob/main/TorchLeanExamples/Quickstart/TypedTraining.lean)
 we call `nn.sgdStep` directly and build the parameters from $1+2^{-100}$ (a rational that
 binary64 can't hold). Saving all the resulting
 words only helps if we kept those digits on the way into the computation.
 
 Complex values use the same idea with two components. `Complex α` stores the real and
 imaginary parts in `α`, and a tensor of complex values keeps its shape as usual. In the
-[complex regression example](https://github.com/lean-dojo/TorchLean/blob/main/NN/Examples/Models/Operators/ComplexRegression.lean)
+[complex regression example](https://github.com/lean-dojo/TorchLean/blob/main/TorchLeanExamples/Models/Operators/ComplexRegression.lean)
 we minimize a real squared-residual loss and differentiate both component
 coordinates with the forward-mode reference method, which is useful for complex parameters
 and never identifies a real loss gradient with a holomorphic complex derivative.
@@ -859,7 +856,7 @@ execution.) The
 has examples of the arithmetic and interval proofs.
 
 For classifiers, the
-[verification API](https://github.com/lean-dojo/TorchLean/blob/main/NN/API/Verification.lean)
+[verification API](https://github.com/lean-dojo/TorchLean/blob/main/TorchLean/Verify/Trainer.lean)
 lets us check a trained model over an input region by asking whether a label survives the
 allowed perturbations. That guarantee comes from a supported certificate and its soundness
 hypotheses. Switching on gradients alone won't give you one. For a ReLU classifier we might want a
@@ -882,7 +879,7 @@ theorem and the run side by side, we can ask which behavior we meant to implemen
 
 ## References
 
-- TorchLean. [Custom tensor computations](https://lean-dojo.github.io/TorchLean/examples/custom-computations/) and [compiler source](https://github.com/lean-dojo/TorchLean/tree/main/NN/Kernel). The execution API and lowering theorems used here.
+- TorchLean. [Custom tensor computations](https://lean-dojo.github.io/TorchLean/examples/custom-computations/) and [compiler source](https://github.com/lean-dojo/TorchLean/tree/main/TorchLean/CUDA/Kernel). The execution API and lowering theorems used here.
 - FloatLib. [Arithmetic and proofs](https://lean-dojo.github.io/FloatLib/). Configured formats and numerical theory.
 - David Thrane Christiansen. [Functional Programming in Lean](https://lean-lang.org/functional_programming_in_lean/introduction.html). Lean's programming and proof facilities.
 - Accelerate. [The Accelerate language](https://www.acceleratehs.org/documentation/users-guide/language.html). Embedded array computations.

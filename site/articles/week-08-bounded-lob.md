@@ -1,24 +1,24 @@
 # Löb's theorem with a budget
 
-[Last week's](../week-07-program-equilibrium/) modal agents could prove anything that is
-provable, which no computer can do, and the bounded prototype at the end of that page only
-searched a few fixed kinds of certificate. Jacob Tsimerman's question at the end of his SLMath
-talk was about real bounded agents: programs that only accept proofs up to a fixed length. Those
-are the only agents we will ever actually deploy, so they are the ones I care about.
+[Last week](../week-07-program-equilibrium/) I computed the modal agents' outcomes without
+performing their proof searches. The bounded prototype at the end tried only two kinds of
+certificate. Jacob Tsimerman's question at the end of his SLMath talk made me want to go
+further: could we run agents that search a proof language with a genuine length bound?
 
 The agent at the center of that question is DUPOC(k), from Critch, Dennis and Russell. It
 searches for a proof, of at most k characters, that its opponent will cooperate with it. If it
 finds one, it cooperates; otherwise it defects. Their Theorem 3.7 says that two copies of
 DUPOC(k) cooperate once k is large enough, and their Open Problem 4 asks whether anyone can make
-that happen on an ordinary computer, with a real proof search that halts.
+that happen on a present-day computer, with a proof search that halts. The budget limits accepted
+proof length, not the time spent searching.
 
 This week I got it to happen, in a proof system built for these agents whose bounded Löb
 properties are all proved. Two copies of DUPOC(17880), each reading the other's source and
 searching for a proof about it, find a proof of 3,007 characters, check it, and cooperate. The
 match takes about two milliseconds on one core. Everything around that run is checked in Lean:
 the proof system, the search, the theorem that guarantees the proof exists, and what the
-programs do with it. Along the way the same machinery answered another of the paper's open
-problems and turned up a mistake in one of its examples.
+programs do with it. I also prove mutual defection for DUPOC against DIMCID under explicit
+proof-system assumptions, and the argument points to a slip in one of the paper's examples.
 
 ## The theorem behind bounded cooperation
 
@@ -64,10 +64,11 @@ Working through the proof in Lean made me read the growth condition very literal
 paper it is written as "there is some constant $c > 0$ with $f(k) > c \log k$ eventually". The
 theorem they cite uses it for *every* constant: the length of the proof built from the diagonal
 lemma depends on the formula that lemma returns, so it isn't known in advance, and the argument
-absorbs it by letting the budget beat every multiple of $\log k$. Critch's own paper states the
-condition this way, and so do I. The paper's applications use $f(k) = k$ or $\lfloor k/2
-\rfloor$, which satisfy the stronger condition, so their results stand; only the stated
-hypothesis of their Lemma 3.6 needs the stronger form.
+absorbs it by letting the budget beat every multiple of $\log k$.
+[Critch's original theorem](https://arxiv.org/html/1602.04184v5#S5) states the condition this
+way, and so do I. The paper's applications use $f(k) = k$ or $\lfloor k/2\rfloor$, which
+satisfy the stronger condition. The cited theorem covers those applications, but its
+hypothesis is stronger than the one printed in Lemma 3.6.
 
 <pre data-lean-block="bounded-growth"></pre>
 
@@ -122,8 +123,8 @@ The candidates are the paper's own suggestion. Critch, Dennis and Russell point 
 search tried the proof of Theorem 3.7 first, both agents would finish at once. Here the agent
 builds that proof itself: it runs a certificate builder that follows the proof of the bounded
 Löb theorem step by step on the two sources it is given, and the checker decides whether the
-result is a proof. The candidate sits in front of the complete search, never instead of it,
-which is the lesson from last week's version of this page. In a toy checker with two proofs of
+result is a proof. The candidate sits in front of the complete search, never instead of it.
+In a toy checker with two proofs of
 size zero, a search that only tries a template defects while a valid, affordable proof exists:
 
 <pre data-lean-example="boundedCoverage"></pre>
@@ -145,7 +146,7 @@ without ever reaching the complete search, and DUPOC cooperates with itself:
 
 <pre data-lean-block="bounded-dupoc-self"></pre>
 
-Here is the program itself, run a few times while this page was built:
+Here are recorded runs of the program:
 
 <pre data-lean-example="boundedRun"></pre>
 
@@ -191,10 +192,10 @@ the fast path.
 
 DIMCID ("defect if my cooperation implies defection") searches for a proof that if it
 cooperates, its opponent defects, and defects if it finds one. Critch, Dennis and Russell leave
-the match against DUPOC open (their Open Problem 6). The answer is mutual defection, and the
-argument is short. A proof that DIMCID defects is, a few lines later, a proof of DIMCID's
-condition, since "I cooperate" is then false and anything follows from it. So a short proof of
-DIMCID's defection makes DIMCID defect, which is exactly the self-fulfilling shape the bounded
+the match against DUPOC open (their Open Problem 6). Under the proof-system assumptions
+below, I get mutual defection. A proof that DIMCID defects is, a few lines later, a proof of
+DIMCID's condition, since "I cooperate" is then false and anything follows from it. So a short
+proof of DIMCID's defection makes DIMCID defect, which is exactly the self-fulfilling shape the bounded
 Löb theorem turns into a proof. DIMCID defects for every large $k$, and DUPOC, which would need a
 proof that DIMCID cooperates, finds none, because there is no true one to find. The argument
 works in any sound system with the properties above that proves the agents' code and the
@@ -230,7 +231,7 @@ while CIMCIC defects.
 <pre data-lean-block="bounded-worlds"></pre>
 
 This is an answer about this proof system and not about arithmetic, and the reason is worth
-saying plainly. The checker can't verify even trivial finite facts about itself. $\neg \Box_0
+saying plainly. The checker cannot prove some elementary finite facts about itself. $\neg \Box_0
 \top$, "there is no proof of $\top$ with zero characters", is true, but it is false at the first
 world, so the checker has no proof of it. An arithmetic like Peano's proves facts like that by
 checking, and it could prove that CUPOD's search runs out, if it really does, by simulating it,
@@ -251,14 +252,8 @@ threshold says nothing about whether shorter proofs exist below it.
 
 ## Why I care about this
 
-It's easy to prove things about agents that can't exist. The modal agents of last week are
-beautiful, and they settle questions that bounded agents leave open, but the agents that will
-read each other's code in the real world will have budgets, deadlines and heuristics. The space
-between a theorem about idealized reasoners and a program that halts on a laptop is exactly where
-I think formal methods can do the most for AI safety. This week that space got smaller: two
-programs that read each other's source, with nothing but a proof checker and a budget, found
-their way to cooperation, and Lean checked every step that says why. Lean also caught a
-quantifier I would have read past, a property I had stated wrong, and an answer in a footnote.
-
-That's what I'd like to keep working on: the same run inside arithmetic, and agents that are
-written more differently than these. We'll keep adding to this as it goes :)
+I care about the gap between what a theorem predicts and what a program can finish. With
+very different budgets, the theorem can guarantee eventual cooperation even when my
+candidate builder misses the proof. Below the threshold, a different proof might work, but
+this one tells us nothing. I'd like to repeat this in arithmetic and test agents with less
+similar implementations. We'll keep adding to this as it goes :)

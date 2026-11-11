@@ -1,15 +1,13 @@
 # Estimating model behavior from its structure
 
-A new institute, the [Mathematical AI Safety Institute, or MAISI](https://maisi.org/), is
+The [Mathematical AI Safety Institute, or MAISI](https://maisi.org/), is
 bringing mathematicians to questions about the safety of powerful AI systems. One of its
 research directions,
 [developing good heuristics](https://maisi.org/research/directions/heuristic-estimators),
-caught my attention because it asks how much we can learn from a model's structure.
-
-Usually we learn what a model does by running it. We pick some inputs, collect the outputs,
-and estimate a quantity we care about: an average loss, an attention score, or the frequency
-of a defined failure. But we also have the program and its weights. I'd like to know how
-much of that evaluation we can replace with a calculation about the model itself. The
+caught my attention because it asks how much we can learn from a model's structure. Usually
+we estimate an average loss, an attention score, or the frequency of a defined failure by
+running the model on chosen inputs. But we also have the program and its weights. I'd like
+to know how much of that evaluation we can replace with a calculation about the model itself. The
 Alignment Research Center (ARC) has been developing this question through its work on
 mechanistic estimation and the matching sampling principle.
 
@@ -18,9 +16,9 @@ computational no-coincidence conjecture, a polynomial-time verifier $V$ checks a
 advice string $\pi$. In the matching sampling principle, advice $\pi$ describes a model's
 structure and an estimator uses it to compete with sampling. I like to use Lean the same
 way: a search, a heuristic or a person proposes the sketch or the bound, and Lean checks
-what the proposal implies. The two checks do different jobs, though. Their $V$ has to be
-fast and accept heuristic arguments, while a Lean check proves a mathematical statement,
-which is stricter and usually slower. What TorchLean adds is one definition of the network,
+what the proposal implies. The two checks do different jobs, though. Their $V$ accepts
+heuristic arguments under a random-circuit soundness condition; Lean checks a theorem with
+explicit assumptions. What TorchLean adds is one definition of the network,
 shared by the model, the estimator and the theorem, with exact or FloatLib arithmetic, so we
 can say which step of an estimate is exact and which one is an assumption.
 
@@ -34,14 +32,12 @@ its answer means, and FloatLib comes in once we store and execute the numerical 
 We'll start with a calculation small enough to understand completely: throw away a
 dependency on purpose, then recover it with covariance. The harder question is which
 dependencies we can afford to forget in a large model, and what we can prove about the error
-when we do. I think that's where there's room for an interesting research project. For this
-post I wrote Lean proofs of the query–key expectation theorem, a finite sketch with an
-executable error certificate, a coefficient-rounding bound using FloatLib, a sampling
-theorem, a graph-wide error identity, a conditional-averaging theorem for removing some
-input randomness, and the moments of a ReLU applied to a Gaussian. We'll run the small
-instances, follow the general arguments, and then race three structural estimators against
-sampling on 16,800 random ReLU networks. All of these pieces are meant to support a larger
-project: a useful automatic estimator for trained models.
+when we do. I'll build a sketch that keeps what the rest of the computation needs, then
+use the backward pass to account for discarded input randomness. An attention head gives
+us a larger calculation to try it on. We'll also compare three structural estimators with
+sampling across 16,800 random-network contexts. My own certified method loses badly there:
+its bound is far too loose to help on those networks. I'd like to understand what a useful
+bound would need to keep.
 
 ## Two branches, one input
 
@@ -127,7 +123,6 @@ $$\mathbb E[XY] = \mathbb E[X]\mathbb E[Y] + \operatorname{Cov}(X,Y).$$
 For our two branches $\operatorname{Cov}(X,Y_c)=c$, and keeping that one number recovers the
 answer. There's no Gaussian approximation or independence assumption here. For
 square-integrable real random variables on a probability space, the identity is exact.
-
 Mathlib already has this result in its covariance API, and I restated it in the form we
 want for a multiplication rule:
 
@@ -576,11 +571,13 @@ statement about a particular trained network.
 
 ## Competing with sampling on random ReLU networks
 
-I ran a benchmark on the family MAISI points to, random wide ReLU networks. Each context is
-one draw of the weights (entries with variance $2/\text{fan-in}$, biases with standard
-deviation $0.1$, a random readout), and the target is the mean output over 64 independent
-sign inputs, the same inputs as before. Every estimator gets the weights and nothing else,
-so its advice is just its rule. I compared three structural estimators with plain sampling:
+I ran a benchmark on random wide ReLU networks, one of the families MAISI discusses. Each
+context supplies a draw of the weights and biases. In the example below, the weights have
+variance $2/\text{fan-in}$, the biases have standard deviation $0.1$, and the readout is
+random. The target is the expected output over a vector of 64 independent sign coordinates.
+The full grid also includes Gaussian inputs and other weight and bias scales. Every
+estimator gets the weights and the specified input law, with no context-specific advice.
+I compared three structural estimators with plain sampling:
 
 - covariance propagation, which carries the mean vector and covariance matrix through each
   layer and treats the preactivations as jointly Gaussian (the cumulant-propagation idea from
@@ -588,20 +585,24 @@ so its advice is just its rule. I compared three structural estimators with plai
 - a diagonal version that keeps only each neuron's mean and variance;
 - the conditional averaging from earlier, keeping 8 of the 64 signs, with its certified bound.
 
-For sampling I used the exact error of a Monte Carlo average with the same number of
-floating-point operations, and I measured every estimator against an estimate of each
-network's true mean from 8 to 17 million samples. The grid has 96 settings (two or three
-hidden layers, sign or Gaussian inputs, three weight scales, two bias scales, widths 16 to
-1024), with 200 networks per setting and 100 at width 1024.
+The sampling baseline uses $\operatorname{Var}(y)/n$, the expected squared error of an
+independent sample average. I estimate that variance from the large reference runs, and
+choose $n$ to approximately match each estimator's operation count. Those counts charge a
+multiply-add as two operations and each transcendental evaluation as 20; they don't measure
+hardware cost. Each network's reference mean comes from 8 to 17 million antithetic samples.
+The grid has 96 settings (two or three hidden layers, sign or Gaussian inputs, three weight
+scales, two bias scales, widths 16 to 1024), with 200 contexts per setting and 100 at width
+1024. The reported estimator errors subtract the estimated reference-noise contribution.
 
 <figure>
   <picture>
     <source media="(max-width: 600px)" srcset="experiments/msp-error-vs-cost-mobile.svg">
-    <img src="experiments/msp-error-vs-cost.svg" alt="Four panels, one per width: covariance propagation sits below the sampling line at every width, the diagonal closure sits below it at a tiny cost, and certified averaging sits above it">
+    <img src="experiments/msp-error-vs-cost.svg" alt="Four panels, one per width: covariance propagation sits below the sampling line at every width, the diagonal closure sits below it at a tiny cost, and conditional averaging sits above it">
   </picture>
   <figcaption>Two hidden layers, 64 sign inputs, weight variance 2/fan-in, bias scale 0.1. Error
     is the RMSE over 200 networks (100 at width 1024), relative to how much the true mean varies
-    across networks. The dashed line is the exact error of sampling at each compute budget.
+    across networks. The dashed line uses the sampling RMSE formula with estimated variance.
+    Compute follows the operation-count model described above, not GPU time.
     <a href="experiments/results-msp.json">The full record</a> has every setting.</figcaption>
 </figure>
 
@@ -644,21 +645,20 @@ Gaussian preactivation $Z\sim\mathcal N(\mu,\sigma^2)$ with $\sigma>0$, I proved
 $$\mathbb E[\operatorname{ReLU}(Z)]=\mu\,\Phi(\mu/\sigma)+\sigma\,\varphi(\mu/\sigma),\qquad
   \mathbb E[\operatorname{ReLU}(Z)^2]=(\mu^2+\sigma^2)\,\Phi(\mu/\sigma)+\mu\sigma\,\varphi(\mu/\sigma),$$
 
-using TorchLean's own ReLU and Mathlib's Gaussian. That means the per-neuron moment rule is
-exact whenever the input to that neuron really is Gaussian, and the estimator's error comes
-from the closure, from treating a sum of ReLU outputs as Gaussian too. For the covariance
-between two different ReLU outputs we'd need the bivariate formula, which I haven't proved
-yet.
+using TorchLean's own ReLU and Mathlib's Gaussian. The per-neuron moment rule is exact when
+the preactivation really is Gaussian. Treating later preactivations as Gaussian is a
+modeling approximation; evaluating the formulas in floating point introduces a separate
+numerical error. For the covariance between two different ReLU outputs we'd need the
+bivariate formula, which I haven't proved yet.
 
 <details>
 <summary>Read the Gaussian moment theorems</summary>
 <pre data-lean-block="heuristic-gaussian"></pre>
 </details>
 
-This is still the easy case. These are random networks at initialization, where Gaussian
-closure is expected to work, and nothing here is trained, adversarial or rare. But it gives
-the matching sampling question a concrete benchmark with every cost counted, and it shows
-where a checked argument helps today and where it's still too loose to matter.
+These are random networks at initialization. I haven't shown that the result carries over
+to trained models or extreme rare events. It does give us a benchmark with a stated cost
+model, and it shows where my checked bound is still too loose to be useful.
 
 ## Numerical error is another part of the answer
 

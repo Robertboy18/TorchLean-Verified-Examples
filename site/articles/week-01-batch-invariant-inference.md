@@ -5,11 +5,9 @@ change its answer. Even with sampling turned off! As the
 [Thinking Machines Lab post on batch-invariant inference](https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/)
 explains, the other requests can affect how the backend groups arithmetic operations, and
 floating-point addition depends on that grouping. I wanted to work through that calculation
-in TorchLean and FloatLib.
-
-Let's start with three numbers whose sum changes when we move the parentheses, evaluate both
-orders in Lean, and then prove conditions under which changing the batch preserves the scores
-(or at least the chosen token).
+in TorchLean and FloatLib. Let's start with three numbers whose sum changes when we move the
+parentheses, evaluate both orders in Lean, and then prove conditions under which changing
+the batch preserves the scores (or at least the chosen token).
 
 Why doesn't temperature zero save us? It removes randomness from the token-selection rule, but
 it doesn't fix the arithmetic that produces the scores. Greedy decoding picks the token with the largest logit
@@ -25,14 +23,12 @@ state the requirement for their root-mean-square normalization (RMSNorm) reducti
 
 > the reduction order for each element must be fixed regardless of the batch-size of the kernel.
 
-I like that sentence, because it's specific enough to formalize. We can let the server group requests however it likes
-as long as each selected row keeps its own addition tree, and if the tree does change, we need
-a different argument (one that uses an error bound and the winning margin).
-
-A tile is a group of coordinates the kernel processes together, and if you change the tile
-size, partial sums can get combined in different places even when the selected row contains
-the same numbers.
-That's the implementation choice we'll represent explicitly below.
+I like that sentence because it's specific enough to formalize. A tile is a group of
+coordinates the kernel processes together; changing its size can change where partial sums
+are combined even when the selected row contains the same numbers. We can let the server
+group requests however it likes as long as each selected row keeps its own addition tree.
+If the tree does change, we need an error bound and the winning margin instead. That's the
+implementation choice we'll represent explicitly below.
 
 So we have two questions to answer. We can keep the arithmetic fixed and ask for exactly the
 same scores, or we can allow small numerical differences and ask whether the winning token
@@ -131,13 +127,11 @@ For the positive result I use the same definitions: equal selected rows evaluate
 give equal results. A scheduling policy is allowed to depend on the request's hidden dimension,
 sequence length, dtype, or block size, as long as an unrelated request can't change the
 selected row's schedule. Both the matmul and RMSNorm results spell out this condition for
-their own reductions.
-
-Two requests with different context lengths may use different trees, since the condition only
-compares requests with the same local metadata, and what it excludes is a tree change caused
-solely by someone else's request entering the batch. To say that a particular server obeys it, we'd
-have to connect that server's policy to the definition, and I haven't done that for any real
-server yet.
+their own reductions. Two requests with different context lengths may use different trees,
+since the condition only compares requests with the same local metadata. It excludes a tree
+change caused solely by someone else's request entering the batch. To say that a particular
+server obeys it, we'd have to connect that server's policy to the definition, and I haven't
+done that for any real server yet.
 
 Attention adds a second complication. A server can divide a sequence into chunks or put some
 keys and values in a cache while computing the rest, and if those choices change where partial
@@ -253,15 +247,12 @@ perturbation through the model.
     <a href="results/local_hf_margin_probe_tinyllama.json">Recorded top-two logits, margins, and drift</a>.</figcaption>
 </figure>
 
-I also wanted to see how big these differences get in a model. So I ran the FP16 probe above.
-The logits moved! But they moved by much less than the gap between the two highest scores, and
-the winning tokens agreed. To make the same argument for later tokens we need the margin and error
+I also wanted to see how big these differences get in a model, so I ran the FP16 probe above.
+The logits moved! But they moved by much less than the gap between the two highest scores, and the
+winning tokens agreed. Each point describes one measured pair of executions: its observed
+maximum difference bounds those recorded logits, not all future requests or every kernel
+the server might select. To make the argument for later tokens we'd need a margin and error
 bound at each new prefix, since every selected token becomes part of the next input.
-
-Each prompt number refers to one measured pair of executions. So an observed maximum
-difference bounds that pair's recorded logits, and it doesn't become a bound for all future
-requests or for every kernel the server might select. I keep it beside the theorem anyway,
-because it makes the size of the margin concrete while leaving the theorem's premise visible.
 
 To carry the result through generation, start with equal prefixes, which give us the same
 reference input for the next step, and if that step's margin and error satisfy the inequality,

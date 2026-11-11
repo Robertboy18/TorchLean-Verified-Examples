@@ -32,13 +32,13 @@
     <header class="hero">
       <h1>Kimi K3: the paper and proofs side by side</h1>
       <p class="article-meta">Robert Joseph George · TorchLean Verified Examples</p>
-      <p class="hero-introduction">Kimi K3 is an open-weight model from Moonshot AI that works
+      <p class="hero-introduction">I wanted to work through K3's equations with the model
+        and its proofs side by side. Kimi K3 is an open-weight model from Moonshot AI that works
         with text, images, and video, and its technical report describes 2.78 trillion learned
         parameters and a context window of up to one million tokens. It mixes attention
         with recurrent memory and picks a subset of its experts for each token.
-        <a class="paper-cite" href="https://arxiv.org/pdf/2607.24653v2#page=1">Kimi K3 technical report ↗</a></p>
-      <p class="hero-introduction">I wanted to work through K3's equations with the model
-        and its proofs side by side. TorchLean gives us tensor programs and model definitions;
+        <a class="paper-cite" href="https://arxiv.org/pdf/2607.24653v2#page=1">Kimi K3 technical report ↗</a>
+        TorchLean gives us tensor programs and model definitions;
         FloatLib lets us specify their arithmetic. We'll start with one expert, then follow
         the recurrent state, attention, routing, and the sequence as a whole.</p>
       <details class="article-toc">
@@ -116,8 +116,8 @@
             selected groups of weights (called experts), and an image goes through a vision encoder
             before it joins the language model. To formalize the model, we have to understand
             how those calculations share their inputs and state.
-            <a class="paper-cite" href="https://arxiv.org/pdf/2607.24653v2#page=3">Figure 2 and §2, pp. 3–4 ↗</a></p>
-          <p>That leads to concrete questions. Does splitting a sequence into two chunks preserve
+            <a class="paper-cite" href="https://arxiv.org/pdf/2607.24653v2#page=3">Figure 2 and §2, pp. 3–4 ↗</a>
+            Does splitting a sequence into two chunks preserve
             the output when we carry the state between them? Does the graph of tensor operations
             compute the same function as the paper equation? How large can a capped activation
             become? We can answer these with theorems about the definitions, and later ask how
@@ -1299,7 +1299,7 @@
           feature axis.</p>
 <pre data-lean-block="vision-projector"></pre>
         <ol class="code-walk">
-          <li><code>reduceMean 0</code> averages the frame axis, so an image and a video chunk both
+          <li><code>Tensor.mean</code> averages the frame axis, so an image and a video chunk both
             become one spatial grid.</li>
           <li>Both reshape proofs establish equal element counts, and the axis swap turns
             <code>row, merge-row, column, merge-column</code> into groups of neighboring patches.</li>
@@ -1320,9 +1320,9 @@
         <div class="assumption-box"><strong>Report claim outside Lean.</strong><p>Figure 6's gradient-norm
           stability comparison depends on measurements. This file specifies the
           architecture, and it doesn't turn that plot into a theorem.</p></div>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Vision.lean#L400" target="_blank" rel="noreferrer">Vision.lean, encoder attention ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Vision.lean#L514" target="_blank" rel="noreferrer">Vision.lean, merge and projection ↗</a>
-        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Vision.lean#L548" target="_blank" rel="noreferrer">Vision.lean, complete reference path ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Vision.lean#L364" target="_blank" rel="noreferrer">Vision.lean, encoder attention ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Vision.lean#L475" target="_blank" rel="noreferrer">Vision.lean, merge and projection ↗</a>
+        <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/Vision.lean#L504" target="_blank" rel="noreferrer">Vision.lean, complete reference path ↗</a>
         <a class="source-link" href="https://github.com/Robertboy18/TorchLean-Verified-Examples/blob/master/week-04-kimi-k3-specification/KimiK3/GraphSpec/Vision.lean" target="_blank" rel="noreferrer">GraphSpec/Vision.lean, denotation proofs ↗</a>
       </aside>
     </section>

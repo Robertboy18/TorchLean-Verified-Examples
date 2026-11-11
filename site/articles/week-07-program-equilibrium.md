@@ -91,9 +91,8 @@ atoms. The proof is an induction down the chain. The same argument works on any 
 I write each agent as a schema over two kinds of atoms: "my opponent cooperates with me", and
 "my opponent cooperates with agent $c$" for some fixed agent $c$. The same schema is used against
 every opponent. An agent therefore cannot look at who it is playing, only at what it can prove
-about how the opponent plays. That excludes CliqueBot, which is the point.
-
-Every atom sits under a box, so an agent's decision at world $n$ only reads worlds below $n$.
+about how the opponent plays. That excludes CliqueBot, which is the point. Every atom sits
+under a box, so an agent's decision at world $n$ only reads worlds below $n$.
 That lets me compute the whole table of outcomes world by world: `play n a b` says whether $a$
 cooperates with $b$ at world $n$.
 
@@ -291,12 +290,11 @@ $$
 
 I kept that policy unchanged and tried it in eight reserved populations. Two of them exposed
 it: the policy cooperates with an opponent that defects against it. Lean checked the new
-outcome tables and rejected admission in both cases.
-
-The original theorem was still right. It concerned a particular population, and these were
-different populations. This is the example I'd use to explain why testing more opponents
-and proving an arbitrary-opponent theorem are different tasks. The guarded class has the
-latter theorem; an unrestricted policy doesn't acquire it by passing a finite test.
+outcome tables and rejected admission in both cases. The original theorem was still right:
+it concerned a particular population, and these were different populations. This is why
+testing more opponents and proving an arbitrary-opponent theorem are different tasks. The
+guarded class has the latter theorem; an unrestricted policy doesn't acquire it by passing
+a finite test.
 
 Counting repeated proposals with their original attempt weights, 510 of 512 unrestricted
 transfers passed in the first study, and all 488 passed in the replication. The failure did
@@ -355,8 +353,8 @@ we can inspect the proposed programs, reject the ones that fail the criterion, a
 some apparently different answers are the same policy.
 
 The [experiment notes and replay commands](../week-07-program-equilibrium/experiments/)
-give the training settings, protocol amendments, selection rules and exclusions. The export contains programs and certificates. It leaves out credentials, private checkpoints
-and raw API traces.
+give the training settings, protocol amendments, selection rules and exclusions. The export
+contains programs and certificates, without credentials, private checkpoints or raw API traces.
 
 ## What Lean checks here
 
@@ -397,11 +395,10 @@ proof predicate.
 ## A bounded self-play prototype
 
 The modal index isn't a proof-search budget. I wanted a small example where we could change
-an actual budget, run the agents, and inspect the evidence behind a move. The new interpreter
-does that with two cooperation-certificate rules.
-
-The first rule recognizes a program that always cooperates. The second recognizes two
-searchers, checks their program descriptions and budgets, and verifies that each can afford
+an actual budget, run the agents, and inspect the evidence behind a move. A small interpreter
+does that with two cooperation-certificate rules. The first recognizes a program that always
+cooperates. The second recognizes two searchers, checks their program descriptions and
+budgets, and verifies that each can afford
 the reciprocal certificate its own search will look for. It doesn't call either agent while
 checking the certificate. Both searches contain that certificate, so their actual executions
 return cooperation. Lean proves this argument from the interpreter's definitions; there is
@@ -429,24 +426,22 @@ To run self-play, the two search orders and the failure cases together:
 lake exe play_bounded_agents 16
 ```
 
-This is a first bounded experiment, **not a solution to Open Problem 4**. The certificates refer to two specialized rules that Lean proves sound, and none of them is
-an arithmetic proof. Their byte counts
-don't include expanded Lean proof terms. Names resolve through a fixed program registry;
+This prototype doesn't solve Open Problem 4. Its certificates refer to two specialized rules
+that Lean proves sound, rather than arbitrary arithmetic proofs. Their byte counts don't
+include expanded Lean proof terms. Names resolve through a fixed program registry;
 they aren't source-code fingerprints. The two different search orders cooperate, but this
 doesn't establish cooperation between arbitrary implementations of DUPOC.
 
-The full target is still
+To go beyond those two rules, we need a proof language with checked lengths and
 [Critch, Dennis and Russell's parametric bounded Löb theorem](https://arxiv.org/abs/2208.07006),
-Lemma 3.6. Under their proof-system and growth assumptions, a uniform proof of
+Lemma 3.6. Under its proof-system and growth assumptions, a uniform proof of
 
 $$
 \forall k > k_1,\quad \Box_{f(k)}p(k) \to p(k)
 $$
 
-leads to a proof of $\forall k > k_2,\ p(k)$ for some $k_2$. Here $\Box_{f(k)}$ means an actual
-arithmetic proof with a length bound. Connecting that theorem to the executable search needs a
-real proof encoding and checked length bounds. Reinterpreting modal worlds won't do it. The
-[next post](../week-08-bounded-lob/) proves that theorem in Lean from the properties it needs,
-builds a proof checker that has all of them, and runs two copies of DUPOC that find a proof and
-cooperate. For now, this prototype is a terminating example with explicit budgets and proved
-operational guarantees to build on :)
+leads to a proof of $\forall k > k_2,\ p(k)$ for some $k_2$. Here the bound counts characters
+in proofs, not worlds in a modal model. In the [next post](../week-08-bounded-lob/) I prove
+the theorem from explicit proof-system properties, build a checker satisfying them, and run
+two copies of DUPOC that find a proof and cooperate. That system is built for these agents;
+an instance inside arithmetic remains a further step :)

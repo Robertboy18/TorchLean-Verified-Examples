@@ -347,9 +347,10 @@ sampling advantage.
 ## Matching sampling on random ReLU networks
 
 The article describes the benchmark that the matching sampling principle asks for, and this
-section runs it. MAISI's statement asks for a structural estimator, whose advice can't depend on
-the context, with mean squared error over contexts comparable to random sampling at comparable
-cost. It names ARC's covariance propagation as an example that works well on random wide networks.
+section tests one random-network family. MAISI's statement asks for a structural estimator,
+whose advice can't depend on the context, with mean squared error over contexts comparable to
+random sampling at comparable cost. It names ARC's covariance propagation as an example that
+works well on random wide networks.
 So we tested covariance propagation on random ReLU networks, together with a cheaper diagonal
 version and the essay's own conditional-averaging certificate, against plain Monte Carlo given the
 same number of FLOPs.
@@ -370,15 +371,17 @@ differ, but only slightly.
 Every estimator sees the weights and nothing else that depends on the context.
 
 - **S** is plain Monte Carlo. Its sample count n gives it the FLOPs of another estimator, and we
-  also run 10 and 100 times that budget. The S columns below use the exact RMSE of unbiased
-  sampling, `sqrt(mean_c Var_x(y) / n)`. Independent sampled runs are in the record as well and
-  agree with it (median deviation 4%).
+  also run 10 and 100 times that budget. The S columns below use the RMSE formula for unbiased
+  sampling, `sqrt(mean_c Var_x(y) / n)`, with variances estimated by the large reference runs.
+  The formula is exact for known population variances; these reported values are estimates.
+  Independent sampled runs are in the record as well and agree approximately (median deviation 4%).
 - **D** keeps one mean and one variance per neuron and drops every cross-covariance.
 - **C** propagates the mean vector and the full covariance matrix. The affine maps are exact. Each
   ReLU uses the exact moments of a bivariate Gaussian with nonzero means: Rosenbaum's
   truncated-moment formulas, with the orthant probability from Genz's bivariate normal algorithm
-  (20-point Gauss–Legendre). The one approximation is to treat each layer's preactivations as
-  jointly Gaussian. For the mean, C stops at the diagonal of the last layer's covariance.
+  (20-point Gauss–Legendre). Treating each layer's preactivations as jointly Gaussian is the
+  modeling approximation; floating-point evaluation and quadrature introduce numerical error
+  too. For the mean, C stops at the diagonal of the last layer's covariance.
 - **A** is the conditional averaging from the averaging experiment above, for sign inputs. It
   keeps the first k ∈ {4, 8} signs, sets the other 60 or 56 to zero, evaluates the 2^k reference
   states, and adds the `Averaging.mean_error_le` budget with the ReLU boundary radius, computed
@@ -396,12 +399,13 @@ square root or normal CDF as 20. Random-number generation isn't charged to S. If
 functions cost one FLOP instead, C gets cheaper and its comparisons only improve (the record has
 both versions).
 
-The truth for each context is antithetic Monte Carlo in float64 on one A100, with 2^24 samples
-at widths 16 and 64 and 2^23 at 256 and 1024. We subtract the truth's mean squared standard error
-from every estimator's mean squared error. In the main grid the truth's standard error stays
-below a tenth of C's RMSE (at most 0.099 of it), and the S columns don't depend on it. Every seed
+The reference for each context is antithetic Monte Carlo in float64 on one A100, with 2^24
+samples at widths 16 and 64 and 2^23 at 256 and 1024. We subtract its estimated mean squared
+standard error from each empirical estimator MSE. In the main grid the reference's standard
+error stays below a tenth of C's RMSE (at most 0.099 of it). The formula-based S columns use
+the same run's variance estimate, rather than differences from its estimated mean. Every seed
 is fixed. A two-context pilot estimated the grid at 1.25 hours, under our 3-hour cap, so the full
-grid ran. It took 1.9 hours after we doubled the width-1024 truth.
+grid ran. It took 1.9 hours after we doubled the width-1024 reference sample count.
 
 ### Checks before the sweep
 

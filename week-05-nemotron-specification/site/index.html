@@ -197,21 +197,19 @@
     lists 108 residual blocks: 48 Mamba blocks, 48 MoE blocks,
     and 12 attention blocks. Mamba blocks hold recurrent state and attention blocks hold keys
     and values. I transcribed their order as <code>releasedSchedule</code> (each entry names one residual
-    block), and Lean checks the counts.</p>
-  <p>Each <a href="https://arxiv.org/abs/2405.21060">Mamba-2</a> block has 256 heads, 64 value channels per head, and 128 state coordinates.
-    That gives a state tensor of shape <code>[256, 64, 128]</code>, and all 48 FP32 state
-    tensors together hold 384 MiB. On the attention side, each block has two KV heads of width
-    128, so the 12 blocks add 6144 bytes of FP8 keys and values for each token.</p>
-  <p>Mamba is a state-space layer: it updates
+    block), and Lean checks the counts. Mamba is a state-space layer: it updates
     a fixed-size state using coefficients chosen from the current input. A mixture-of-experts
     (MoE) block selects a few learned feed-forward transformations for each token. Attention
     instead keeps keys, which future queries compare against, and values, which their attention
     weights combine, so these three kinds of block have different storage needs.</p>
-  <p>Where does that 384 MiB come from? Let's count the entries. One Mamba head stores
-    \(64\times128=8{,}192\) entries, so 256 heads give 2,097,152 entries in a block, and at four
+  <p>Let's count the entries. Each <a href="https://arxiv.org/abs/2405.21060">Mamba-2</a> block has
+    a state tensor of shape <code>[256, 64, 128]</code>: 256 heads, 64 value channels per head,
+    and 128 state coordinates. One head stores \(64\times128=8{,}192\) entries, so all the heads
+    give 2,097,152 entries in a block, and at four
     bytes per FP32 entry that's 8 MiB (here MiB means \(2^{20}\) bytes). Multiplying by 48 gives
     384 MiB. The BF16 label on the model describes its weight representation, so don't read it as
-    the precision of every working state.</p>
+    the precision of every working state. On the attention side, each block has two KV heads
+    of width 128, so the 12 blocks add 6144 bytes of FP8 keys and values for each token.</p>
   <figure class="payload-figure">
     <svg viewBox="0 0 780 350" role="img" aria-labelledby="payloadTitle payloadDescription">
       <title id="payloadTitle">Recurrent-state payload stays fixed while the attention cache grows</title>

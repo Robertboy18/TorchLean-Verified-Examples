@@ -37,8 +37,9 @@ Some examples I've been working on :)
 - [Löb's theorem with a budget](week-08-bounded-lob/).
   Prove Critch's parametric bounded Löb theorem, build a proof checker that has every property
   it needs, and run DUPOC on it: two copies find a 3,007-character proof and cooperate. Also
-  mutual defection for DUPOC against DIMCID (Open Problem 6) and differently written agents
-  that still cooperate. `lake exe play_dupoc 500000` plays the tournament.
+  mutual defection for DUPOC against DIMCID under explicit proof-system assumptions
+  (Open Problem 6), and differently written agents that still cooperate.
+  `lake exe play_dupoc 500000` plays the tournament.
 
 For K3 and Nemotron, the proofs cover the equations and state transformations described in the
 essays (not complete released checkpoints). Each development links its theorem statements,
@@ -127,3 +128,8 @@ lake build @TorchLean/TorchLean.Tensor @TorchLean/TorchLean.NN
 python3 site/lean.py
 python3 site/build.py
 ```
+
+## License
+
+Original code and documentation are released under the [MIT license](LICENSE).
+Third-party code, fonts, papers, and other assets retain their own licenses and notices.

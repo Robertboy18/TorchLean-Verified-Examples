@@ -1,7 +1,7 @@
 """Draw the error-versus-compute figure for the matching-sampling benchmark from results-msp.json.
 
 Depth 2, 64 sign inputs, sigma_w^2 = 2, sigma_b = 0.1. Each panel is one width. The sampling line is
-the exact sampling error at each compute budget; the markers are the structural estimators.
+the sampling RMSE formula with estimated variance; the markers are the structural estimators.
 """
 
 import json
@@ -13,7 +13,7 @@ HERE = Path(__file__).resolve().parent
 INK, MUTED, GRID, PAPER = "#252b32", "#69737d", "#e0e5e8", "#ffffff"
 SERIES = {"C": "#2a78d6", "D": "#eb6834", "A8": "#1baf7a"}  # validated categorical slots 1-3
 NAMES = {"C": "covariance propagation (Gaussian closure)", "D": "diagonal closure (no covariances)",
-         "A8": "averaging, 8 of 64 signs kept (certified bound)"}
+         "A8": "averaging (8 of 64 signs kept)"}
 SHORT = {"C": "covariance", "D": "diagonal", "A8": "averaging"}
 SUP = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
 FONT = "IBM Plex Sans, system-ui, sans-serif"
@@ -53,8 +53,8 @@ def panel(r, left, top, w, h, labels):
     def px(v): return left + w * (math.log10(v) - math.log10(X0)) / (math.log10(X1) - math.log10(X0))
     def py(v): return top + h * (math.log10(Y1) - math.log10(v)) / (math.log10(Y1) - math.log10(Y0))
     out = [f'<text x="{left}" y="{top-24}" font-size="13" font-weight="600" fill="{INK}">width {r["width"]}</text>',
-           f'<text x="{left}" y="{top-9}" font-size="11.5" fill="{MUTED}">covariance: {r["gain"]:.1f}× less error '
-           f'than equal-cost sampling</text>']
+           f'<text x="{left}" y="{top-9}" font-size="11.5" fill="{MUTED}">sampling / covariance RMSE: '
+           f'{r["gain"]:.1f}×</text>']
     for e in range(3, 14, 2):
         x = px(10 ** e)
         out.append(f'<line x1="{x:.1f}" y1="{top}" x2="{x:.1f}" y2="{top+h}" stroke="{GRID}" stroke-width="1"/>')
@@ -70,7 +70,7 @@ def panel(r, left, top, w, h, labels):
     x_end = px(min(c1, r["sample_flops"] * (r["per_sample"] / Y0) ** 2))
     out.append(f'<line x1="{px(seg[0][0]):.1f}" y1="{py(min(seg[0][1], Y1)):.1f}" x2="{x_end:.1f}" '
                f'y2="{py(Y0):.1f}" stroke="{MUTED}" stroke-width="2" stroke-dasharray="5 4">'
-               f'<title>Sampling: exact error {r["per_sample"]*100:.0f}% at one sample, falling as 1/sqrt(compute)</title></line>')
+               f'<title>Sampling: estimated RMSE {r["per_sample"]*100:.0f}% at one sample, falling as 1/sqrt(compute)</title></line>')
     for kind in ("A8", "D", "C"):
         flops, rel = r["points"][kind]
         x, y = px(flops), py(rel)
@@ -86,7 +86,7 @@ def panel(r, left, top, w, h, labels):
 
 
 def legend(left, top, compact):
-    items = [("S", "sampling (exact error at that compute)")] + [(k, NAMES[k]) for k in ("C", "D", "A8")]
+    items = [("S", "sampling (estimated RMSE)")] + [(k, NAMES[k]) for k in ("C", "D", "A8")]
     out, x, y = [], left, top
     for kind, name in items:
         if kind == "S":
@@ -109,8 +109,8 @@ def draw(compact):
     W = 360 if compact else 720
     out_legend, ly = legend(18, 26, compact)
     top0 = ly + 74
-    ytitle = (f'<text x="18" y="{top0-48}" font-size="11.5" fill="{MUTED}">error, relative to the spread of the '
-              f'true mean across networks</text>')
+    ytitle = (f'<text x="18" y="{top0-48}" font-size="11.5" fill="{MUTED}">'
+              f'relative RMSE (spread of network means)</text>')
     pw, ph = (W - 78, 210) if compact else (282, 190)
     cells = [(60, top0 + i * (ph + 92)) for i in range(4)] if compact else \
             [(60 + (i % 2) * (pw + 74), top0 + (i // 2) * (ph + 96)) for i in range(4)]
@@ -124,8 +124,8 @@ def draw(compact):
             f'<title id="title">Estimation error against compute on random ReLU networks</title>'
             f'<desc id="description">Four panels, one per width, for depth-2 random ReLU networks with 64 sign inputs. '
             f'Each shows relative error on a log scale against floating-point operations on a log scale. The dashed line '
-            f'is the exact error of plain sampling at each compute budget. Covariance propagation lies below the line at '
-            f'every width; means-and-variances lies below it at its small cost; certified averaging lies above it.</desc>'
+            f'uses the sampling RMSE formula with estimated variance at each compute budget. Covariance propagation lies below the line at '
+            f'every width; means-and-variances lies below it at its small cost; conditional averaging lies above it.</desc>'
             f'<metadata id="measurements">{meta}</metadata>'
             f'<rect width="{W}" height="{H}" fill="{PAPER}"/>')
     foot = (f'<text x="{W/2:.0f}" y="{H-12}" font-size="11.5" fill="{MUTED}" text-anchor="middle">'

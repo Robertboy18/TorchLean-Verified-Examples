@@ -69,6 +69,8 @@ names are references, not source-code hashes.
 
 This is not the general DUPOC implementation requested in
 [Critch, Dennis and Russell's Open Problem 4](https://arxiv.org/abs/2208.07006).
-The parametric bounded Löb theorem and the arithmetic proof encoding with its length bounds
-remain to be formalized and connected to a richer proof search. The prototype uses neither
-an assumed reflection axiom nor a modal-world cutoff as its budget.
+[Week 8](../week-08-bounded-lob/) proves the parametric bounded Löb theorem from explicit
+proof-system properties, builds a checker satisfying them, and runs a complete bounded search
+with candidate proofs tried first. An arithmetic instance with its proof encoding and length
+bounds remains to be built. This smaller prototype uses neither an assumed reflection axiom
+nor a modal-world cutoff as its budget.
