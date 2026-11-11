@@ -739,28 +739,24 @@ language model completes text and isn't automatically a helpful assistant. The e
 same interface, but you should judge the Tiny Shakespeare run as text completion. Interactive
 generation stops at the tokenizer's end-of-text token and advances the sampling seed between turns.
 
-You can open the repaired 50M instruction-tuning checkpoint through the cached generator. If you
-leave out `--message`, it starts an interactive loop and keeps the transcript until it reaches the
-1,024-token context limit:
+The cached generator can load the same quick checkpoint. Without `--message`, it starts an
+interactive loop and keeps the transcript until it reaches the 16-token context limit:
 
 ```bash
 lake -R -K cuda=true exe generate_torchlean_gpt_cached --device cuda \
-  --preset gpt2-small \
-  --load-params \
-    week-03-gpt-training/artifacts/dialogue-bounded-from-2.319b-20260812-smoltalk2-50m/checkpoints/step-8139/parameters.tlf32 \
-  --tokenizer-vocab week-03-gpt-training/data/smoltalk2-balanced-50m/vocab.json \
-  --tokenizer-merges week-03-gpt-training/data/smoltalk2-balanced-50m/merges.txt \
+  --preset quick \
+  --load-params week-03-gpt-training/artifacts/quick.tlf32 \
+  --tokenizer-vocab week-03-gpt-training/data/tinyshakespeare/vocab.json \
+  --tokenizer-merges week-03-gpt-training/data/tinyshakespeare/merges.txt \
   --system "" \
-  --generate 64 \
   --temperature 0.8 \
   --top-k 40
 ```
 
-For one noninteractive answer, append `--message "What is two plus two?"`. That's handy for poking
-at the checkpoint, but judge its assistant quality by the failed generation tests above.
+For one noninteractive completion, append `--message "Hello!" --generate 4`.
 
 Checkpoints preserve parameter values and check their shapes when loading. The Week 3 runner
-writes binary64 `TLSTATE` on CPU and GPU. The loader also accepts the original binary64 JSON and
+writes binary64 `TLSTATE` on CPU and GPU. The loader also accepts binary64 JSON and `TLSF32B`
 binary32 checkpoints. The cached decoder uses the dtype of the live parameters. A
 file written with `--save-params` stores only model parameters, which is enough to begin a new phase
 such as instruction tuning. A resumable checkpoint directory also stores the AdamW moments, the
@@ -805,20 +801,11 @@ full-size training path, not convergence or the quality of a newly trained langu
 
 ### Checkpoint size
 
-With the current `Float` runtime, a GPT-2-small parameter-only file is about 2.95 GiB (3,172,502,859
-bytes, 25.5 bytes per parameter). Despite the `.tlf32` name, it's pretty-printed JSON
-(`torchlean_state_bits_v1`) holding every value's 64-bit pattern. That extension is left over from
-the binary32 stream that the archived FP32 runs wrote, which was about 475 MiB. A resumable AdamW
-checkpoint also stores both optimizer moments, in a binary64 `optimizer.tladam` file of 1.85 GiB, so
-one checkpoint directory is about 4.8 GiB
-([measurement](results/current-runtime-checks/gpt2-small-checkpoint-sizes.json)).
-
-Writing a GPT-2-small `Float` checkpoint needs a larger Lean thread stack than the default. With the
-default stack, a one-update GPT-2-small run finished its update and then hung while writing its
-first checkpoint ([details](results/current-runtime-checks/gpt2-small-default-stack-hang.txt)).
-Setting `LEAN_STACK_SIZE_KB=8388608` (8 GiB) before the command fixed it, and
-`run_instruction_tuning.sh` sets that value unless you choose another. Loading the same file worked
-with the default stack, though.
+The `TLSTATE` writer streams binary64 values at eight bytes per parameter, plus tensor shapes and
+format metadata. GPT-2 small has 124,412,160 stored parameters, so its parameter file needs about
+949 MiB. The `.tlf32` extension remains in the commands above for filename compatibility. A resumable
+AdamW checkpoint also stores both optimizer moments, about 1.85 GiB in binary64, bringing the total
+to about 2.8 GiB plus metadata.
 
 For a long run, keep the checkpoint named by `LATEST`, one previous recovery point, the best
 held-out parameter file, and the final parameter file. Older optimizer snapshots are only useful
@@ -851,14 +838,13 @@ The cached command takes the same checkpoint and tokenizer as the ordinary gener
 
 ```bash
 lake -R -K cuda=true exe generate_torchlean_gpt_cached --device cuda \
-  --preset gpt2-small \
-  --load-params \
-    week-03-gpt-training/artifacts/dialogue-bounded-from-2.319b-20260812-smoltalk2-50m/checkpoints/step-8139/parameters.tlf32 \
-  --tokenizer-vocab week-03-gpt-training/data/smoltalk2-balanced-50m/vocab.json \
-  --tokenizer-merges week-03-gpt-training/data/smoltalk2-balanced-50m/merges.txt \
+  --preset quick \
+  --load-params week-03-gpt-training/artifacts/quick.tlf32 \
+  --tokenizer-vocab week-03-gpt-training/data/tinyshakespeare/vocab.json \
+  --tokenizer-merges week-03-gpt-training/data/tinyshakespeare/merges.txt \
   --system "" \
   --message "Hello!" \
-  --generate 64
+  --generate 4
 ```
 
 Since the model still uses its learned absolute positions, the prompt and continuation must fit
@@ -915,11 +901,10 @@ TorchLean forward pass on one loaded checkpoint:
 
 ```bash
 lake -R -K cuda=true exe check_torchlean_gpt_cache --device cuda \
-  --preset gpt2-small \
-  --load-params \
-    week-03-gpt-training/artifacts/dialogue-bounded-from-2.319b-20260812-smoltalk2-50m/checkpoints/step-8139/parameters.tlf32 \
-  --tokenizer-vocab week-03-gpt-training/data/smoltalk2-balanced-50m/vocab.json \
-  --tokenizer-merges week-03-gpt-training/data/smoltalk2-balanced-50m/merges.txt \
+  --preset quick \
+  --load-params week-03-gpt-training/artifacts/quick.tlf32 \
+  --tokenizer-vocab week-03-gpt-training/data/tinyshakespeare/vocab.json \
+  --tokenizer-merges week-03-gpt-training/data/tinyshakespeare/merges.txt \
   --system "" \
   --message "Hello!"
 ```
@@ -961,14 +946,13 @@ For a greedy timing comparison, run:
 
 ```bash
 lake -R -K cuda=true exe benchmark_torchlean_gpt_cache --device cuda \
-  --preset gpt2-small \
-  --load-params \
-    week-03-gpt-training/artifacts/dialogue-bounded-from-2.319b-20260812-smoltalk2-50m/checkpoints/step-8139/parameters.tlf32 \
-  --tokenizer-vocab week-03-gpt-training/data/smoltalk2-balanced-50m/vocab.json \
-  --tokenizer-merges week-03-gpt-training/data/smoltalk2-balanced-50m/merges.txt \
+  --preset quick \
+  --load-params week-03-gpt-training/artifacts/quick.tlf32 \
+  --tokenizer-vocab week-03-gpt-training/data/tinyshakespeare/vocab.json \
+  --tokenizer-merges week-03-gpt-training/data/tinyshakespeare/merges.txt \
   --system "" \
   --message "hey" \
-  --generate 16 \
+  --generate 4 \
   --seed 0 \
   --top-k 1
 ```

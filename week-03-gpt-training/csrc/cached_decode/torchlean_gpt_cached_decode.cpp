@@ -1,8 +1,14 @@
 #include "torchlean_libtorch.h"
 
+#include <ATen/ATen.h>
+#include <c10/util/Exception.h>
+#include <torch/csrc/inductor/aoti_torch/utils.h>
+
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <stdexcept>
+#include <utility>
 
 namespace {
 
@@ -30,23 +36,29 @@ void require_open(const Cache& state) {
   if (!state.keys.defined()) throw std::invalid_argument("cached decoder: cache is closed");
 }
 
+const at::Tensor& tensor_of(b_lean_obj_arg object) {
+  // The live buffer owns this borrowed tensor throughout the native call.
+  return *torch::aot_inductor::tensor_handle_to_tensor_pointer(
+      torchlean_cuda_buffer_handle(object));
+}
+
+lean_obj_res buffer_of(at::Tensor value) {
+  if (value.requires_grad())
+    throw std::invalid_argument("cached decoder: unexpected autograd tensor");
+  return torchlean_cuda_buffer_of_handle(
+      torch::aot_inductor::new_tensor_handle(std::move(value)));
+}
+
 template <typename F>
 lean_obj_res io(F&& body) {
-  try {
-    torchlean::initialize();
-    at::NoGradGuard no_grad;
-    c10::DeviceGuard guard(torchlean::device());
-    return lean_io_result_mk_ok(body());
-  } catch (const c10::OutOfMemoryError& error) {
-    return lean_io_result_mk_error(
-        lean_mk_io_error_resource_exhausted(0, lean_mk_string(error.what())));
-  } catch (const std::bad_alloc& error) {
-    return lean_io_result_mk_error(
-        lean_mk_io_error_resource_exhausted(0, lean_mk_string(error.what())));
-  } catch (const std::exception& error) {
-    return lean_io_result_mk_error(
-        lean_mk_io_error_other_error(0, lean_mk_string(error.what())));
-  }
+  return torchlean::io([&] {
+    try {
+      return std::forward<F>(body)();
+    } catch (const c10::OutOfMemoryError& error) {
+      // These ATen calls throw C++ exceptions; the core IO wrapper uses its own allocation error.
+      throw torchlean::out_of_memory(error.what_without_backtrace());
+    }
+  });
 }
 
 }  // namespace
@@ -55,7 +67,7 @@ extern "C" LEAN_EXPORT lean_obj_res torchlean_gpt_kv_cache_create(
     uint32_t layers, uint32_t heads, uint32_t capacity, uint32_t head_dim,
     b_lean_obj_arg parameter) {
   return io([&] {
-    const auto& prototype = torchlean::tensor(parameter);
+    const auto& prototype = tensor_of(parameter);
     int64_t count = 1;
     for (auto dimension : {layers, heads, capacity, head_dim}) {
       if (dimension == 0 || count > std::numeric_limits<int64_t>::max() / dimension)
@@ -101,9 +113,9 @@ extern "C" LEAN_EXPORT lean_obj_res torchlean_gpt_kv_cache_attention(
     const auto width = state.keys.size(3);
     if (layer >= state.keys.size(0) || position >= state.keys.size(2))
       throw std::invalid_argument("cached decoder: cache index out of range");
-    const auto& q = torchlean::tensor(query);
-    const auto& k = torchlean::tensor(key);
-    const auto& v = torchlean::tensor(value);
+    const auto& q = tensor_of(query);
+    const auto& k = tensor_of(key);
+    const auto& v = tensor_of(value);
     for (const auto* input : {&q, &k, &v}) {
       if (input->numel() != heads * width || input->device() != state.keys.device() ||
           input->scalar_type() != state.keys.scalar_type())
@@ -117,6 +129,6 @@ extern "C" LEAN_EXPORT lean_obj_res torchlean_gpt_kv_cache_attention(
     auto scores = at::bmm(q.reshape({heads, 1, width}),
         keys.narrow(1, 0, length).transpose(1, 2)) / std::sqrt(static_cast<double>(width));
     auto output = at::bmm(at::softmax(scores, -1), values.narrow(1, 0, length));
-    return torchlean::box(output.reshape({heads * width}).contiguous());
+    return buffer_of(output.reshape({heads * width}).contiguous());
   });
 }

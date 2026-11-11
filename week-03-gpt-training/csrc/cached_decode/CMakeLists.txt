@@ -8,7 +8,7 @@ find_package(Torch REQUIRED CONFIG PATHS "${Torch_DIR}" NO_DEFAULT_PATH)
 
 add_library(torchlean_gpt_cached_decode SHARED torchlean_gpt_cached_decode.cpp)
 target_compile_features(torchlean_gpt_cached_decode PRIVATE cxx_std_20)
-target_compile_definitions(torchlean_gpt_cached_decode PRIVATE TORCHLEAN_LIBTORCH)
+target_compile_definitions(torchlean_gpt_cached_decode PRIVATE TORCHLEAN_LIBTORCH USE_CUDA)
 separate_arguments(torch_sdk_cxx_flags NATIVE_COMMAND "${TORCH_CXX_FLAGS}")
 target_compile_options(torchlean_gpt_cached_decode PRIVATE ${torch_sdk_cxx_flags})
 target_include_directories(torchlean_gpt_cached_decode PRIVATE

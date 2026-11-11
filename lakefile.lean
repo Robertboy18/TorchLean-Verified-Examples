@@ -44,7 +44,9 @@ private def buildCachedDecoder (pkg : Package) : FetchM (Job FilePath) := do
     let backend ← torchLean.fetchTargetJob `torchlean_libtorch
     backend.mapM fun _ => do
       let sourceDir ← IO.FS.realPath (pkg.dir / "week-03-gpt-training/csrc/cached_decode")
-      let buildDir := pkg.buildDir / "cached-decode"
+      -- The backend trace includes the SDK, compiler, toolkit and build flags. A new
+      -- configuration gets a fresh CMake cache instead of retaining the previous SDK's paths.
+      let buildDir := pkg.buildDir / "cached-decode" / toString backend.getTrace.hash
       IO.FS.createDirAll buildDir
       let buildDir ← IO.FS.realPath buildDir
       let torchSource ← IO.FS.realPath torchLean.dir
@@ -80,6 +82,7 @@ private def buildCachedDecoder (pkg : Package) : FetchM (Job FilePath) := do
       proc { cmd := cmake, args := args }
       proc { cmd := cmake, args := #["--build", buildDir.toString, "--parallel", "2"] }
       let output := buildDir / nameToSharedLib "torchlean_gpt_cached_decode"
+      addPureTrace output.toString "cached decoder library path"
       addTrace (.ofHash (← computeFileHash output) output.toString)
       return output
   else
