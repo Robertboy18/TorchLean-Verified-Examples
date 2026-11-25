@@ -1,0 +1,14 @@
+agreement prefix (256 steps: dependency sink and fixture trace) equal to MPFR's in 144 of 144 series cells, over 18 trial files
+FloatLib public: widths [32, 64, 128, 256, 512, 1024, 2048, 4096], trials per cell [9]
+MPFR: widths [32, 64, 128, 256, 512, 1024, 2048, 4096], trials per cell [9]
+SoftFloat: widths [32, 64], trials per cell [9]
+native FPU: widths [32, 64], trials per cell [9]
+backends (FloatLib rows; the kernel named by each row, per series and width):
+  FloatLib public | 32 bits | fixed-format kernel
+  FloatLib public | 64 bits | fixed-format kernel
+  FloatLib public | 128 bits | fixed-limb kernel
+  FloatLib public | 256 bits | exact baseline
+  FloatLib public | 512 bits | exact baseline
+  FloatLib public | 1024 bits | exact baseline
+  FloatLib public | 2048 bits | exact baseline
+  FloatLib public | 4096 bits | exact baseline

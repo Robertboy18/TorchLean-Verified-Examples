@@ -40,6 +40,12 @@ Some examples I've been working on :)
   mutual defection for DUPOC against DIMCID under explicit proof-system assumptions
   (Open Problem 6), and differently written agents that still cooperate.
   `lake exe play_dupoc 500000` plays the tournament.
+- [FloatLib 4.1.0 on other people's benchmarks](week-09-floatlib-benchmarks/).
+  Run FloatLib on benchmarks built for other tools and keep the losses in: LLM2Cert's 291 proof
+  obligations with one call of `interval` and no model, 39,994 SMT-LIB floating-point tests as kernel
+  theorems, QF_NRA next to the SMT solvers, exact replay of VNN-COMP counterexamples, and the
+  NumFuzz and LeanCert benchmarks. It is a separate Lake project on Lean 4.36 (`lake build` inside
+  the week's folder), and the root build doesn't include it.
 
 For K3 and Nemotron, the proofs cover the equations and state transformations described in the
 essays (not complete released checkpoints). Each development links its theorem statements,

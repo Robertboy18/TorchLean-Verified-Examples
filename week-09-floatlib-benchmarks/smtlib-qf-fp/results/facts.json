@@ -1,0 +1,354 @@
+{
+ "families": {
+  "UltimateAutomizer": {
+   "fixed": 0,
+   "proved": 0,
+   "search": 27,
+   "total": 27
+  },
+  "Vector": {
+   "fixed": 6,
+   "proved": 6,
+   "search": 85,
+   "total": 91
+  },
+  "griggio": {
+   "fixed": 2,
+   "proved": 2,
+   "search": 212,
+   "total": 214
+  },
+  "ramalho": {
+   "fixed": 0,
+   "proved": 0,
+   "search": 36,
+   "total": 36
+  },
+  "schanda": {
+   "fixed": 4,
+   "proved": 4,
+   "search": 40,
+   "total": 44
+  },
+  "wintersteiger": {
+   "fixed": 39994,
+   "proved": 39994,
+   "search": 0,
+   "total": 39994
+  }
+ },
+ "main": {
+  "axioms": [
+   "Classical.choice",
+   "Quot.sound",
+   "propext"
+  ],
+  "elaboration_seconds": 2481.303988685,
+  "files": 160,
+  "instances": 39994,
+  "kernel_decision_median_ms": 0.682981,
+  "kernel_decision_seconds": 52.206500528,
+  "kernel_max_ms": 119.738622,
+  "kernel_median_ms": 5.835354000000001,
+  "kernel_p05_ms": 2.91074095,
+  "kernel_p95_ms": 11.7739741,
+  "kernel_rewrite_median_ms": 4.278248,
+  "kernel_rewrite_seconds": 208.700980196,
+  "kernel_seconds": 262.78457671300004,
+  "peak_rss_gb": 4.479188,
+  "per_instance_process_ms": 87.82167325098764,
+  "process_system_seconds": 338.22,
+  "process_user_seconds": 3186.04,
+  "process_wall_seconds": 3512.34,
+  "proved": 39994
+ },
+ "process": {
+  "cvc5": {
+   "answers": {
+    "sat": 66,
+    "unsat": 54
+   },
+   "cpu_median_ms": 4.345,
+   "instances": 40,
+   "max_ms": 6.341232,
+   "median_ms": 5.8715515,
+   "min_ms": 5.22579
+  },
+  "lean": {
+   "answers": {
+    "sat": 66,
+    "unsat": 54
+   },
+   "cpu_median_ms": 3237.2544995,
+   "instances": 40,
+   "max_ms": 3583.798469,
+   "median_ms": 3360.0648165000002,
+   "min_ms": 3058.890913
+  },
+  "z3": {
+   "answers": {
+    "sat": 66,
+    "unsat": 54
+   },
+   "cpu_median_ms": 15.937498999999999,
+   "instances": 40,
+   "max_ms": 25.929806,
+   "median_ms": 18.0808215,
+   "min_ms": 16.355904
+  }
+ },
+ "sample": {
+  "cvc5": {
+   "agree_with_status": 4218,
+   "answers_on_unknown": {
+    "20210211-Vector/RTOS_C/2c556790.smt2": "sat",
+    "20210211-Vector/RTOS_C/40f50c70.smt2": "sat",
+    "20210211-Vector/RTOS_C/694fecf2.smt2": "sat",
+    "20210211-Vector/RTOS_C/6cdcd6b3.smt2": "sat",
+    "20210211-Vector/RTOS_C/9fda8040.smt2": "sat",
+    "20210211-Vector/RTOS_C/f0ea15fd.smt2": "sat"
+   },
+   "other": {},
+   "runs": 4236,
+   "status_unknown_runs": 18
+  },
+  "instances": 1412,
+  "lean_batch": {
+   "0": {
+    "kernel_seconds": 7.813020890000001,
+    "ms_per_theorem": 79.11922046967558,
+    "outside_seconds": 24.804608836,
+    "theorems": 1418,
+    "wall_seconds": 112.19105462599998
+   },
+   "1": {
+    "kernel_seconds": 7.48204275,
+    "ms_per_theorem": 77.51970441043724,
+    "outside_seconds": 24.899174303,
+    "theorems": 1418,
+    "wall_seconds": 109.922940854
+   },
+   "2": {
+    "kernel_seconds": 5.991178549999999,
+    "ms_per_theorem": 62.484198170662914,
+    "outside_seconds": 20.491813709,
+    "theorems": 1418,
+    "wall_seconds": 88.602593006
+   }
+  },
+  "repetitions": 3,
+  "z3": {
+   "agree_with_status": 4218,
+   "answers_on_unknown": {
+    "20210211-Vector/RTOS_C/2c556790.smt2": "sat",
+    "20210211-Vector/RTOS_C/40f50c70.smt2": "sat",
+    "20210211-Vector/RTOS_C/694fecf2.smt2": "sat",
+    "20210211-Vector/RTOS_C/6cdcd6b3.smt2": "sat",
+    "20210211-Vector/RTOS_C/9fda8040.smt2": "sat",
+    "20210211-Vector/RTOS_C/f0ea15fd.smt2": "sat"
+   },
+   "other": {},
+   "runs": 4236,
+   "status_unknown_runs": 18
+  }
+ },
+ "sample_load": {
+  "cookie": true,
+  "cpu": 11,
+  "load1_max": 131.04,
+  "load1_min": 96.62,
+  "machine_busy_max": 0.6455,
+  "machine_busy_median": 0.5527,
+  "machine_busy_min": 0.349,
+  "nice": 0,
+  "own_cpu_busy_median": 0.8637,
+  "samples": 49,
+  "sentence": "over the run 35 to 65 percent of its 96 hardware threads were in use (median 55, load average 97 to 131). The run was pinned to the least busy core (CPU 11) at nice 0 with a core-scheduling cookie, so that nothing else ran on the second hardware thread of that core while a process was timed; other tasks still shared the first.",
+  "sibling_busy_median": 0.1321,
+  "started_utc": "2026-11-21T07:23:03Z"
+ },
+ "selftest": {
+  "by_format": {
+   "11/53": [
+    594,
+    594
+   ],
+   "15/113": [
+    594,
+    594
+   ],
+   "2/2": [
+    594,
+    594
+   ],
+   "3/5": [
+    594,
+    594
+   ],
+   "5/11": [
+    594,
+    594
+   ],
+   "6/20": [
+    594,
+    594
+   ],
+   "8/24": [
+    594,
+    594
+   ]
+  },
+  "by_function": {
+   "abs": [
+    56,
+    56
+   ],
+   "add": [
+    420,
+    420
+   ],
+   "div": [
+    420,
+    420
+   ],
+   "eq": [
+    84,
+    84
+   ],
+   "fma": [
+    420,
+    420
+   ],
+   "geq": [
+    84,
+    84
+   ],
+   "gt": [
+    84,
+    84
+   ],
+   "isInfinite": [
+    70,
+    70
+   ],
+   "isNaN": [
+    70,
+    70
+   ],
+   "isNegative": [
+    70,
+    70
+   ],
+   "isNormal": [
+    70,
+    70
+   ],
+   "isPositive": [
+    70,
+    70
+   ],
+   "isSubnormal": [
+    70,
+    70
+   ],
+   "isZero": [
+    70,
+    70
+   ],
+   "leq": [
+    84,
+    84
+   ],
+   "lt": [
+    84,
+    84
+   ],
+   "max": [
+    112,
+    112
+   ],
+   "min": [
+    112,
+    112
+   ],
+   "mul": [
+    420,
+    420
+   ],
+   "neg": [
+    56,
+    56
+   ],
+   "rem": [
+    112,
+    112
+   ],
+   "roundToIntegral": [
+    350,
+    350
+   ],
+   "sqrt": [
+    350,
+    350
+   ],
+   "sub": [
+    420,
+    420
+   ]
+  },
+  "cvc5": {
+   "other": {},
+   "refused_format": 2970,
+   "runs": 4158,
+   "sat": 1188
+  },
+  "cvc5 --fp-exp": {
+   "other": {},
+   "runs": 2970,
+   "sat": 2970
+  },
+  "instances": 4158,
+  "not_proved": [],
+  "proved": 4158,
+  "z3": {
+   "other": {},
+   "runs": 4158,
+   "sat": 4158
+  }
+ },
+ "smt_batch": {
+  "cvc5": {
+   "agree": 4236,
+   "answers": 4236,
+   "expected": 4236,
+   "instances": 1412,
+   "ms_per_instance_max": 2.5980807039660054,
+   "ms_per_instance_median": 2.4087173746458923,
+   "ms_per_instance_min": 1.7751476274787534,
+   "repetitions": 3
+  },
+  "z3": {
+   "agree": 4236,
+   "answers": 4236,
+   "expected": 4236,
+   "instances": 1412,
+   "ms_per_instance_max": 9.463050646600566,
+   "ms_per_instance_median": 9.339354728753541,
+   "ms_per_instance_min": 7.871382267705382,
+   "repetitions": 3
+  }
+ },
+ "smtcomp2025": {
+  "benchmarks": 275,
+  "by_family": {
+   "20170501-Heizmann-UltimateAutomizer": 2,
+   "20190429-UltimateAutomizerSvcomp2019": 24,
+   "20210211-Vector": 4,
+   "20230321-UltimateAutomizerSvcomp2023": 1,
+   "griggio": 201,
+   "ramalho": 23,
+   "schanda": 20
+  },
+  "fixed": 0
+ }
+}

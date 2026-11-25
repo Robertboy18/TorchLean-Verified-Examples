@@ -1,0 +1,41 @@
+key,value
+overlap,Against LLM2Cert All-Lean (274): with the default limits 266 obligations are closed by both and 15 only by `interval`; with the raised limits 267 and 15.
+same_closed_set,False
+only_raised,DCB-OURS-P4-003|03-lie_strict
+only_defaults,
+open_defaults,DCB-EXT-P1-001|05-radial_unbounded DCB-LIT-P1-003|04-lie_negative DCB-LIT-P1-021|05-radial_unbounded DCB-LIT-P3-002|00-unsafe_separation DCB-LIT-P4-002|03-lie_strict DCB-OURS-P1-001|06-exponential_decay DCB-OURS-P1-002|06-exponential_decay DCB-OURS-P2-001|00-radial_unbounded DCB-OURS-P4-003|03-lie_strict DCB-OURS-P4-004|03-lie_strict
+open_raised,DCB-EXT-P1-001|05-radial_unbounded DCB-LIT-P1-003|04-lie_negative DCB-LIT-P1-021|05-radial_unbounded DCB-LIT-P3-002|00-unsafe_separation DCB-LIT-P4-002|03-lie_strict DCB-OURS-P1-001|06-exponential_decay DCB-OURS-P1-002|06-exponential_decay DCB-OURS-P2-001|00-radial_unbounded DCB-OURS-P4-004|03-lie_strict
+timeouts_defaults,0
+timeouts_raised,0
+closed_300_defaults,280
+certificates_300_defaults,70
+closed_300_raised,281
+certificates_300_raised,71
+max_s_defaults,488.7
+max_s_raised,470.6
+p90_s_defaults,7.9
+p90_s_raised,9.0
+lean_minutes_defaults,43.8
+lean_minutes_raised,49.5
+their_closed,274
+their_certificates,64
+their_hours_on_closed,13.61
+their_tokens,1942231
+start_defaults,2026-11-20T20:51:58Z
+end_defaults,2026-11-20T21:02:33Z
+wall_seconds_defaults,630
+loadavg_start_defaults,57.28 38.85 41.16
+loadavg_end_defaults,63.68 66.28 57.12
+idle_percent_start_defaults,48.58
+idle_percent_end_defaults,61.24
+date,2026-11-20
+lean,4.36.0
+floatlib,4.1.0
+workers,"6, timeout 600 s, LEAN_NUM_THREADS 16"
+start_raised,2026-11-20T21:02:38Z
+end_raised,2026-11-20T21:13:31Z
+wall_seconds_raised,648
+loadavg_start_raised,63.55 66.21 57.14
+loadavg_end_raised,84.78 82.96 71.14
+idle_percent_start_raised,59.97
+idle_percent_end_raised,47.36

@@ -1,0 +1,240 @@
+diff -ruN dl/leancert-src/LeanCert/Core/Expr.lean port/leancert/LeanCert/Core/Expr.lean
+--- dl/leancert-src/LeanCert/Core/Expr.lean	2026-11-21 06:34:17.631727690 +0000
++++ port/leancert/LeanCert/Core/Expr.lean	2026-11-21 08:04:52.927691522 +0000
+@@ -3,6 +3,7 @@
+ Released under Apache 2.0 license as described in the file LICENSE.
+ Authors: LeanCert Contributors
+ -/
++import LeanCert.Meta.RealOpaque
+ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
+ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Sinc
+diff -ruN dl/leancert-src/LeanCert/Core/Taylor.lean port/leancert/LeanCert/Core/Taylor.lean
+--- dl/leancert-src/LeanCert/Core/Taylor.lean	2026-11-21 06:34:17.631727690 +0000
++++ port/leancert/LeanCert/Core/Taylor.lean	2026-11-21 06:39:42.192131246 +0000
+@@ -121,7 +121,7 @@
+   congr 1
+   have heq : (Set.Icc a b : Set ℝ) =ᶠ[𝓝 x] (Set.univ : Set ℝ) := by
+     filter_upwards [h_nhds] with y hy
+-    exact propext ⟨fun _ => trivial, fun _ => hy⟩
++    exact ⟨fun _ => trivial, fun _ => hy⟩
+   rw [iteratedFDerivWithin_congr_set heq n, iteratedFDerivWithin_univ]
+ 
+ /-- At the left endpoint of [c, x], iteratedDerivWithin equals iteratedDeriv for ContDiff functions. -/
+diff -ruN dl/leancert-src/LeanCert/Engine/RootFinding/Krawczyk.lean port/leancert/LeanCert/Engine/RootFinding/Krawczyk.lean
+--- dl/leancert-src/LeanCert/Engine/RootFinding/Krawczyk.lean	2026-11-21 06:34:17.631727690 +0000
++++ port/leancert/LeanCert/Engine/RootFinding/Krawczyk.lean	2026-11-21 06:41:18.692240501 +0000
+@@ -166,6 +166,7 @@
+ noncomputable def matrixCLM {n : Nat} (A : Matrix (Fin n) (Fin n) ℝ) :
+     (Fin n → ℝ) →L[ℝ] (Fin n → ℝ) :=
+   ContinuousLinearMap.mk (Matrix.mulVecLin A)
++    (LinearMap.continuous_of_finiteDimensional (Matrix.mulVecLin A))
+ 
+ noncomputable def newtonMap {n : Nat} (Y : Matrix (Fin n) (Fin n) ℝ)
+     (F : Fin n → Expr) (x : Fin n → ℝ) : Fin n → ℝ :=
+diff -ruN dl/leancert-src/LeanCert/Meta/RealOpaque.lean port/leancert/LeanCert/Meta/RealOpaque.lean
+--- dl/leancert-src/LeanCert/Meta/RealOpaque.lean	1970-01-01 00:00:00.000000000 +0000
++++ port/leancert/LeanCert/Meta/RealOpaque.lean	2026-11-21 08:04:52.927691522 +0000
+@@ -0,0 +1,31 @@
++/-
++Copyright (c) 2026 LeanCert Contributors. All rights reserved.
++Released under Apache 2.0 license as described in the file LICENSE.
++Authors: LeanCert Contributors
++-/
++import Mathlib.Basic.Real.Basic
++
++/-!
++# Opaque real arithmetic (port to Mathlib v4.36.0)
++
++This file is not part of LeanCert; it was added for the port to Lean v4.36.0 of this benchmark.
++
++Mathlib v4.35.0 defined `0`, `1`, `+`, `-`, `*`, `⁻¹`, `<`, `≤`, `⊔` and `⊓` on `ℝ` with
++`irreducible_def`. Mathlib v4.36.0 defines them as `@[no_expose] private def`, which hides their
++bodies from importers that use the module system. LeanCert is not a `module` package, so it reads
++the private data too and sees ten ordinary, unfoldable definitions. Its metaprograms rely on a
++definitional test such as `((17 / 20 : ℚ) : ℝ) =?= 0.85`, `rfl` on a reified expression, or
++`whnf (a < b)` stopping at once; with unfoldable arithmetic the same test runs into the
++Cauchy-sequence model until the heartbeat limit or the recursion depth stops the whole tactic.
++
++Marking the ten definitions irreducible gives LeanCert's modules, and every file that imports
++them, the behaviour it was written against. Nothing else of LeanCert changes.
++-/
++
++open Lean in
++run_cmd do
++  for n in [`zero, `one, `add, `neg, `mul, `inv', `lt, `le, `sup, `inf] do
++    let name := mkPrivateNameCore `Mathlib.Basic.Real.Basic (`Real ++ n)
++    unless (← getEnv).contains name do
++      throwError "the private definition {name} of Mathlib.Basic.Real.Basic is missing"
++    Lean.Elab.Command.liftCoreM <| setReducibilityStatus name .irreducible
+--- dl/leancert-src/lakefile.toml	2026-11-21 06:34:17.661727728 +0000
++++ port/leancert/lakefile.toml	2026-11-21 06:36:56.291933737 +0000
+@@ -4,8 +4,8 @@
+ 
+ [[require]]
+ name = "mathlib"
+-git = "https://github.com/leanprover-community/mathlib4.git"
+-rev = "v4.35.0"
++git = "https://github.com/leanprover-community/mathlib4"
++rev = "v4.36.0"
+ 
+ [[lean_lib]]
+ name = "LeanCert"
+--- dl/leancert-src/lean-toolchain	2026-11-21 06:34:17.661727728 +0000
++++ port/leancert/lean-toolchain	2026-11-21 06:36:47.821923427 +0000
+@@ -1 +1 @@
+-leanprover/lean4:v4.35.0
++leanprover/lean4:v4.36.0
+--- dl/leancert-src/lake-manifest.json	2026-11-21 06:34:17.661727728 +0000
++++ port/leancert/lake-manifest.json	2026-11-21 06:36:56.291933737 +0000
+@@ -1,96 +1,116 @@
+-{"version": "1.3.0",
++{
++ "version": "1.3.0",
+  "packagesDir": ".lake/packages",
+- "packages":
+- [{"url": "https://github.com/leanprover-community/mathlib4.git",
++ "packages": [
++  {
++   "url": "https://github.com/leanprover-community/mathlib4",
+    "type": "git",
+    "subDir": null,
+    "scope": "",
+-   "rev": "56a005855ea17e0b0958f73ec801ae140b0a1679",
++   "rev": "fc4f59e577feb1a4956671bc04ac18aaaf8cd842",
+    "name": "mathlib",
+    "manifestFile": "lake-manifest.json",
+-   "inputRev": "v4.35.0",
++   "inputRev": "v4.36.0",
+    "inherited": false,
+-   "configFile": "lakefile.lean"},
+-  {"url": "https://github.com/leanprover-community/plausible",
++   "configFile": "lakefile.lean"
++  },
++  {
++   "url": "https://github.com/leanprover-community/plausible",
+    "type": "git",
+    "subDir": null,
+    "scope": "leanprover-community",
+-   "rev": "dfa4f38190d07c37e315953e08b90fe2d95b3c24",
++   "rev": "054b228ce0ac61d767c6e71ba73a24728f191b72",
+    "name": "plausible",
+    "manifestFile": "lake-manifest.json",
+    "inputRev": "main",
+    "inherited": true,
+-   "configFile": "lakefile.toml"},
+-  {"url": "https://github.com/leanprover-community/LeanSearchClient",
++   "configFile": "lakefile.toml"
++  },
++  {
++   "url": "https://github.com/leanprover-community/LeanSearchClient",
+    "type": "git",
+    "subDir": null,
+    "scope": "leanprover-community",
+-   "rev": "d6b4c7be5be75ec4917c873ac50c756dc1436372",
++   "rev": "4fb58e749ef3fc0395fe274f6cab70c2ea85f1c9",
+    "name": "LeanSearchClient",
+    "manifestFile": "lake-manifest.json",
+    "inputRev": "main",
+    "inherited": true,
+-   "configFile": "lakefile.toml"},
+-  {"url": "https://github.com/leanprover-community/import-graph",
++   "configFile": "lakefile.toml"
++  },
++  {
++   "url": "https://github.com/leanprover-community/import-graph",
+    "type": "git",
+    "subDir": null,
+    "scope": "leanprover-community",
+-   "rev": "a41f0e9a4dea23188ea9cc1c41ac9f8bbafe0b93",
++   "rev": "8370c640afcd1cc3fb1cb9bf1560cc66eafee5e0",
+    "name": "importGraph",
+    "manifestFile": "lake-manifest.json",
+    "inputRev": "main",
+    "inherited": true,
+-   "configFile": "lakefile.toml"},
+-  {"url": "https://github.com/leanprover-community/ProofWidgets4",
++   "configFile": "lakefile.toml"
++  },
++  {
++   "url": "https://github.com/leanprover-community/ProofWidgets4",
+    "type": "git",
+    "subDir": null,
+    "scope": "leanprover-community",
+-   "rev": "df72b022e558978a1c50264cfc4d7fec86fa8e04",
++   "rev": "2f0f3520daeac2d9310ff25b7a877a0e5cdaa203",
+    "name": "proofwidgets",
+    "manifestFile": "lake-manifest.json",
+    "inputRev": "main",
+    "inherited": true,
+-   "configFile": "lakefile.lean"},
+-  {"url": "https://github.com/leanprover-community/aesop",
++   "configFile": "lakefile.lean"
++  },
++  {
++   "url": "https://github.com/leanprover-community/aesop",
+    "type": "git",
+    "subDir": null,
+    "scope": "leanprover-community",
+-   "rev": "4a174c490d8707121c4a9290800489f105d85e07",
++   "rev": "66ff77cf0c4c898799e4b94d14db55f7a02d0c5a",
+    "name": "aesop",
+    "manifestFile": "lake-manifest.json",
+    "inputRev": "master",
+    "inherited": true,
+-   "configFile": "lakefile.toml"},
+-  {"url": "https://github.com/leanprover-community/quote4",
++   "configFile": "lakefile.toml"
++  },
++  {
++   "url": "https://github.com/leanprover-community/quote4",
+    "type": "git",
+    "subDir": null,
+    "scope": "leanprover-community",
+-   "rev": "dce0ad79c486cb1fb504af04f953c3466b0c6db8",
++   "rev": "ff055a2fcc835935e0ae607339b455a5f5896b4b",
+    "name": "Qq",
+    "manifestFile": "lake-manifest.json",
+    "inputRev": "master",
+    "inherited": true,
+-   "configFile": "lakefile.toml"},
+-  {"url": "https://github.com/leanprover-community/batteries",
++   "configFile": "lakefile.toml"
++  },
++  {
++   "url": "https://github.com/leanprover-community/batteries",
+    "type": "git",
+    "subDir": null,
+    "scope": "leanprover-community",
+-   "rev": "66e469188fe07963e5cf666c7d4433f45b8131c5",
++   "rev": "b4b25a3886a16daacaf6615c2eea7170a6e8f458",
+    "name": "batteries",
+    "manifestFile": "lake-manifest.json",
+    "inputRev": "main",
+    "inherited": true,
+-   "configFile": "lakefile.toml"},
+-  {"url": "https://github.com/leanprover/lean4-cli",
++   "configFile": "lakefile.toml"
++  },
++  {
++   "url": "https://github.com/leanprover/lean4-cli",
+    "type": "git",
+    "subDir": null,
+    "scope": "leanprover",
+-   "rev": "c24fe6078c630e89b489bffe59b3e20ac30d12c8",
++   "rev": "50810f72af7618bee62fe9800dc26e806c188703",
+    "name": "Cli",
+    "manifestFile": "lake-manifest.json",
+-   "inputRev": "v4.35.0",
++   "inputRev": "v4.36.0",
+    "inherited": true,
+-   "configFile": "lakefile.toml"}],
++   "configFile": "lakefile.toml"
++  }
++ ],
+  "name": "LeanCert",
+- "lakeDir": ".lake",
+- "fixedToolchain": false}
++ "lakeDir": ".lake"
++}
+\ No newline at end of file

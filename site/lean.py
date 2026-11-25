@@ -87,6 +87,9 @@ def fingerprint(compilation=False):
     if not compilation:
         paths += [SOURCE, Path(__file__), ROOT / "site" / "blocks.json"]
     for folder in sorted(ROOT.glob("week-*")):
+        # A week with its own toolchain is a separate Lake project: the root build never reads it.
+        if (folder / "lean-toolchain").is_file():
+            continue
         paths.extend(path for path in sorted(folder.rglob("*.lean")) if path not in paths)
     for path in paths:
         if any(part in {".lake", "build"} for part in path.relative_to(ROOT).parts):

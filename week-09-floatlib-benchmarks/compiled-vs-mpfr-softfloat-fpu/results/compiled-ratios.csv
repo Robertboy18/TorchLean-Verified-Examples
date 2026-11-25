@@ -1,0 +1,73 @@
+numerator,denominator,bits,operation,trials,median_ratio,min_ratio,max_ratio
+FloatLib public,MPFR,32,add,9,1.1995,1.1511,1.2409
+FloatLib public,MPFR,32,sub,9,1.1518,1.1158,1.1669
+FloatLib public,MPFR,32,mul,9,0.7288,0.7090,0.7563
+FloatLib public,MPFR,32,div,9,1.5929,1.5247,1.6536
+FloatLib public,MPFR,32,sqrt,9,0.7324,0.6958,0.7381
+FloatLib public,MPFR,32,fma,9,0.7080,0.6890,0.7424
+FloatLib public,MPFR,64,add,9,0.8543,0.7865,0.8767
+FloatLib public,MPFR,64,sub,9,0.8545,0.8501,0.8801
+FloatLib public,MPFR,64,mul,9,0.7368,0.6704,0.7728
+FloatLib public,MPFR,64,div,9,1.9846,1.6507,1.9951
+FloatLib public,MPFR,64,sqrt,9,2.2947,2.1875,2.3238
+FloatLib public,MPFR,64,fma,9,2.0266,1.8955,2.0988
+FloatLib public,MPFR,128,add,9,1.9675,1.8595,1.9766
+FloatLib public,MPFR,128,sub,9,1.9380,1.8006,2.1200
+FloatLib public,MPFR,128,mul,9,1.2035,1.1257,1.2195
+FloatLib public,MPFR,128,div,9,4.1796,3.7998,4.2740
+FloatLib public,MPFR,128,sqrt,9,3.9038,3.7558,4.2927
+FloatLib public,MPFR,128,fma,9,1.4964,1.3849,1.5671
+FloatLib public,MPFR,256,add,9,34.9514,32.3126,36.5604
+FloatLib public,MPFR,256,sub,9,34.8698,32.5948,36.4682
+FloatLib public,MPFR,256,mul,9,29.8615,28.7603,30.4811
+FloatLib public,MPFR,256,div,9,14.3551,14.1297,14.9364
+FloatLib public,MPFR,256,sqrt,9,26.1760,24.8315,27.6013
+FloatLib public,MPFR,256,fma,9,22.6457,21.3237,22.8238
+FloatLib public,MPFR,512,add,9,32.1440,30.7454,32.5577
+FloatLib public,MPFR,512,sub,9,34.1636,33.3334,34.9772
+FloatLib public,MPFR,512,mul,9,19.0428,18.3383,19.1934
+FloatLib public,MPFR,512,div,9,10.9161,9.6158,11.4966
+FloatLib public,MPFR,512,sqrt,9,16.8873,16.2460,17.6848
+FloatLib public,MPFR,512,fma,9,17.5393,16.0495,18.3249
+FloatLib public,MPFR,1024,add,9,29.3738,28.4962,30.7101
+FloatLib public,MPFR,1024,sub,9,31.7350,31.0988,33.3115
+FloatLib public,MPFR,1024,mul,9,11.5249,11.1087,11.8416
+FloatLib public,MPFR,1024,div,9,6.6946,6.5572,7.1991
+FloatLib public,MPFR,1024,sqrt,9,12.4673,11.0801,13.0840
+FloatLib public,MPFR,1024,fma,9,9.7512,9.5117,9.8718
+FloatLib public,MPFR,2048,add,9,24.8186,24.5847,26.1163
+FloatLib public,MPFR,2048,sub,9,26.8195,25.4810,27.0901
+FloatLib public,MPFR,2048,mul,9,5.7538,5.6001,5.8071
+FloatLib public,MPFR,2048,div,9,3.8808,3.5563,3.9663
+FloatLib public,MPFR,2048,sqrt,9,9.6980,9.4430,10.2107
+FloatLib public,MPFR,2048,fma,9,4.6350,4.3886,4.9170
+FloatLib public,MPFR,4096,add,9,20.3373,19.6062,20.6137
+FloatLib public,MPFR,4096,sub,9,21.6755,20.3502,22.5864
+FloatLib public,MPFR,4096,mul,9,3.2801,3.1183,3.4100
+FloatLib public,MPFR,4096,div,9,2.1117,2.0833,2.1879
+FloatLib public,MPFR,4096,sqrt,9,7.5177,6.6090,7.6850
+FloatLib public,MPFR,4096,fma,9,2.7888,2.7305,2.8870
+FloatLib public,SoftFloat,32,add,9,1.7808,1.7272,1.8617
+FloatLib public,SoftFloat,32,sub,9,1.8045,1.7182,1.8482
+FloatLib public,SoftFloat,32,mul,9,1.3517,1.1383,1.4003
+FloatLib public,SoftFloat,32,div,9,2.3016,2.2414,2.3944
+FloatLib public,SoftFloat,32,sqrt,9,1.1702,1.1535,1.1785
+FloatLib public,SoftFloat,32,fma,9,1.4554,1.2670,1.5373
+FloatLib public,SoftFloat,64,add,9,1.4365,1.3687,1.5020
+FloatLib public,SoftFloat,64,sub,9,1.4265,1.3293,1.4846
+FloatLib public,SoftFloat,64,mul,9,1.3415,1.0963,1.3795
+FloatLib public,SoftFloat,64,div,9,2.0381,1.9874,2.0524
+FloatLib public,SoftFloat,64,sqrt,9,3.7017,3.5352,3.7217
+FloatLib public,SoftFloat,64,fma,9,4.3804,4.2316,4.5447
+FloatLib public,native FPU,32,add,9,4.7838,3.9623,4.9458
+FloatLib public,native FPU,32,sub,9,4.8492,4.7978,4.8999
+FloatLib public,native FPU,32,mul,9,2.7991,2.3881,2.8892
+FloatLib public,native FPU,32,div,9,5.5830,5.4690,5.7608
+FloatLib public,native FPU,32,sqrt,9,2.8344,2.7784,2.8512
+FloatLib public,native FPU,32,fma,9,4.4662,4.3526,4.8735
+FloatLib public,native FPU,64,add,9,3.7567,3.5191,3.8343
+FloatLib public,native FPU,64,sub,9,3.6973,2.5366,3.8217
+FloatLib public,native FPU,64,mul,9,2.8238,2.7315,2.9945
+FloatLib public,native FPU,64,div,9,6.0370,5.7502,6.1088
+FloatLib public,native FPU,64,sqrt,9,8.0629,7.5259,8.2501
+FloatLib public,native FPU,64,fma,9,13.7695,13.3437,14.6049

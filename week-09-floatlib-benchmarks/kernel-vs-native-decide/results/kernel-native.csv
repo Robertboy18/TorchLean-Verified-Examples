@@ -1,0 +1,7 @@
+statement,kernel_ms,native_decide_ms,kernel_min_ms,kernel_max_ms,native_min_ms,native_max_ms,runs
+3 ^ (p - 1) % p = 1 for p = 2 ^ 255 - 19,13.095,13.567,12.767,14.427,13.153,16.206,5
+3 ^ (p - 1) % p = 1 for p = 2 ^ 1279 - 1,30.029,17.632,29.137,31.581,17.060,19.927,5
+"the square root of 2 ^ 2001 + 12345, checked",11.125,12.387,10.899,17.224,12.009,28.868,5
+"sum of 1 / k ^ 2 for k ≤ 40 below 1.63, on fractions",4.064,3.403,3.924,4.706,3.144,4.107,5
+"exp (7/5) ≤ 4.0553 on the grid, degree 20, 64 bits",8.879,4.348,8.238,20.575,4.318,16.428,5
+packed row product of 256 lanes with its guards and norm,6.186,,5.948,13.043,,,5

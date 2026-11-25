@@ -1,0 +1,15 @@
+family,title,instances,instances_with_a_sat_result,instances_with_an_exact_counterexample,instances_with_a_rounded_box_counterexample_only,files_replayed,points_replayed,as_reported,moved_into_the_box,rounded_box,depends_on_rounding,rejected,files_not_replayed,unsat_results,unsat_refuted,unsat_refuted_with_a_kernel_witness,refuted_and_penalised_at_tolerance_1e-4,refuted_and_penalised_at_tolerance_0,refuted_and_given_points_at_tolerance_0,refuted_and_not_scored
+acasxu_2023,ACAS Xu,186,47,47,0,362,488,273,69,0,1,19,0,1010,1,1,1,1,0,0
+soundnessbench,SoundnessBench,50,50,50,0,80,80,0,75,0,5,0,0,30,30,0,30,0,30,0
+safenlp_2024,SafeNLP,1080,647,647,0,4116,7200,819,2498,0,83,716,0,3118,403,403,403,21,382,0
+sat_relu,SAT ReLU,98,49,49,0,256,256,248,1,0,7,0,0,206,42,42,32,32,0,10
+collins_rul_cnn_2022,Collins RUL CNN,62,23,5,18,153,153,27,8,117,1,0,0,253,0,0,0,0,0,0
+cora_2024,CORA benchmark,180,131,131,0,594,755,190,399,0,0,5,0,139,0,0,0,0,0,0
+malbeware,Malbeware,150,19,19,0,85,85,19,66,0,0,0,0,766,0,0,0,0,0,0
+relusplitter,ReLUSplitter,220,20,20,0,48,96,8,38,0,0,2,0,266,0,0,0,0,0,0
+tllverifybench_2023,TLL Verify Bench,32,17,5,0,40,49,40,0,0,0,0,96,87,0,0,0,0,0,0
+test,test,5,1,1,0,3,3,1,2,0,0,0,0,12,0,0,0,0,0,0
+cersyve,Cersyve,12,6,0,0,0,0,0,0,0,0,0,38,19,0,0,0,0,0,0
+dist_shift_2023,Dist Shift,72,7,0,0,0,0,0,0,0,0,0,39,347,0,0,0,0,0,0
+linearizenn_2024,LinearizeNN,60,1,0,0,0,0,0,0,0,0,0,8,394,0,0,0,0,0,0
+lsnc_relu,LSNC ReLU,80,80,0,0,0,0,0,0,0,0,0,92,68,0,0,0,0,0,0

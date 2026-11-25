@@ -1,0 +1,27 @@
+key,value
+date,2026-11-21
+lean,4.36.0
+limit_s,60
+machine,"an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs)"
+startup_s,2
+z3,5.3.3
+cvc5,1.4.2
+yices,2.8.0
+selection_goals,66
+selection_first_utc,2026-11-21T08:05:36Z
+selection_last_utc,2026-11-21T08:06:55Z
+selection_load1_min,115
+selection_load1_median,144
+selection_load1_max,154
+selection_wall_sum_s,741
+selection_cpu_sum_s,743
+selection_rss_max_gib,2.45
+rest_goals,2998
+rest_first_utc,2026-11-21T07:11:33Z
+rest_last_utc,2026-11-21T09:57:51Z
+rest_load1_min,50
+rest_load1_median,95
+rest_load1_max,226
+rest_wall_sum_s,52115
+rest_cpu_sum_s,52295
+rest_rss_max_gib,3.23

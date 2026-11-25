@@ -131,6 +131,18 @@
           <a class="text-link" href="week-08-bounded-lob/">Read the essay →</a>
         </div>
       </article>
+      <article class="essay-entry">
+        <p class="entry-kind">10 / Benchmarks</p>
+        <div class="entry-copy">
+          <h2><a href="week-09-floatlib-benchmarks/">FloatLib 4.1.0 on other people's benchmarks</a></h2>
+          <p>FloatLib reports what it proves about itself, so I ran it on benchmarks that other people
+            built for their own tools. One call of <code>interval</code> closes 281 of LLM2Cert's 291
+            proof obligations with no model, and Lean's kernel proves all 39,994 single-operation tests
+            of SMT-LIB. It also loses: the solvers are faster, LeanCert proves sums and integrals that
+            <code>interval</code> doesn't, and Gappa is tighter on 7 of 17 programs.</p>
+          <a class="text-link" href="week-09-floatlib-benchmarks/">Read the essay →</a>
+        </div>
+      </article>
     </section>
   </main>
 </body>

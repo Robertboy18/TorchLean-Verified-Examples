@@ -1,0 +1,1696 @@
+{
+ "axioms": {
+  "propext Classical.choice Quot.sound": 4158
+ },
+ "file_system_seconds": 32.839999999999996,
+ "file_user_seconds": 331.1,
+ "file_wall_seconds": 361.49,
+ "files": 17,
+ "groups": [
+  {
+   "elaboration_seconds": 0.851138741,
+   "family": "selftest",
+   "kernel_max_ms": 20.253242,
+   "kernel_median_ms": 7.6774665,
+   "kernel_seconds": 0.085069634,
+   "operation": "abs-11-53",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 0.539997878,
+   "family": "selftest",
+   "kernel_max_ms": 9.997494,
+   "kernel_median_ms": 5.1659335,
+   "kernel_seconds": 0.045858579,
+   "operation": "abs-15-113",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 0.44275511,
+   "family": "selftest",
+   "kernel_max_ms": 6.129802,
+   "kernel_median_ms": 4.246503,
+   "kernel_seconds": 0.036568464,
+   "operation": "abs-2-2",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 0.754461154,
+   "family": "selftest",
+   "kernel_max_ms": 21.799167,
+   "kernel_median_ms": 6.9351545,
+   "kernel_seconds": 0.078186582,
+   "operation": "abs-3-5",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 0.834527659,
+   "family": "selftest",
+   "kernel_max_ms": 18.46167,
+   "kernel_median_ms": 11.6268115,
+   "kernel_seconds": 0.096025194,
+   "operation": "abs-5-11",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 0.796683791,
+   "family": "selftest",
+   "kernel_max_ms": 18.712377,
+   "kernel_median_ms": 16.4843435,
+   "kernel_seconds": 0.117043677,
+   "operation": "abs-6-20",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 1.03833911,
+   "family": "selftest",
+   "kernel_max_ms": 23.152907,
+   "kernel_median_ms": 16.887974,
+   "kernel_seconds": 0.135000552,
+   "operation": "abs-8-24",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 6.927685062,
+   "family": "selftest",
+   "kernel_max_ms": 65.530792,
+   "kernel_median_ms": 14.9463205,
+   "kernel_seconds": 0.942164462,
+   "operation": "add-11-53",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 6.463708128,
+   "family": "selftest",
+   "kernel_max_ms": 20.881884,
+   "kernel_median_ms": 13.0191105,
+   "kernel_seconds": 0.753000013,
+   "operation": "add-15-113",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 5.313789146,
+   "family": "selftest",
+   "kernel_max_ms": 25.742134,
+   "kernel_median_ms": 8.215721,
+   "kernel_seconds": 0.564371373,
+   "operation": "add-2-2",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 4.093303959,
+   "family": "selftest",
+   "kernel_max_ms": 13.49801,
+   "kernel_median_ms": 5.9393625,
+   "kernel_seconds": 0.368353107,
+   "operation": "add-3-5",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 2.67983027,
+   "family": "selftest",
+   "kernel_max_ms": 6.828326,
+   "kernel_median_ms": 3.6302825,
+   "kernel_seconds": 0.23581496,
+   "operation": "add-5-11",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 2.618528267,
+   "family": "selftest",
+   "kernel_max_ms": 5.360286,
+   "kernel_median_ms": 3.658256,
+   "kernel_seconds": 0.229662634,
+   "operation": "add-6-20",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 2.982794598,
+   "family": "selftest",
+   "kernel_max_ms": 7.111226,
+   "kernel_median_ms": 4.419529,
+   "kernel_seconds": 0.28687063,
+   "operation": "add-8-24",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 3.627183682,
+   "family": "selftest",
+   "kernel_max_ms": 7.724326,
+   "kernel_median_ms": 6.408592,
+   "kernel_seconds": 0.358168375,
+   "operation": "div-11-53",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 5.728465186,
+   "family": "selftest",
+   "kernel_max_ms": 30.406928,
+   "kernel_median_ms": 6.9606005,
+   "kernel_seconds": 0.647972461,
+   "operation": "div-15-113",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 6.316409648,
+   "family": "selftest",
+   "kernel_max_ms": 22.215565,
+   "kernel_median_ms": 11.223148,
+   "kernel_seconds": 0.713195735,
+   "operation": "div-2-2",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 6.03198149,
+   "family": "selftest",
+   "kernel_max_ms": 21.094588,
+   "kernel_median_ms": 11.535349,
+   "kernel_seconds": 0.693436752,
+   "operation": "div-3-5",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 4.493942374,
+   "family": "selftest",
+   "kernel_max_ms": 19.435895,
+   "kernel_median_ms": 5.8958995,
+   "kernel_seconds": 0.437525786,
+   "operation": "div-5-11",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 2.601120427,
+   "family": "selftest",
+   "kernel_max_ms": 5.255637,
+   "kernel_median_ms": 3.7005155,
+   "kernel_seconds": 0.232129927,
+   "operation": "div-6-20",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 2.789788806,
+   "family": "selftest",
+   "kernel_max_ms": 6.847898,
+   "kernel_median_ms": 4.2135905,
+   "kernel_seconds": 0.275364814,
+   "operation": "div-8-24",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 0.485201586,
+   "family": "selftest",
+   "kernel_max_ms": 4.373048,
+   "kernel_median_ms": 3.984555,
+   "kernel_seconds": 0.042394776,
+   "operation": "eq-11-53",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.441993856,
+   "family": "selftest",
+   "kernel_max_ms": 3.792971,
+   "kernel_median_ms": 3.0985535,
+   "kernel_seconds": 0.037752662,
+   "operation": "eq-15-113",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.365281068,
+   "family": "selftest",
+   "kernel_max_ms": 2.724671,
+   "kernel_median_ms": 2.6185665,
+   "kernel_seconds": 0.031390581,
+   "operation": "eq-2-2",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.489375665,
+   "family": "selftest",
+   "kernel_max_ms": 4.19265,
+   "kernel_median_ms": 4.0822265,
+   "kernel_seconds": 0.042179547,
+   "operation": "eq-3-5",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.433893917,
+   "family": "selftest",
+   "kernel_max_ms": 4.144225,
+   "kernel_median_ms": 2.6518105,
+   "kernel_seconds": 0.034577423,
+   "operation": "eq-5-11",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.41123797,
+   "family": "selftest",
+   "kernel_max_ms": 3.070703,
+   "kernel_median_ms": 2.698833,
+   "kernel_seconds": 0.032789488,
+   "operation": "eq-6-20",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.371993129,
+   "family": "selftest",
+   "kernel_max_ms": 2.721644,
+   "kernel_median_ms": 2.666868,
+   "kernel_seconds": 0.031930184,
+   "operation": "eq-8-24",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 4.41767393,
+   "family": "selftest",
+   "kernel_max_ms": 8.605925,
+   "kernel_median_ms": 7.054273,
+   "kernel_seconds": 0.423654413,
+   "operation": "fma-11-53",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 4.865883665,
+   "family": "selftest",
+   "kernel_max_ms": 10.182655,
+   "kernel_median_ms": 7.1266745,
+   "kernel_seconds": 0.442197731,
+   "operation": "fma-15-113",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 4.390850983,
+   "family": "selftest",
+   "kernel_max_ms": 8.381331,
+   "kernel_median_ms": 6.113536,
+   "kernel_seconds": 0.382127364,
+   "operation": "fma-2-2",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 4.555465585,
+   "family": "selftest",
+   "kernel_max_ms": 7.996532,
+   "kernel_median_ms": 6.2990675,
+   "kernel_seconds": 0.389823397,
+   "operation": "fma-3-5",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 3.725491708,
+   "family": "selftest",
+   "kernel_max_ms": 8.213648,
+   "kernel_median_ms": 5.51052,
+   "kernel_seconds": 0.322262529,
+   "operation": "fma-5-11",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 3.433128578,
+   "family": "selftest",
+   "kernel_max_ms": 6.765083,
+   "kernel_median_ms": 5.019156,
+   "kernel_seconds": 0.301330413,
+   "operation": "fma-6-20",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 3.123743213,
+   "family": "selftest",
+   "kernel_max_ms": 6.999597,
+   "kernel_median_ms": 4.438667,
+   "kernel_seconds": 0.293901709,
+   "operation": "fma-8-24",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 0.381731848,
+   "family": "selftest",
+   "kernel_max_ms": 2.832585,
+   "kernel_median_ms": 2.769709,
+   "kernel_seconds": 0.033102866,
+   "operation": "geq-11-53",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.536241905,
+   "family": "selftest",
+   "kernel_max_ms": 5.152424,
+   "kernel_median_ms": 3.208723,
+   "kernel_seconds": 0.043907408,
+   "operation": "geq-15-113",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.390853172,
+   "family": "selftest",
+   "kernel_max_ms": 3.794403,
+   "kernel_median_ms": 2.6557935,
+   "kernel_seconds": 0.033358449,
+   "operation": "geq-2-2",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.40917626,
+   "family": "selftest",
+   "kernel_max_ms": 4.230761,
+   "kernel_median_ms": 2.7427145,
+   "kernel_seconds": 0.034795939,
+   "operation": "geq-3-5",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.397219928,
+   "family": "selftest",
+   "kernel_max_ms": 3.483453,
+   "kernel_median_ms": 2.8753315,
+   "kernel_seconds": 0.035730643,
+   "operation": "geq-5-11",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.429629659,
+   "family": "selftest",
+   "kernel_max_ms": 4.49992,
+   "kernel_median_ms": 2.8565555,
+   "kernel_seconds": 0.036737195,
+   "operation": "geq-6-20",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.38426189,
+   "family": "selftest",
+   "kernel_max_ms": 2.96129,
+   "kernel_median_ms": 2.747306,
+   "kernel_seconds": 0.033261245,
+   "operation": "geq-8-24",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.434306672,
+   "family": "selftest",
+   "kernel_max_ms": 4.329197,
+   "kernel_median_ms": 2.74172,
+   "kernel_seconds": 0.036234231,
+   "operation": "gt-11-53",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.49975207,
+   "family": "selftest",
+   "kernel_max_ms": 4.999583,
+   "kernel_median_ms": 3.217996,
+   "kernel_seconds": 0.042519452,
+   "operation": "gt-15-113",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.373138759,
+   "family": "selftest",
+   "kernel_max_ms": 3.297351,
+   "kernel_median_ms": 2.621242,
+   "kernel_seconds": 0.032464988,
+   "operation": "gt-2-2",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.353948528,
+   "family": "selftest",
+   "kernel_max_ms": 2.669192,
+   "kernel_median_ms": 2.56397,
+   "kernel_seconds": 0.030851545,
+   "operation": "gt-3-5",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.405054819,
+   "family": "selftest",
+   "kernel_max_ms": 3.020365,
+   "kernel_median_ms": 2.6281595,
+   "kernel_seconds": 0.032080168,
+   "operation": "gt-5-11",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.383537593,
+   "family": "selftest",
+   "kernel_max_ms": 2.748684,
+   "kernel_median_ms": 2.6752715,
+   "kernel_seconds": 0.032069047,
+   "operation": "gt-6-20",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.369447886,
+   "family": "selftest",
+   "kernel_max_ms": 2.822102,
+   "kernel_median_ms": 2.679375,
+   "kernel_seconds": 0.032271125,
+   "operation": "gt-8-24",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.21411553,
+   "family": "selftest",
+   "kernel_max_ms": 2.834784,
+   "kernel_median_ms": 2.4769535,
+   "kernel_seconds": 0.024722097,
+   "operation": "isInfinite-11-53",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.234955884,
+   "family": "selftest",
+   "kernel_max_ms": 3.518524,
+   "kernel_median_ms": 2.55676,
+   "kernel_seconds": 0.026628294,
+   "operation": "isInfinite-15-113",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.200072193,
+   "family": "selftest",
+   "kernel_max_ms": 2.271431,
+   "kernel_median_ms": 2.1819685,
+   "kernel_seconds": 0.020888251,
+   "operation": "isInfinite-2-2",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.203610701,
+   "family": "selftest",
+   "kernel_max_ms": 2.581621,
+   "kernel_median_ms": 2.196902,
+   "kernel_seconds": 0.022399815,
+   "operation": "isInfinite-3-5",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.202219972,
+   "family": "selftest",
+   "kernel_max_ms": 2.623015,
+   "kernel_median_ms": 2.201321,
+   "kernel_seconds": 0.022248615,
+   "operation": "isInfinite-5-11",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.216677656,
+   "family": "selftest",
+   "kernel_max_ms": 2.571353,
+   "kernel_median_ms": 2.3840565,
+   "kernel_seconds": 0.023490718,
+   "operation": "isInfinite-6-20",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.208668576,
+   "family": "selftest",
+   "kernel_max_ms": 2.399646,
+   "kernel_median_ms": 2.2512435,
+   "kernel_seconds": 0.02266279,
+   "operation": "isInfinite-8-24",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.215068251,
+   "family": "selftest",
+   "kernel_max_ms": 2.625636,
+   "kernel_median_ms": 2.4832015,
+   "kernel_seconds": 0.025073522,
+   "operation": "isNaN-11-53",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.24870731,
+   "family": "selftest",
+   "kernel_max_ms": 4.138626,
+   "kernel_median_ms": 2.75201,
+   "kernel_seconds": 0.029690848,
+   "operation": "isNaN-15-113",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.20058265,
+   "family": "selftest",
+   "kernel_max_ms": 2.508836,
+   "kernel_median_ms": 2.4022595,
+   "kernel_seconds": 0.024031129,
+   "operation": "isNaN-2-2",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.204245112,
+   "family": "selftest",
+   "kernel_max_ms": 2.812924,
+   "kernel_median_ms": 2.4071405,
+   "kernel_seconds": 0.024312987,
+   "operation": "isNaN-3-5",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.202725261,
+   "family": "selftest",
+   "kernel_max_ms": 2.510919,
+   "kernel_median_ms": 2.389637,
+   "kernel_seconds": 0.024152368,
+   "operation": "isNaN-5-11",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.202847027,
+   "family": "selftest",
+   "kernel_max_ms": 2.488893,
+   "kernel_median_ms": 2.423606,
+   "kernel_seconds": 0.023457107,
+   "operation": "isNaN-6-20",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.210268313,
+   "family": "selftest",
+   "kernel_max_ms": 2.805744,
+   "kernel_median_ms": 2.4755935,
+   "kernel_seconds": 0.02499975,
+   "operation": "isNaN-8-24",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.234829313,
+   "family": "selftest",
+   "kernel_max_ms": 2.652052,
+   "kernel_median_ms": 2.4962465,
+   "kernel_seconds": 0.024927117,
+   "operation": "isNegative-11-53",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.244399921,
+   "family": "selftest",
+   "kernel_max_ms": 4.07131,
+   "kernel_median_ms": 2.786153,
+   "kernel_seconds": 0.028888451,
+   "operation": "isNegative-15-113",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.218991984,
+   "family": "selftest",
+   "kernel_max_ms": 2.577803,
+   "kernel_median_ms": 2.367741,
+   "kernel_seconds": 0.022644417,
+   "operation": "isNegative-2-2",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.225631571,
+   "family": "selftest",
+   "kernel_max_ms": 3.042391,
+   "kernel_median_ms": 2.423602,
+   "kernel_seconds": 0.02479793,
+   "operation": "isNegative-3-5",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.306995351,
+   "family": "selftest",
+   "kernel_max_ms": 3.988043,
+   "kernel_median_ms": 3.4419885,
+   "kernel_seconds": 0.033499522,
+   "operation": "isNegative-5-11",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.327517228,
+   "family": "selftest",
+   "kernel_max_ms": 3.920648,
+   "kernel_median_ms": 3.695361,
+   "kernel_seconds": 0.036311425,
+   "operation": "isNegative-6-20",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.357899334,
+   "family": "selftest",
+   "kernel_max_ms": 3.948481,
+   "kernel_median_ms": 3.597652,
+   "kernel_seconds": 0.035965911,
+   "operation": "isNegative-8-24",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.299263128,
+   "family": "selftest",
+   "kernel_max_ms": 3.961166,
+   "kernel_median_ms": 3.7688095,
+   "kernel_seconds": 0.036661721,
+   "operation": "isNormal-11-53",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.354072672,
+   "family": "selftest",
+   "kernel_max_ms": 4.541866,
+   "kernel_median_ms": 4.3861705,
+   "kernel_seconds": 0.043573746,
+   "operation": "isNormal-15-113",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.302921019,
+   "family": "selftest",
+   "kernel_max_ms": 4.027536,
+   "kernel_median_ms": 3.6551155,
+   "kernel_seconds": 0.035656286,
+   "operation": "isNormal-2-2",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.306252219,
+   "family": "selftest",
+   "kernel_max_ms": 3.971599,
+   "kernel_median_ms": 3.7887835,
+   "kernel_seconds": 0.036668215,
+   "operation": "isNormal-3-5",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.311534092,
+   "family": "selftest",
+   "kernel_max_ms": 3.98642,
+   "kernel_median_ms": 3.754035,
+   "kernel_seconds": 0.036502213,
+   "operation": "isNormal-5-11",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.310327721,
+   "family": "selftest",
+   "kernel_max_ms": 3.775982,
+   "kernel_median_ms": 3.7440085,
+   "kernel_seconds": 0.036882155,
+   "operation": "isNormal-6-20",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.307654103,
+   "family": "selftest",
+   "kernel_max_ms": 3.887966,
+   "kernel_median_ms": 3.7385015,
+   "kernel_seconds": 0.037484141,
+   "operation": "isNormal-8-24",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.340469133,
+   "family": "selftest",
+   "kernel_max_ms": 4.055742,
+   "kernel_median_ms": 3.7759325,
+   "kernel_seconds": 0.037460716,
+   "operation": "isPositive-11-53",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.34500488,
+   "family": "selftest",
+   "kernel_max_ms": 4.327557,
+   "kernel_median_ms": 4.220653,
+   "kernel_seconds": 0.040637645,
+   "operation": "isPositive-15-113",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.325164786,
+   "family": "selftest",
+   "kernel_max_ms": 3.797471,
+   "kernel_median_ms": 3.661547,
+   "kernel_seconds": 0.035122324,
+   "operation": "isPositive-2-2",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.333763462,
+   "family": "selftest",
+   "kernel_max_ms": 3.92023,
+   "kernel_median_ms": 3.698705,
+   "kernel_seconds": 0.037234906,
+   "operation": "isPositive-3-5",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.333735466,
+   "family": "selftest",
+   "kernel_max_ms": 3.780513,
+   "kernel_median_ms": 3.7348435,
+   "kernel_seconds": 0.036489538,
+   "operation": "isPositive-5-11",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.340948946,
+   "family": "selftest",
+   "kernel_max_ms": 4.022147,
+   "kernel_median_ms": 3.8073465,
+   "kernel_seconds": 0.037663565,
+   "operation": "isPositive-6-20",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.286215474,
+   "family": "selftest",
+   "kernel_max_ms": 3.831198,
+   "kernel_median_ms": 3.105168,
+   "kernel_seconds": 0.031085109,
+   "operation": "isPositive-8-24",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.210186946,
+   "family": "selftest",
+   "kernel_max_ms": 2.250169,
+   "kernel_median_ms": 2.174037,
+   "kernel_seconds": 0.021855887,
+   "operation": "isSubnormal-11-53",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.234770087,
+   "family": "selftest",
+   "kernel_max_ms": 3.496237,
+   "kernel_median_ms": 2.4950965,
+   "kernel_seconds": 0.025806932,
+   "operation": "isSubnormal-15-113",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.20131071,
+   "family": "selftest",
+   "kernel_max_ms": 3.07076,
+   "kernel_median_ms": 2.098772,
+   "kernel_seconds": 0.021142185,
+   "operation": "isSubnormal-2-2",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.200308089,
+   "family": "selftest",
+   "kernel_max_ms": 2.277249,
+   "kernel_median_ms": 2.111597,
+   "kernel_seconds": 0.021383746,
+   "operation": "isSubnormal-3-5",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.203550781,
+   "family": "selftest",
+   "kernel_max_ms": 2.304599,
+   "kernel_median_ms": 2.138231,
+   "kernel_seconds": 0.021450201,
+   "operation": "isSubnormal-5-11",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.210345614,
+   "family": "selftest",
+   "kernel_max_ms": 2.409751,
+   "kernel_median_ms": 2.207667,
+   "kernel_seconds": 0.022328844,
+   "operation": "isSubnormal-6-20",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.21535282,
+   "family": "selftest",
+   "kernel_max_ms": 2.462392,
+   "kernel_median_ms": 2.2073585,
+   "kernel_seconds": 0.022204151,
+   "operation": "isSubnormal-8-24",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.209591471,
+   "family": "selftest",
+   "kernel_max_ms": 2.403668,
+   "kernel_median_ms": 2.1970215,
+   "kernel_seconds": 0.021980832,
+   "operation": "isZero-11-53",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.318851046,
+   "family": "selftest",
+   "kernel_max_ms": 3.765976,
+   "kernel_median_ms": 3.6066335,
+   "kernel_seconds": 0.034494705,
+   "operation": "isZero-15-113",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.288127489,
+   "family": "selftest",
+   "kernel_max_ms": 3.529021,
+   "kernel_median_ms": 2.97596,
+   "kernel_seconds": 0.029940849,
+   "operation": "isZero-2-2",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.348784621,
+   "family": "selftest",
+   "kernel_max_ms": 3.544732,
+   "kernel_median_ms": 3.0837525,
+   "kernel_seconds": 0.03126821,
+   "operation": "isZero-3-5",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.305183375,
+   "family": "selftest",
+   "kernel_max_ms": 3.610251,
+   "kernel_median_ms": 3.2231365,
+   "kernel_seconds": 0.032525541,
+   "operation": "isZero-5-11",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.334313683,
+   "family": "selftest",
+   "kernel_max_ms": 3.678044,
+   "kernel_median_ms": 3.547371,
+   "kernel_seconds": 0.034819923,
+   "operation": "isZero-6-20",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.318255873,
+   "family": "selftest",
+   "kernel_max_ms": 3.540116,
+   "kernel_median_ms": 3.4302195,
+   "kernel_seconds": 0.034236484,
+   "operation": "isZero-8-24",
+   "proved": 10,
+   "theorems": 10
+  },
+  {
+   "elaboration_seconds": 0.546540531,
+   "family": "selftest",
+   "kernel_max_ms": 4.552662,
+   "kernel_median_ms": 3.868639,
+   "kernel_seconds": 0.047661959,
+   "operation": "leq-11-53",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.59037788,
+   "family": "selftest",
+   "kernel_max_ms": 4.546838,
+   "kernel_median_ms": 4.400817,
+   "kernel_seconds": 0.053005863,
+   "operation": "leq-15-113",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.536411002,
+   "family": "selftest",
+   "kernel_max_ms": 4.119071,
+   "kernel_median_ms": 3.9477455,
+   "kernel_seconds": 0.047280878,
+   "operation": "leq-2-2",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.533700099,
+   "family": "selftest",
+   "kernel_max_ms": 4.087948,
+   "kernel_median_ms": 3.8287815,
+   "kernel_seconds": 0.046511432,
+   "operation": "leq-3-5",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.557787032,
+   "family": "selftest",
+   "kernel_max_ms": 4.219329,
+   "kernel_median_ms": 4.08008,
+   "kernel_seconds": 0.048527767,
+   "operation": "leq-5-11",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.561445466,
+   "family": "selftest",
+   "kernel_max_ms": 4.572895,
+   "kernel_median_ms": 4.145887,
+   "kernel_seconds": 0.050217339,
+   "operation": "leq-6-20",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.597572702,
+   "family": "selftest",
+   "kernel_max_ms": 4.642118,
+   "kernel_median_ms": 4.274257,
+   "kernel_seconds": 0.05131794,
+   "operation": "leq-8-24",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.569451713,
+   "family": "selftest",
+   "kernel_max_ms": 4.619574,
+   "kernel_median_ms": 4.351646,
+   "kernel_seconds": 0.049395215,
+   "operation": "lt-11-53",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.680499764,
+   "family": "selftest",
+   "kernel_max_ms": 5.184497,
+   "kernel_median_ms": 4.9961515,
+   "kernel_seconds": 0.059567765,
+   "operation": "lt-15-113",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.589894281,
+   "family": "selftest",
+   "kernel_max_ms": 4.4466,
+   "kernel_median_ms": 4.2357295,
+   "kernel_seconds": 0.051111774,
+   "operation": "lt-2-2",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.596289691,
+   "family": "selftest",
+   "kernel_max_ms": 4.502348,
+   "kernel_median_ms": 4.287966,
+   "kernel_seconds": 0.051421706,
+   "operation": "lt-3-5",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.646032089,
+   "family": "selftest",
+   "kernel_max_ms": 4.68544,
+   "kernel_median_ms": 4.42261,
+   "kernel_seconds": 0.053226403,
+   "operation": "lt-5-11",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.634156928,
+   "family": "selftest",
+   "kernel_max_ms": 4.709105,
+   "kernel_median_ms": 4.495678,
+   "kernel_seconds": 0.05424312,
+   "operation": "lt-6-20",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 0.641962615,
+   "family": "selftest",
+   "kernel_max_ms": 4.54142,
+   "kernel_median_ms": 4.224286,
+   "kernel_seconds": 0.050508047,
+   "operation": "lt-8-24",
+   "proved": 12,
+   "theorems": 12
+  },
+  {
+   "elaboration_seconds": 1.240465364,
+   "family": "selftest",
+   "kernel_max_ms": 10.065702,
+   "kernel_median_ms": 9.235654,
+   "kernel_seconds": 0.145112207,
+   "operation": "max-11-53",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 1.355025524,
+   "family": "selftest",
+   "kernel_max_ms": 15.020321,
+   "kernel_median_ms": 10.1094175,
+   "kernel_seconds": 0.16821555,
+   "operation": "max-15-113",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 1.362187045,
+   "family": "selftest",
+   "kernel_max_ms": 10.187761,
+   "kernel_median_ms": 9.7920125,
+   "kernel_seconds": 0.155873862,
+   "operation": "max-2-2",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 1.280499514,
+   "family": "selftest",
+   "kernel_max_ms": 9.813169,
+   "kernel_median_ms": 9.36181,
+   "kernel_seconds": 0.150029165,
+   "operation": "max-3-5",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 1.237251258,
+   "family": "selftest",
+   "kernel_max_ms": 65.190111,
+   "kernel_median_ms": 9.4385805,
+   "kernel_seconds": 0.20655319,
+   "operation": "max-5-11",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 1.182361418,
+   "family": "selftest",
+   "kernel_max_ms": 10.311853,
+   "kernel_median_ms": 9.471949,
+   "kernel_seconds": 0.143767881,
+   "operation": "max-6-20",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 1.13837749,
+   "family": "selftest",
+   "kernel_max_ms": 9.770106,
+   "kernel_median_ms": 9.147881,
+   "kernel_seconds": 0.140009908,
+   "operation": "max-8-24",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 1.155506367,
+   "family": "selftest",
+   "kernel_max_ms": 10.484143,
+   "kernel_median_ms": 9.582329,
+   "kernel_seconds": 0.135913557,
+   "operation": "min-11-53",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.896746201,
+   "family": "selftest",
+   "kernel_max_ms": 8.041816,
+   "kernel_median_ms": 7.150929,
+   "kernel_seconds": 0.115874779,
+   "operation": "min-15-113",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.842936531,
+   "family": "selftest",
+   "kernel_max_ms": 6.530504,
+   "kernel_median_ms": 6.2473235,
+   "kernel_seconds": 0.099945376,
+   "operation": "min-2-2",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.868362649,
+   "family": "selftest",
+   "kernel_max_ms": 6.550296,
+   "kernel_median_ms": 6.213706,
+   "kernel_seconds": 0.099609073,
+   "operation": "min-3-5",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.850750272,
+   "family": "selftest",
+   "kernel_max_ms": 26.379772,
+   "kernel_median_ms": 6.34191,
+   "kernel_seconds": 0.121707343,
+   "operation": "min-5-11",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.91319263,
+   "family": "selftest",
+   "kernel_max_ms": 10.048305,
+   "kernel_median_ms": 6.7662105,
+   "kernel_seconds": 0.112384042,
+   "operation": "min-6-20",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.847502059,
+   "family": "selftest",
+   "kernel_max_ms": 6.730553,
+   "kernel_median_ms": 6.2722985,
+   "kernel_seconds": 0.100817939,
+   "operation": "min-8-24",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 3.266876101,
+   "family": "selftest",
+   "kernel_max_ms": 8.40699,
+   "kernel_median_ms": 5.1929585,
+   "kernel_seconds": 0.311328764,
+   "operation": "mul-11-53",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 4.222103536,
+   "family": "selftest",
+   "kernel_max_ms": 8.488804,
+   "kernel_median_ms": 6.4632605,
+   "kernel_seconds": 0.383687768,
+   "operation": "mul-15-113",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 3.599798591,
+   "family": "selftest",
+   "kernel_max_ms": 8.774685,
+   "kernel_median_ms": 5.605522,
+   "kernel_seconds": 0.328116811,
+   "operation": "mul-2-2",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 2.768279642,
+   "family": "selftest",
+   "kernel_max_ms": 5.304626,
+   "kernel_median_ms": 3.9483455,
+   "kernel_seconds": 0.242789313,
+   "operation": "mul-3-5",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 3.214059301,
+   "family": "selftest",
+   "kernel_max_ms": 6.572215,
+   "kernel_median_ms": 3.9276685,
+   "kernel_seconds": 0.282837824,
+   "operation": "mul-5-11",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 3.621798903,
+   "family": "selftest",
+   "kernel_max_ms": 8.235905,
+   "kernel_median_ms": 5.3608005,
+   "kernel_seconds": 0.326625164,
+   "operation": "mul-6-20",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 3.130227181,
+   "family": "selftest",
+   "kernel_max_ms": 28.52306,
+   "kernel_median_ms": 4.544995,
+   "kernel_seconds": 0.332142014,
+   "operation": "mul-8-24",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 0.482080577,
+   "family": "selftest",
+   "kernel_max_ms": 6.968813,
+   "kernel_median_ms": 6.8181075,
+   "kernel_seconds": 0.054380015,
+   "operation": "neg-11-53",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 0.519902474,
+   "family": "selftest",
+   "kernel_max_ms": 8.217147,
+   "kernel_median_ms": 7.8427585,
+   "kernel_seconds": 0.061931317,
+   "operation": "neg-15-113",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 5.154321416,
+   "family": "selftest",
+   "kernel_max_ms": 6.933772,
+   "kernel_median_ms": 6.592424,
+   "kernel_seconds": 0.050992284,
+   "operation": "neg-2-2",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 3.32109269,
+   "family": "selftest",
+   "kernel_max_ms": 4.55716,
+   "kernel_median_ms": 4.300496,
+   "kernel_seconds": 0.034717893,
+   "operation": "neg-3-5",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 0.325869384,
+   "family": "selftest",
+   "kernel_max_ms": 4.561153,
+   "kernel_median_ms": 4.450309,
+   "kernel_seconds": 0.035439949,
+   "operation": "neg-5-11",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 0.328700307,
+   "family": "selftest",
+   "kernel_max_ms": 4.76642,
+   "kernel_median_ms": 4.599695,
+   "kernel_seconds": 0.036673953,
+   "operation": "neg-6-20",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 0.320201177,
+   "family": "selftest",
+   "kernel_max_ms": 4.911913,
+   "kernel_median_ms": 4.3161915,
+   "kernel_seconds": 0.034878158,
+   "operation": "neg-8-24",
+   "proved": 8,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 0.696749578,
+   "family": "selftest",
+   "kernel_max_ms": 28.363693,
+   "kernel_median_ms": 4.8007405,
+   "kernel_seconds": 0.103368074,
+   "operation": "rem-11-53",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.754324715,
+   "family": "selftest",
+   "kernel_max_ms": 6.55987,
+   "kernel_median_ms": 5.465169,
+   "kernel_seconds": 0.088630137,
+   "operation": "rem-15-113",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.684437987,
+   "family": "selftest",
+   "kernel_max_ms": 5.47653,
+   "kernel_median_ms": 4.6914005,
+   "kernel_seconds": 0.075369401,
+   "operation": "rem-2-2",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.664760136,
+   "family": "selftest",
+   "kernel_max_ms": 4.889623,
+   "kernel_median_ms": 4.620355,
+   "kernel_seconds": 0.073141519,
+   "operation": "rem-3-5",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.674411864,
+   "family": "selftest",
+   "kernel_max_ms": 5.145807,
+   "kernel_median_ms": 4.62868,
+   "kernel_seconds": 0.074860491,
+   "operation": "rem-5-11",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.674723304,
+   "family": "selftest",
+   "kernel_max_ms": 7.343155,
+   "kernel_median_ms": 4.4237815,
+   "kernel_seconds": 0.073710339,
+   "operation": "rem-6-20",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 0.672841923,
+   "family": "selftest",
+   "kernel_max_ms": 5.519393,
+   "kernel_median_ms": 4.52504,
+   "kernel_seconds": 0.073058492,
+   "operation": "rem-8-24",
+   "proved": 16,
+   "theorems": 16
+  },
+  {
+   "elaboration_seconds": 1.94683404,
+   "family": "selftest",
+   "kernel_max_ms": 4.297013,
+   "kernel_median_ms": 3.364919,
+   "kernel_seconds": 0.175608259,
+   "operation": "roundToIntegral-11-53",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.593672072,
+   "family": "selftest",
+   "kernel_max_ms": 5.915468,
+   "kernel_median_ms": 5.3952655,
+   "kernel_seconds": 0.246566165,
+   "operation": "roundToIntegral-15-113",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.677138619,
+   "family": "selftest",
+   "kernel_max_ms": 5.22225,
+   "kernel_median_ms": 4.802566,
+   "kernel_seconds": 0.232589638,
+   "operation": "roundToIntegral-2-2",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.873616253,
+   "family": "selftest",
+   "kernel_max_ms": 39.329701,
+   "kernel_median_ms": 5.161921,
+   "kernel_seconds": 0.291127411,
+   "operation": "roundToIntegral-3-5",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.88816205,
+   "family": "selftest",
+   "kernel_max_ms": 5.50031,
+   "kernel_median_ms": 4.9946185,
+   "kernel_seconds": 0.249277138,
+   "operation": "roundToIntegral-5-11",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.696932212,
+   "family": "selftest",
+   "kernel_max_ms": 5.292757,
+   "kernel_median_ms": 4.8580885,
+   "kernel_seconds": 0.23426274,
+   "operation": "roundToIntegral-6-20",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.491886252,
+   "family": "selftest",
+   "kernel_max_ms": 5.428038,
+   "kernel_median_ms": 4.593844,
+   "kernel_seconds": 0.221440686,
+   "operation": "roundToIntegral-8-24",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.216377808,
+   "family": "selftest",
+   "kernel_max_ms": 5.611773,
+   "kernel_median_ms": 4.2546445,
+   "kernel_seconds": 0.221323648,
+   "operation": "sqrt-11-53",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.273964246,
+   "family": "selftest",
+   "kernel_max_ms": 7.100247,
+   "kernel_median_ms": 4.0051535,
+   "kernel_seconds": 0.211599285,
+   "operation": "sqrt-15-113",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.132799825,
+   "family": "selftest",
+   "kernel_max_ms": 37.476768,
+   "kernel_median_ms": 3.9590935,
+   "kernel_seconds": 0.283748158,
+   "operation": "sqrt-2-2",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.509146571,
+   "family": "selftest",
+   "kernel_max_ms": 11.90926,
+   "kernel_median_ms": 6.309226,
+   "kernel_seconds": 0.354296277,
+   "operation": "sqrt-3-5",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.423707734,
+   "family": "selftest",
+   "kernel_max_ms": 7.227177,
+   "kernel_median_ms": 3.723571,
+   "kernel_seconds": 0.226358902,
+   "operation": "sqrt-5-11",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.413250363,
+   "family": "selftest",
+   "kernel_max_ms": 7.044053,
+   "kernel_median_ms": 3.835954,
+   "kernel_seconds": 0.225129392,
+   "operation": "sqrt-6-20",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 2.255643036,
+   "family": "selftest",
+   "kernel_max_ms": 5.633149,
+   "kernel_median_ms": 4.249438,
+   "kernel_seconds": 0.224813399,
+   "operation": "sqrt-8-24",
+   "proved": 50,
+   "theorems": 50
+  },
+  {
+   "elaboration_seconds": 4.958773948,
+   "family": "selftest",
+   "kernel_max_ms": 77.628739,
+   "kernel_median_ms": 6.8926965,
+   "kernel_seconds": 0.628465441,
+   "operation": "sub-11-53",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 2.971661089,
+   "family": "selftest",
+   "kernel_max_ms": 6.942243,
+   "kernel_median_ms": 4.1966105,
+   "kernel_seconds": 0.269223682,
+   "operation": "sub-15-113",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 2.678690425,
+   "family": "selftest",
+   "kernel_max_ms": 5.043891,
+   "kernel_median_ms": 3.8664605,
+   "kernel_seconds": 0.238352771,
+   "operation": "sub-2-2",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 2.692057985,
+   "family": "selftest",
+   "kernel_max_ms": 5.776241,
+   "kernel_median_ms": 3.746742,
+   "kernel_seconds": 0.233778729,
+   "operation": "sub-3-5",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 4.164099006,
+   "family": "selftest",
+   "kernel_max_ms": 20.736577,
+   "kernel_median_ms": 5.517898,
+   "kernel_seconds": 0.397099478,
+   "operation": "sub-5-11",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 3.150818008,
+   "family": "selftest",
+   "kernel_max_ms": 7.304074,
+   "kernel_median_ms": 4.131345,
+   "kernel_seconds": 0.274426902,
+   "operation": "sub-6-20",
+   "proved": 60,
+   "theorems": 60
+  },
+  {
+   "elaboration_seconds": 2.822426294,
+   "family": "selftest",
+   "kernel_max_ms": 5.664879,
+   "kernel_median_ms": 4.28643,
+   "kernel_seconds": 0.268833625,
+   "operation": "sub-8-24",
+   "proved": 60,
+   "theorems": 60
+  }
+ ],
+ "kernel_seconds_proved": 23.466646549,
+ "nonzero_rc": [],
+ "peak_rss_kb": 4482424,
+ "proved": 4158,
+ "theorems": 4158
+}

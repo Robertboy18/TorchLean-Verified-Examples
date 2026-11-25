@@ -1,0 +1,121 @@
+series,bits,operation,trials,median_ns,min_ns,max_ns,q1_ns,q3_ns,mad_ns,spread_percent,iterations,format,backend
+FloatLib public,32,add,9,40.553,40.270,42.413,40.312,41.454,0.261,5.3,4855880,binary32,binary-interchange addition fixed-format kernel
+FloatLib public,32,sub,9,40.900,40.831,41.860,40.847,41.232,0.069,2.5,4945900,binary32,binary-interchange subtraction fixed-format kernel
+FloatLib public,32,mul,9,23.818,23.717,24.595,23.742,24.012,0.089,3.7,8465064,binary32,binary-interchange multiplication fixed-format kernel
+FloatLib public,32,div,9,57.759,57.451,59.661,57.565,58.006,0.246,3.8,3431947,binary32,binary-interchange division fixed-format kernel
+FloatLib public,32,sqrt,9,29.877,29.830,30.068,29.856,30.020,0.047,0.8,6604309,binary32,binary-interchange square root fixed-format kernel
+FloatLib public,32,fma,9,39.053,38.819,43.170,38.885,39.745,0.234,11.1,5037424,binary32,binary-interchange fused multiply-add fixed-format kernel
+FloatLib public,64,add,9,31.317,31.183,32.499,31.228,31.945,0.109,4.2,6462353,binary64,binary-interchange addition fixed-format kernel
+FloatLib public,64,sub,9,30.799,30.560,31.802,30.634,31.070,0.208,4.0,6272330,binary64,binary-interchange subtraction fixed-format kernel
+FloatLib public,64,mul,9,23.725,23.643,24.875,23.676,23.800,0.061,5.2,8244989,binary64,binary-interchange multiplication fixed-format kernel
+FloatLib public,64,div,9,67.899,67.792,68.192,67.887,67.975,0.073,0.6,2716252,binary64,binary-interchange division fixed-format kernel
+FloatLib public,64,sqrt,9,102.317,102.044,102.959,102.231,102.498,0.121,0.9,1962547,binary64,binary-interchange square root fixed-format kernel
+FloatLib public,64,fma,9,118.045,117.816,128.972,117.944,120.601,0.229,9.5,1704607,binary64,binary-interchange fused multiply-add fixed-format kernel
+FloatLib public,128,add,9,74.218,74.108,74.795,74.127,74.302,0.091,0.9,2629656,binary128,binary-interchange addition fixed-limb kernel
+FloatLib public,128,sub,9,72.894,72.630,83.742,72.716,74.186,0.237,15.2,2749550,binary128,binary-interchange subtraction fixed-limb kernel
+FloatLib public,128,mul,9,44.546,44.334,44.915,44.449,44.833,0.114,1.3,4507388,binary128,binary-interchange multiplication fixed-limb kernel
+FloatLib public,128,div,9,190.521,189.799,193.475,190.117,191.402,0.545,1.9,1053923,binary128,binary-interchange division fixed-limb kernel
+FloatLib public,128,sqrt,9,215.568,212.082,236.548,212.849,216.844,2.674,11.3,944155,binary128,binary-interchange square root fixed-limb kernel
+FloatLib public,128,fma,9,131.533,131.210,137.120,131.423,131.636,0.110,4.5,1501308,binary128,binary-interchange fused multiply-add fixed-limb kernel
+FloatLib public,256,add,9,1820.037,1814.449,1905.653,1816.457,1850.581,5.588,5.0,111474,binary256-custom-e19m236,binary-interchange addition exact baseline
+FloatLib public,256,sub,9,1796.895,1786.117,1897.859,1786.576,1822.193,10.330,6.2,112337,binary256-custom-e19m236,binary-interchange subtraction exact baseline
+FloatLib public,256,mul,9,1730.506,1715.714,1772.064,1720.608,1757.603,10.859,3.3,103271,binary256-custom-e19m236,binary-interchange multiplication exact baseline
+FloatLib public,256,div,9,1891.009,1881.832,1955.813,1885.901,1943.929,7.778,3.9,106087,binary256-custom-e19m236,binary-interchange division exact baseline
+FloatLib public,256,sqrt,9,4529.769,4501.495,4738.362,4519.564,4554.908,15.246,5.2,44296,binary256-custom-e19m236,binary-interchange square root exact baseline
+FloatLib public,256,fma,9,2312.447,2296.192,2326.059,2306.888,2316.509,5.559,1.3,87358,binary256-custom-e19m236,binary-interchange fused multiply-add exact baseline
+FloatLib public,512,add,9,1855.224,1842.115,1941.857,1851.988,1860.371,5.147,5.4,107564,binary512-custom-e19m492,binary-interchange addition exact baseline
+FloatLib public,512,sub,9,1877.848,1850.881,1946.047,1867.059,1891.078,13.230,5.1,103891,binary512-custom-e19m492,binary-interchange subtraction exact baseline
+FloatLib public,512,mul,9,1808.508,1791.547,1820.119,1801.686,1809.212,6.443,1.6,111981,binary512-custom-e19m492,binary-interchange multiplication exact baseline
+FloatLib public,512,div,9,2015.618,2010.154,2120.053,2013.076,2058.337,5.463,5.5,99284,binary512-custom-e19m492,binary-interchange division exact baseline
+FloatLib public,512,sqrt,9,5478.616,5399.220,5725.806,5443.191,5662.897,71.471,6.0,36861,binary512-custom-e19m492,binary-interchange square root exact baseline
+FloatLib public,512,fma,9,2444.257,2426.496,2545.040,2435.442,2465.751,16.361,4.8,82785,binary512-custom-e19m492,binary-interchange fused multiply-add exact baseline
+FloatLib public,1024,add,9,1945.161,1937.506,2027.259,1943.999,1954.209,6.464,4.6,102415,binary1024-custom-e19m1004,binary-interchange addition exact baseline
+FloatLib public,1024,sub,9,1949.624,1921.449,2039.947,1930.011,1989.221,24.574,6.1,103415,binary1024-custom-e19m1004,binary-interchange subtraction exact baseline
+FloatLib public,1024,mul,9,1979.546,1967.866,2067.487,1979.106,1986.123,5.809,5.0,101923,binary1024-custom-e19m1004,binary-interchange multiplication exact baseline
+FloatLib public,1024,div,9,2212.840,2200.531,2372.622,2205.008,2258.059,8.530,7.8,89540,binary1024-custom-e19m1004,binary-interchange division exact baseline
+FloatLib public,1024,sqrt,9,6605.789,6493.700,6810.838,6537.099,6694.137,88.348,4.8,30616,binary1024-custom-e19m1004,binary-interchange square root exact baseline
+FloatLib public,1024,fma,9,2722.461,2713.091,2743.207,2722.019,2724.978,2.517,1.1,73219,binary1024-custom-e19m1004,binary-interchange fused multiply-add exact baseline
+FloatLib public,2048,add,9,2093.538,2078.258,2190.255,2082.243,2134.337,12.258,5.3,95112,binary2048-custom-e19m2028,binary-interchange addition exact baseline
+FloatLib public,2048,sub,9,2096.424,2085.395,2111.866,2089.240,2107.098,7.489,1.3,94945,binary2048-custom-e19m2028,binary-interchange subtraction exact baseline
+FloatLib public,2048,mul,9,2550.172,2537.697,2619.625,2540.580,2561.381,9.599,3.2,78398,binary2048-custom-e19m2028,binary-interchange multiplication exact baseline
+FloatLib public,2048,div,9,2860.049,2841.282,2916.907,2858.618,2865.464,5.415,2.6,70228,binary2048-custom-e19m2028,binary-interchange division exact baseline
+FloatLib public,2048,sqrt,9,8764.391,8707.106,9256.559,8731.104,8995.536,57.285,6.3,22619,binary2048-custom-e19m2028,binary-interchange square root exact baseline
+FloatLib public,2048,fma,9,3312.758,3301.110,3504.036,3307.457,3334.145,9.722,6.1,60484,binary2048-custom-e19m2028,binary-interchange fused multiply-add exact baseline
+FloatLib public,4096,add,9,2451.090,2383.377,2516.486,2398.941,2472.975,48.771,5.4,81301,binary4096-custom-e19m4076,binary-interchange addition exact baseline
+FloatLib public,4096,sub,9,2423.317,2357.454,2452.167,2394.862,2439.394,22.981,3.9,79726,binary4096-custom-e19m4076,binary-interchange subtraction exact baseline
+FloatLib public,4096,mul,9,4267.534,4246.389,4437.128,4262.100,4278.109,10.575,4.5,44954,binary4096-custom-e19m4076,binary-interchange multiplication exact baseline
+FloatLib public,4096,div,9,4465.152,4447.056,4656.551,4462.370,4486.393,13.922,4.7,44110,binary4096-custom-e19m4076,binary-interchange division exact baseline
+FloatLib public,4096,sqrt,9,14062.183,13978.198,14395.950,14013.286,14234.404,83.203,3.0,14223,binary4096-custom-e19m4076,binary-interchange square root exact baseline
+FloatLib public,4096,fma,9,5014.618,4981.923,5263.361,5001.614,5103.364,14.897,5.6,40132,binary4096-custom-e19m4076,binary-interchange fused multiply-add exact baseline
+MPFR,32,add,9,33.668,33.545,36.169,33.578,34.589,0.109,7.8,5959608,mpfr-binary32-p24-e8,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,32,sub,9,35.515,35.367,37.456,35.447,35.737,0.148,5.9,5619100,mpfr-binary32-p24-e8,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,32,mul,9,32.555,32.521,33.616,32.541,32.809,0.034,3.4,6110066,mpfr-binary32-p24-e8,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,32,div,9,36.134,36.008,37.700,36.038,37.026,0.126,4.7,5580642,mpfr-binary32-p24-e8,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,32,sqrt,9,40.857,40.575,42.939,40.730,41.016,0.158,5.8,4913545,mpfr-binary32-p24-e8,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,32,fma,9,55.459,54.949,59.407,55.045,56.340,0.476,8.0,3437842,mpfr-binary32-p24-e8,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,64,add,9,36.955,36.440,39.647,36.700,37.163,0.255,8.7,5031381,mpfr-binary64-p53-e11,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,64,sub,9,35.987,35.686,37.326,35.724,36.004,0.115,4.6,5600876,mpfr-binary64-p53-e11,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,64,mul,9,32.188,31.947,35.501,32.134,32.307,0.093,11.0,6097109,mpfr-binary64-p53-e11,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,64,div,9,34.252,34.053,41.127,34.109,34.757,0.199,20.7,5741751,mpfr-binary64-p53-e11,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,64,sqrt,9,44.588,44.129,47.067,44.305,45.097,0.424,6.6,4446561,mpfr-binary64-p53-e11,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,64,fma,9,58.612,57.989,68.043,58.166,58.784,0.446,17.2,3411665,mpfr-binary64-p53-e11,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,128,add,9,37.887,37.498,39.886,37.638,38.222,0.335,6.3,5295971,mpfr-binary128-p113-e15,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,128,sub,9,37.681,37.490,40.483,37.522,37.853,0.172,7.9,5198212,mpfr-binary128-p113-e15,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,128,mul,9,36.920,36.764,39.571,36.821,37.353,0.156,7.6,5429730,mpfr-binary128-p113-e15,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,128,div,9,45.714,45.085,50.013,45.164,46.983,0.628,10.8,3849286,mpfr-binary128-p113-e15,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,128,sqrt,9,54.404,54.237,57.489,54.348,55.286,0.167,6.0,3558365,mpfr-binary128-p113-e15,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,128,fma,9,87.945,87.416,94.974,87.499,88.356,0.446,8.6,2283645,mpfr-binary128-p113-e15,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,256,add,9,52.452,52.073,56.215,52.143,52.639,0.309,7.9,3835378,mpfr-binary256-p237-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,256,sub,9,51.554,51.169,55.128,51.380,53.090,0.385,7.7,3845623,mpfr-binary256-p237-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,256,mul,9,58.174,57.944,60.134,58.060,58.859,0.230,3.8,3426626,mpfr-binary256-p237-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,256,div,9,131.189,130.871,137.577,130.965,132.444,0.317,5.1,1448034,mpfr-binary256-p237-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,256,sqrt,9,172.717,171.638,181.989,171.677,174.011,1.079,6.0,1079278,mpfr-binary256-p237-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,256,fma,9,101.914,101.360,108.445,101.742,103.814,0.553,7.0,1973468,mpfr-binary256-p237-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,512,add,9,57.483,57.112,62.218,57.308,58.479,0.371,8.9,3484134,mpfr-binary512-p493-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,512,sub,9,54.994,54.657,56.012,54.724,55.612,0.300,2.5,3622869,mpfr-binary512-p493-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,512,mul,9,94.993,93.795,98.658,94.098,95.378,0.895,5.1,2117697,mpfr-binary512-p493-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,512,div,9,184.728,184.406,209.048,184.611,186.559,0.321,13.3,1073628,mpfr-binary512-p493-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,512,sqrt,9,323.464,322.429,332.829,322.685,324.802,0.958,3.2,615005,mpfr-binary512-p493-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,512,fma,9,138.884,137.974,154.241,138.455,141.189,0.911,11.7,1450511,mpfr-binary512-p493-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,1024,add,9,66.221,65.952,68.260,66.013,66.684,0.269,3.5,2903166,mpfr-binary1024-p1005-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,1024,sub,9,61.116,60.896,62.691,61.081,61.239,0.123,2.9,3295647,mpfr-binary1024-p1005-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,1024,mul,9,172.284,171.554,178.159,171.665,175.344,0.730,3.8,1163041,mpfr-binary1024-p1005-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,1024,div,9,330.681,328.847,342.152,329.366,335.592,1.834,4.0,608368,mpfr-binary1024-p1005-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,1024,sqrt,9,522.831,520.549,595.326,522.119,536.929,1.972,14.3,381694,mpfr-binary1024-p1005-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,1024,fma,9,279.451,277.402,285.238,278.492,282.098,1.567,2.8,718608,mpfr-binary1024-p1005-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,2048,add,9,84.065,83.724,84.697,83.865,84.424,0.234,1.2,2377528,mpfr-binary2048-p2029-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,2048,sub,9,78.185,77.756,82.120,77.912,78.753,0.296,5.6,1414646,mpfr-binary2048-p2029-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,2048,mul,9,444.335,439.868,465.571,441.406,447.418,3.083,5.8,443767,mpfr-binary2048-p2029-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,2048,div,9,735.415,732.281,806.853,733.977,736.983,1.568,10.1,271417,mpfr-binary2048-p2029-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,2048,sqrt,9,906.557,898.840,952.617,904.842,908.253,1.715,5.9,220396,mpfr-binary2048-p2029-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,2048,fma,9,712.638,710.416,754.857,712.209,717.297,1.521,6.2,279532,mpfr-binary2048-p2029-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,4096,add,9,121.384,120.218,123.737,120.777,121.622,0.361,2.9,1659420,mpfr-binary4096-p4077-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,4096,sub,9,110.996,108.003,120.499,108.761,114.063,2.818,11.3,1845627,mpfr-binary4096-p4077-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,4096,mul,9,1304.263,1295.040,1367.229,1298.994,1330.209,9.223,5.5,155009,mpfr-binary4096-p4077-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,4096,div,9,2121.119,2105.994,2146.718,2110.642,2128.800,10.476,1.9,76198,mpfr-binary4096-p4077-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,4096,sqrt,9,1873.262,1864.547,2153.781,1869.852,1892.779,7.120,15.4,106402,mpfr-binary4096-p4077-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+MPFR,4096,fma,9,1803.403,1790.024,1866.985,1792.916,1823.250,10.703,4.3,111449,mpfr-binary4096-p4077-e19,MPFR 4.1.0-p13 RNDN with matched exponent range and gradual underflow
+SoftFloat,32,add,9,22.833,22.761,23.315,22.782,22.918,0.061,2.4,8750511,binary32,SoftFloat 3e
+SoftFloat,32,sub,9,22.665,22.561,24.324,22.644,23.023,0.063,7.8,8847576,binary32,SoftFloat 3e
+SoftFloat,32,mul,9,17.604,17.506,21.094,17.564,18.499,0.098,20.4,11311863,binary32,SoftFloat 3e
+SoftFloat,32,div,9,25.011,24.906,25.859,24.962,25.244,0.105,3.8,7983373,binary32,SoftFloat 3e
+SoftFloat,32,sqrt,9,25.513,25.494,26.032,25.495,25.531,0.018,2.1,7829160,binary32,SoftFloat 3e
+SoftFloat,32,fma,9,26.889,26.687,30.638,26.774,27.356,0.172,14.7,7405960,binary32,SoftFloat 3e
+SoftFloat,64,add,9,21.792,21.637,22.831,21.707,22.326,0.138,5.5,8957991,binary64,SoftFloat 3e
+SoftFloat,64,sub,9,21.451,21.421,23.139,21.440,22.190,0.030,8.0,9295450,binary64,SoftFloat 3e
+SoftFloat,64,mul,9,17.706,17.624,21.567,17.672,17.766,0.050,22.3,11269731,binary64,SoftFloat 3e
+SoftFloat,64,div,9,33.362,33.225,34.136,33.233,33.411,0.129,2.7,5933098,binary64,SoftFloat 3e
+SoftFloat,64,sqrt,9,27.583,27.493,28.926,27.538,28.453,0.090,5.2,7191470,binary64,SoftFloat 3e
+SoftFloat,64,fma,9,26.952,26.904,28.500,26.936,27.120,0.039,5.9,7425328,binary64,SoftFloat 3e
+native FPU,32,add,9,8.426,8.415,10.284,8.424,8.433,0.007,22.2,23722106,binary32,C float host FPU
+native FPU,32,sub,9,8.425,8.417,8.725,8.423,8.490,0.008,3.7,23539210,binary32,C float host FPU
+native FPU,32,mul,9,8.513,8.422,10.055,8.477,8.631,0.038,19.2,23731161,binary32,C float host FPU
+native FPU,32,div,9,10.360,10.327,10.526,10.350,10.390,0.026,1.9,18391468,binary32,C float host FPU
+native FPU,32,sqrt,9,10.546,10.504,10.805,10.535,10.553,0.012,2.9,18844425,binary32,C float host FPU
+native FPU,32,fma,9,8.773,8.709,8.925,8.716,8.858,0.057,2.5,22766906,binary32,C float host FPU
+native FPU,64,add,9,8.339,8.299,8.874,8.314,8.365,0.026,6.9,23226001,binary64,C double host FPU
+native FPU,64,sub,9,8.324,8.285,12.060,8.311,8.373,0.031,45.3,10868120,binary64,C double host FPU
+native FPU,64,mul,9,8.402,8.307,8.719,8.369,8.594,0.095,4.9,24174236,binary64,C double host FPU
+native FPU,64,div,9,11.229,11.158,11.806,11.167,11.608,0.067,5.8,17324434,binary64,C double host FPU
+native FPU,64,sqrt,9,12.656,12.439,13.595,12.491,13.067,0.209,9.1,8918624,binary64,C double host FPU
+native FPU,64,fma,9,8.589,8.573,8.831,8.580,8.667,0.015,3.0,23289278,binary64,C double host FPU

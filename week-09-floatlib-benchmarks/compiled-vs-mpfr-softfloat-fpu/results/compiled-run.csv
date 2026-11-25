@@ -1,0 +1,34 @@
+key,value
+date,2026-11-20
+floatlib,4.1.0
+started_utc,2026-11-20T20:10:04Z
+finished_utc,2026-11-20T20:43:18Z
+seconds,1993.7
+trials,9
+lean,4.36.0
+mpfr,4.1.0
+softfloat_commit,a0c6494cdc11865811dec815d5c0049fba9d82a8
+compiler,cc (GCC) 11.5.0 20240719 (Red Hat 11.5.0-5)
+cflags,-O3 -march=native -std=c11 -Wall -Wextra -Werror
+mathlib_commit,fc4f59e577feb1a4956671bc04ac18aaaf8cd842
+cpu,31
+core_threads,31 79
+core_scheduling_cookie,True
+target_nanos,200000000
+widths,32 64 128 256 512 1024 2048 4096
+loadavg_before,32.17 46.38 86.77
+loadavg_after,27.89 31.57 44.24
+load_samples,199
+machine_idle_median,0.667
+machine_idle_min,0.327
+machine_idle_max,0.823
+machine_niced_median,0.289
+machine_not_niced_median,0.045
+cpu_not_niced_median,0.963
+cpu_niced_max,0.075
+cpu_niced_mean,0.0059
+sibling_busy_max,0.047
+sibling_busy_mean,0.0082
+load1_min,23.84
+load1_median,39.66
+load1_max,103.06

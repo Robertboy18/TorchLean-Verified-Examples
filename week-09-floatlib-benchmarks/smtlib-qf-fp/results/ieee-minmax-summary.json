@@ -1,0 +1,39 @@
+{
+ "axioms": {
+  "propext Classical.choice Quot.sound": 5705,
+  "propext sorryAx Classical.choice Quot.sound": 1
+ },
+ "file_system_seconds": 43.88,
+ "file_user_seconds": 430.42,
+ "file_wall_seconds": 472.86,
+ "files": 23,
+ "groups": [
+  {
+   "elaboration_seconds": 164.407474599,
+   "family": "wintersteiger",
+   "kernel_max_ms": 81.637421,
+   "kernel_median_ms": 4.930581,
+   "kernel_seconds": 14.801428074,
+   "operation": "max",
+   "proved": 2854,
+   "theorems": 2854
+  },
+  {
+   "elaboration_seconds": 175.695095061,
+   "family": "wintersteiger",
+   "kernel_max_ms": 77.432617,
+   "kernel_median_ms": 4.391846,
+   "kernel_seconds": 16.011303504,
+   "operation": "min",
+   "proved": 2851,
+   "theorems": 2852
+  }
+ ],
+ "kernel_seconds_proved": 30.812731578,
+ "nonzero_rc": [
+  "IeeeMinMax0018.lean"
+ ],
+ "peak_rss_kb": 4465104,
+ "proved": 5705,
+ "theorems": 5706
+}

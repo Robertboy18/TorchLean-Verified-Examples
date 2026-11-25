@@ -1,0 +1,226 @@
+{
+ "files": 110,
+ "read": 80,
+ "not_a_program": 23,
+ "no_rounding": 7,
+ "cases": {
+  "B:pos:forward": {
+   "cases": 80,
+   "proved": 71
+  },
+  "B:box:forward": {
+   "cases": 80,
+   "proved": 71
+  },
+  "A:up:forward": {
+   "cases": 65,
+   "proved": 34
+  },
+  "A:up:forward:numeric": {
+   "cases": 61,
+   "proved": 0
+  },
+  "A:up:closed": {
+   "cases": 65,
+   "proved": 32
+  },
+  "A:up:closed:numeric": {
+   "cases": 61,
+   "proved": 0
+  },
+  "A:up:backward": {
+   "cases": 65,
+   "proved": 32
+  },
+  "A:rn:forward": {
+   "cases": 65,
+   "proved": 55
+  },
+  "A:rn:forward:numeric": {
+   "cases": 61,
+   "proved": 28
+  },
+  "A:rn:closed": {
+   "cases": 65,
+   "proved": 55
+  },
+  "A:rn:closed:numeric": {
+   "cases": 61,
+   "proved": 22
+  },
+  "A:rn:backward": {
+   "cases": 65,
+   "proved": 44
+  },
+  "A:up:forward:lifted": {
+   "cases": 7,
+   "proved": 1
+  },
+  "A:up:closed:lifted": {
+   "cases": 5,
+   "proved": 2
+  },
+  "A:up:backward:lifted": {
+   "cases": 5,
+   "proved": 2
+  },
+  "A:rn:forward:lifted": {
+   "cases": 8,
+   "proved": 3
+  },
+  "B:pos:forward:lifted": {
+   "cases": 8,
+   "proved": 4
+  },
+  "B:box:forward:lifted": {
+   "cases": 8,
+   "proved": 4
+  },
+  "A:rn:closed:lifted": {
+   "cases": 5,
+   "proved": 2
+  },
+  "A:rn:backward:lifted": {
+   "cases": 5,
+   "proved": 2
+  },
+  "B:box:relative": {
+   "cases": 138,
+   "proved": 104
+  },
+  "loop::forward": {
+   "cases": 3,
+   "proved": 3
+  },
+  "loop::closed": {
+   "cases": 3,
+   "proved": 3
+  },
+  "loop::backward": {
+   "cases": 3,
+   "proved": 3
+  },
+  "loop::relative": {
+   "cases": 3,
+   "proved": 3
+  },
+  "loop::magnitudes": {
+   "cases": 2,
+   "proved": 2
+  },
+  "loop::weight": {
+   "cases": 14,
+   "proved": 14
+  },
+  "loop::link": {
+   "cases": 21,
+   "proved": 21
+  },
+  "B:low:forward": {
+   "cases": 4,
+   "proved": 4
+  },
+  "B:low:relative": {
+   "cases": 36,
+   "proved": 36
+  },
+  "D:up:forward": {
+   "cases": 35,
+   "proved": 34
+  },
+  "D:up:closed": {
+   "cases": 35,
+   "proved": 34
+  },
+  "D:up:backward": {
+   "cases": 35,
+   "proved": 28
+  },
+  "D:up:forward:lifted": {
+   "cases": 7,
+   "proved": 7
+  },
+  "D:up:closed:lifted": {
+   "cases": 7,
+   "proved": 7
+  },
+  "D:up:backward:lifted": {
+   "cases": 7,
+   "proved": 7
+  }
+ },
+ "programs": 80,
+ "B_pos_forward": 75,
+ "B_box_forward": 75,
+ "A_up_forward": 35,
+ "A_up_closed": 34,
+ "A_up_backward": 34,
+ "A_rn_forward": 58,
+ "A_rn_closed": 57,
+ "A_rn_backward": 46,
+ "D_up_forward": 35,
+ "D_up_closed": 35,
+ "D_up_backward": 29,
+ "D_up_programs": 35,
+ "statement_forms": {
+  "A_up_closed_form": {
+   "computed values": 19,
+   "inputs": 15
+  },
+  "A_up_backward_form": {
+   "computed values": 19,
+   "inputs": 15
+  },
+  "A_rn_closed_form": {
+   "computed values": 8,
+   "inputs": 49
+  },
+  "A_rn_backward_form": {
+   "computed values": 6,
+   "perturbation": 32,
+   "inputs": 8
+  },
+  "D_up_closed_form": {
+   "inputs": 32,
+   "inputs, underflow at computed values": 3
+  },
+  "D_up_backward_form": {
+   "perturbation": 29
+  }
+ },
+ "box_relative": 73,
+ "box_relative_rung0": 67,
+ "low_box_programs": 4,
+ "low_box_forward": 4,
+ "low_box_relative": 4,
+ "low_box_relative_rung0": 4,
+ "loop_rows": 21,
+ "failure_classes": {
+  "numeric closure: interval cannot read the bound": 112,
+  "traversal limit": 62,
+  "heartbeat limit": 46,
+  "no closed rule: directed constant, division or square root": 38,
+  "wall-clock limit": 26,
+  "recursion limit": 25,
+  "no backward rule: directed constant, division or square root": 21,
+  "no rule: directed division": 18,
+  "no backward-error form: the program has none on its inputs": 17,
+  "proposed bound too small for this rung": 17,
+  "no rule: directed square root": 16,
+  "size: no arithmetic rule matched in a large term": 10,
+  "size: a missing rule reported for a large term": 6,
+  "no rule: directed constant": 4,
+  "numeric closure: interval too wide": 3,
+  "numeric closure: shape of the bound": 3
+ },
+ "axioms": [
+  "Classical.choice",
+  "Quot.sound",
+  "propext"
+ ],
+ "lean_seconds_total": 10539.7,
+ "process_seconds_total": 22731.2,
+ "peak_rss_mib_max": 4965,
+ "first_case_utc": "2026-11-21T08:10:11Z",
+ "last_case_utc": "2026-11-21T09:59:44Z"
+}

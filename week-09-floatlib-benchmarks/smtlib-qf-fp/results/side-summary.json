@@ -1,0 +1,196 @@
+{
+ "axioms": {
+  "propext": 2,
+  "propext Classical.choice Quot.sound": 71,
+  "propext sorryAx Classical.choice Quot.sound": 1341,
+  "sorryAx": 2
+ },
+ "file_system_seconds": 12.25,
+ "file_user_seconds": 132.38,
+ "file_wall_seconds": 138.26,
+ "files": 6,
+ "groups": [
+  {
+   "elaboration_seconds": 1.882249797,
+   "family": "20210211-Vector",
+   "kernel_max_ms": 12.314893,
+   "kernel_median_ms": 3.2608745,
+   "kernel_seconds": 0.057772792,
+   "operation": "RTOS_C",
+   "proved": 12,
+   "theorems": 24
+  },
+  {
+   "elaboration_seconds": 0.021842404,
+   "family": "griggio",
+   "kernel_max_ms": 0.064691,
+   "kernel_median_ms": 0.061267,
+   "kernel_seconds": 0.000122534,
+   "operation": "fmcad12",
+   "proved": 2,
+   "theorems": 4
+  },
+  {
+   "elaboration_seconds": 0.721801925,
+   "family": "schanda",
+   "kernel_max_ms": 5.392918,
+   "kernel_median_ms": 5.3130625,
+   "kernel_seconds": 0.021252327,
+   "operation": "spark",
+   "proved": 4,
+   "theorems": 8
+  },
+  {
+   "elaboration_seconds": 7.651499176,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "abs",
+   "proved": 0,
+   "theorems": 120
+  },
+  {
+   "elaboration_seconds": 6.94653092,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "add",
+   "proved": 0,
+   "theorems": 120
+  },
+  {
+   "elaboration_seconds": 6.052609764,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "div",
+   "proved": 0,
+   "theorems": 120
+  },
+  {
+   "elaboration_seconds": 0.745017428,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "eq",
+   "proved": 0,
+   "theorems": 20
+  },
+  {
+   "elaboration_seconds": 10.12168599,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "fma",
+   "proved": 0,
+   "theorems": 120
+  },
+  {
+   "elaboration_seconds": 0.955829524,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "gt",
+   "proved": 0,
+   "theorems": 20
+  },
+  {
+   "elaboration_seconds": 0.752552104,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "lt",
+   "proved": 0,
+   "theorems": 20
+  },
+  {
+   "elaboration_seconds": 9.842163438,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "max",
+   "proved": 0,
+   "theorems": 120
+  },
+  {
+   "elaboration_seconds": 9.093563078,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "min",
+   "proved": 0,
+   "theorems": 120
+  },
+  {
+   "elaboration_seconds": 7.706780633,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "mul",
+   "proved": 0,
+   "theorems": 120
+  },
+  {
+   "elaboration_seconds": 18.105692785,
+   "family": "wintersteiger",
+   "kernel_max_ms": 28.063464,
+   "kernel_median_ms": 26.112902,
+   "kernel_seconds": 0.087768948,
+   "operation": "rem",
+   "proved": 4,
+   "theorems": 120
+  },
+  {
+   "elaboration_seconds": 10.106398424,
+   "family": "wintersteiger",
+   "kernel_max_ms": 24.900385,
+   "kernel_median_ms": 10.794854,
+   "kernel_seconds": 0.595709865,
+   "operation": "sqrt",
+   "proved": 51,
+   "theorems": 120
+  },
+  {
+   "elaboration_seconds": 6.231876587,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "sub",
+   "proved": 0,
+   "theorems": 120
+  },
+  {
+   "elaboration_seconds": 5.710302088,
+   "family": "wintersteiger",
+   "kernel_max_ms": null,
+   "kernel_median_ms": null,
+   "kernel_seconds": 0.0,
+   "operation": "toIntegral",
+   "proved": 0,
+   "theorems": 120
+  }
+ ],
+ "kernel_seconds_proved": 0.762626466,
+ "nonzero_rc": [
+  "Control0000.lean",
+  "Mutated0000.lean",
+  "Mutated0001.lean",
+  "Mutated0002.lean",
+  "Mutated0003.lean",
+  "Others0000.lean"
+ ],
+ "peak_rss_kb": 4478740,
+ "proved": 73,
+ "theorems": 1416
+}

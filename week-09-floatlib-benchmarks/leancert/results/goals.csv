@@ -1,0 +1,505 @@
+goal,suite,shape,in_scope,lc_only,cases,statement_chars,lck_status,lck_rung,lck_time_s,lck_net_wall_s,lck_reps,lck_why,lcn_status,lcn_rung,lcn_time_s,lcn_net_wall_s,lcn_reps,lcn_why,fl_status,fl_rung,fl_time_s,fl_net_wall_s,fl_reps,fl_why
+eval.polynomial_10.affine+dyadic+rational.upper,evaluation,bound,1,0,7,388,proved,plain,0.6876,1.102,2,,proved-extra-axioms,plain,0.5668,1.296,2,,proved,plain,0.1554,0.561,2,
+eval.polynomial_10.affine+dyadic+rational.lower,evaluation,bound,1,0,7,388,proved,plain,0.9216,1.868,2,,proved-extra-axioms,plain,0.7692,1.580,2,,proved,plain,0.1698,0.936,2,
+eval.nested_sin_3.affine+dyadic+rational.upper,evaluation,bound,1,0,7,68,proved,plain,0.6178,0.795,2,,proved-extra-axioms,plain,0.3081,1.182,2,,proved,plain,0.0557,0.810,2,
+eval.nested_sin_3.affine+dyadic+rational.lower,evaluation,bound,1,0,7,69,proved,plain,0.8185,1.376,2,,proved-extra-axioms,plain,0.2699,0.385,2,,proved,plain,0.0637,0.806,2,
+eval.nested_sin_3_narrow.affine+rational.upper,evaluation,bound,1,0,4,5078,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,proved,plain,0.0800,0.721,2,
+eval.nested_sin_3_narrow.affine+rational.lower,evaluation,bound,1,0,4,5079,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,proved,plain,0.0791,0.077,2,
+eval.nested_sin_3_narrow.dyadic.upper,evaluation,bound,1,0,3,113,proved,plain,0.7576,0.623,2,,proved-extra-axioms,plain,0.4869,0.940,2,,proved,plain,0.0801,0.103,2,
+eval.nested_sin_3_narrow.dyadic.lower,evaluation,bound,1,0,3,114,proved,plain,0.8353,1.115,2,,proved-extra-axioms,plain,0.4952,0.362,2,,proved,plain,0.0729,0.161,2,
+eval.x_minus_x.dyadic+rational.upper,evaluation,bound,1,0,4,42,proved,plain,0.0417,0.051,2,,proved,plain,0.0445,0.717,2,,proved,plain,0.0946,0.338,2,
+eval.x_minus_x.dyadic+rational.lower,evaluation,bound,1,0,4,43,proved,plain,0.0420,0.059,2,,proved,plain,0.0781,0.533,2,,proved,plain,0.0968,0.588,2,
+eval.x_minus_x.affine.upper,evaluation,bound,1,0,3,42,proved,plain,0.0323,0.776,2,,proved,plain,0.0306,0.696,2,,proved,plain,0.1131,1.431,2,
+eval.x_minus_x.affine.lower,evaluation,bound,1,0,3,42,proved,plain,0.0339,0.421,2,,proved,plain,0.0271,0.570,2,,proved,plain,0.1145,0.991,2,
+eval.polynomial_75.affine+dyadic+rational.upper,evaluation,bound,1,0,7,17288,proved,plain,7.6849,8.794,2,,proved-extra-axioms,plain,7.9291,8.712,2,,proved,plain,1.6719,2.864,2,
+eval.polynomial_75.affine+dyadic+rational.lower,evaluation,bound,1,0,7,17289,proved,plain,7.9701,8.889,2,,proved-extra-axioms,plain,7.0916,7.901,2,,proved,plain,2.6477,3.927,2,
+eval.nested_sin_16.affine+dyadic+rational.upper,evaluation,bound,1,0,7,211,proved,limits,2.6785,2.721,2,,proved-extra-axioms,plain,0.3328,0.998,2,,proved,plain,0.1193,0.646,2,
+eval.nested_sin_16.affine+dyadic+rational.lower,evaluation,bound,1,0,7,212,proved,limits,2.6547,2.639,2,,proved-extra-axioms,plain,0.3427,0.636,2,,proved,plain,0.1132,1.146,2,
+eval.nested_sin_4_narrow.affine+rational.upper,evaluation,bound,1,0,4,55068,timeout,strong,,,1,,timeout,strong,,,1,,proved,plain,0.8782,1.261,2,
+eval.nested_sin_4_narrow.affine+rational.lower,evaluation,bound,1,0,4,55069,timeout,strong,,,1,,timeout,strong,,,1,,proved,plain,0.7052,1.588,2,
+eval.nested_sin_4_narrow.dyadic.upper,evaluation,bound,1,0,3,124,proved,plain,1.4119,1.528,2,,proved-extra-axioms,plain,0.4844,1.121,2,,proved,plain,0.0724,0.398,2,
+eval.nested_sin_4_narrow.dyadic.lower,evaluation,bound,1,0,3,125,proved,plain,0.9592,1.386,2,,proved-extra-axioms,plain,0.5769,1.201,2,,proved,plain,0.0721,0.364,2,
+eval.rational_affine_chain_160.affine+rational.upper,evaluation,bound,1,0,4,8691,proved,limits,182.2449,183.114,1,,proved-extra-axioms,limits,191.4287,193.233,1,,proved,limits,2.5730,3.016,2,
+eval.rational_affine_chain_160.affine+rational.lower,evaluation,bound,1,0,4,8692,proved,limits,189.4557,190.197,1,,proved-extra-axioms,limits,168.8571,170.104,1,,proved,limits,2.0485,3.133,2,
+eval.rational_affine_chain_160.dyadic.upper,evaluation,bound,1,0,3,6789,proved,limits,180.7939,182.168,1,,proved-extra-axioms,limits,192.0000,192.384,1,,proved,limits,2.1278,2.338,2,
+eval.rational_affine_chain_160.dyadic.lower,evaluation,bound,1,0,3,6790,proved,limits,174.4094,174.606,1,,proved-extra-axioms,limits,166.0856,166.144,1,,proved,limits,2.3802,2.582,2,
+eval.repeated_cancellation_128.dyadic+rational.upper,evaluation,bound,1,0,4,1580,proved,limits,9.8428,10.332,2,,proved-extra-axioms,limits,9.1350,9.708,2,,proved,limits,1.5174,2.357,2,
+eval.repeated_cancellation_128.dyadic+rational.lower,evaluation,bound,1,0,4,1581,proved,limits,9.1980,9.722,2,,proved-extra-axioms,limits,10.1138,11.048,2,,proved,limits,1.8865,2.512,2,
+eval.repeated_cancellation_128.affine.upper,evaluation,bound,1,0,3,1578,proved,limits,10.0164,10.466,2,,proved-extra-axioms,limits,9.0153,10.291,2,,proved,limits,1.7681,2.431,2,
+eval.repeated_cancellation_128.affine.lower,evaluation,bound,1,0,3,1578,proved,limits,9.4069,9.553,2,,proved-extra-axioms,limits,8.5748,9.441,2,,proved,limits,1.2872,1.930,2,
+eval.polynomial_150.rational.upper,evaluation,bound,1,0,1,68289,proved,limits,24.2234,25.893,1,,proved-extra-axioms,limits,23.4360,25.047,1,,proved,plain,7.1369,9.271,2,
+eval.polynomial_150.rational.lower,evaluation,bound,1,0,1,68290,proved,limits,24.1966,25.941,1,,proved-extra-axioms,limits,22.5346,24.182,1,,proved,plain,6.6951,8.470,2,
+eval.polynomial_300.rational.upper,evaluation,bound,1,0,1,271539,proved,limits,112.6556,121.474,1,,proved-extra-axioms,limits,104.3516,112.600,1,,proved,limits,29.5238,37.214,1,
+eval.polynomial_300.rational.lower,evaluation,bound,1,0,1,271540,proved,limits,113.8427,122.403,1,,proved-extra-axioms,limits,117.3989,125.522,1,,proved,limits,28.0893,36.548,1,
+eval.nested_sin_32.dyadic.upper,evaluation,bound,1,0,1,387,proved,limits,4.8726,5.093,2,,proved-extra-axioms,plain,0.2660,0.200,2,,proved,plain,0.2251,0.893,2,
+eval.nested_sin_32.dyadic.lower,evaluation,bound,1,0,1,388,proved,limits,4.8429,5.240,2,,proved-extra-axioms,plain,0.3328,1.061,2,,proved,plain,0.2837,0.708,2,
+eval.nested_sin_64.dyadic.upper,evaluation,bound,1,0,1,739,proved,limits,10.3490,10.495,2,,proved-extra-axioms,plain,0.3684,0.658,2,,proved,plain,0.5120,1.371,2,
+eval.nested_sin_64.dyadic.lower,evaluation,bound,1,0,1,740,proved,limits,8.7837,9.206,2,,proved-extra-axioms,plain,0.4381,1.106,2,,proved,plain,0.4144,1.347,2,
+eval.rational_affine_chain_640.dyadic.upper,evaluation,bound,1,0,1,26949,timeout,limits,,,1,,timeout,limits,,,1,,proved,limits,9.3569,10.174,2,
+eval.rational_affine_chain_640.dyadic.lower,evaluation,bound,1,0,1,26950,timeout,limits,,,1,,timeout,limits,,,1,,proved,limits,8.6799,9.508,2,
+eval.repeated_cancellation_2048.affine.upper,evaluation,bound,1,0,1,24618,timeout,limits,,,1,,timeout,limits,,,1,,proved,limits,40.4708,42.848,1,
+eval.repeated_cancellation_2048.affine.lower,evaluation,bound,1,0,1,24618,timeout,limits,,,1,,timeout,limits,,,1,,proved,limits,31.2175,32.346,1,
+refine.loose,numerical-refinement,bound,1,0,2,45,proved,plain,0.7080,0.794,2,,proved-extra-axioms,plain,0.1905,0.855,2,,proved,plain,0.0355,0.272,2,
+refine.tight,numerical-refinement,bound,1,0,3,103,proved,plain,1.5987,1.481,2,,proved-extra-axioms,plain,0.2975,0.217,2,,proved,strong,0.0412,0.000,2,
+ad.inv_log_nested.rational.deriv.upper,ad,derivative,0,0,2,83,failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,an atom has no bound
+ad.inv_log_nested.rational.deriv.lower,ad,derivative,0,0,2,83,failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,an atom has no bound
+ad.inv_log_nested.rational.closed.upper,ad,bound,1,0,2,52,proved,plain,0.3622,0.200,2,,proved-extra-axioms,plain,0.3707,0.361,2,,proved,plain,0.0411,0.028,2,
+ad.inv_log_nested.rational.closed.lower,ad,bound,1,0,2,52,proved,plain,0.3748,0.250,2,,proved-extra-axioms,plain,0.3584,0.251,2,,proved,plain,0.0412,0.191,2,
+ad.inv_log_nested.dyadic.deriv.upper,ad,derivative,0,0,1,113,failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,an atom has no bound
+ad.inv_log_nested.dyadic.deriv.lower,ad,derivative,0,0,1,113,failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,an atom has no bound
+ad.inv_log_nested.dyadic.closed.upper,ad,bound,1,0,1,82,proved,plain,0.3605,0.257,2,,proved-extra-axioms,plain,0.3865,0.247,2,,proved,plain,0.0427,0.108,2,
+ad.inv_log_nested.dyadic.closed.lower,ad,bound,1,0,1,82,proved,plain,0.4241,0.255,2,,proved-extra-axioms,plain,0.4725,0.532,2,,proved,plain,0.0517,0.236,2,
+ad.deep_inv_log.rational.deriv.upper,ad,derivative,0,0,1,1605,failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,an atom has no bound
+ad.deep_inv_log.rational.deriv.lower,ad,derivative,0,0,1,1605,failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,an atom has no bound
+ad.deep_inv_log.rational.closed.upper,ad,bound,1,0,1,1593,proved,plain,9.1569,9.125,2,,proved-extra-axioms,plain,5.2920,5.247,2,,proved,plain,1.0541,1.121,2,
+ad.deep_inv_log.rational.closed.lower,ad,bound,1,0,1,1593,proved,plain,8.7033,8.862,2,,proved-extra-axioms,plain,5.4170,5.314,2,,proved,plain,1.1421,1.176,2,
+ad.deep_inv_log.dyadic.deriv.upper,ad,derivative,0,0,1,1518,failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,an atom has no bound
+ad.deep_inv_log.dyadic.deriv.lower,ad,derivative,0,0,1,1538,failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,an atom has no bound
+ad.deep_inv_log.dyadic.closed.upper,ad,bound,1,0,1,1506,proved,plain,5.8320,5.765,2,,proved-extra-axioms,plain,4.9538,4.929,2,,proved,plain,1.6402,2.366,2,
+ad.deep_inv_log.dyadic.closed.lower,ad,bound,1,0,1,1526,proved,plain,6.4566,6.499,2,,proved-extra-axioms,plain,5.3268,5.481,2,,proved,plain,1.2136,1.388,2,
+ad.inv_crosses_zero,ad,derivative,0,0,1,62,failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,"LeanCert recognized the theorem, but could not translate a numerical expression. Unsupport",failed,strong,,,1,an atom has no bound
+integration.li2_partition_100.rational.upper,integration,integral,0,0,1,139,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_partition_100.rational.lower,integration,integral,0,0,1,139,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_partition_100.dyadic.upper,integration,integral,0,0,2,136,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_partition_100.dyadic.lower,integration,integral,0,0,2,142,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_partition_500.dyadic.upper,integration,integral,0,0,2,139,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_partition_500.dyadic.lower,integration,integral,0,0,2,137,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_uniform_power_two_7.dyadic.upper,integration,integral,0,0,2,142,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_uniform_power_two_7.dyadic.lower,integration,integral,0,0,2,141,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_uniform_power_two_9.dyadic.upper,integration,integral,0,0,2,142,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_uniform_power_two_9.dyadic.lower,integration,integral,0,0,2,138,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_partition_1000.dyadic.upper,integration,integral,0,0,1,141,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_partition_1000.dyadic.lower,integration,integral,0,0,1,139,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_partition_2300.dyadic.upper,integration,integral,0,0,1,139,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.li2_partition_2300.dyadic.lower,integration,integral,0,0,1,141,failed,strong,,,1,no LeanCert strategy proved it,failed,strong,,,1,no LeanCert strategy proved it,failed,plain,,,1,an atom has no bound
+integration.checker.li2_partition_100.checked.dyadic,integration,checker,0,1,1,120,proved,plain,47.4236,47.533,1,,proved-extra-axioms,plain,0.1775,0.209,1,,not-stated,,,,0,
+integration.checker.li2_partition_500.checked.dyadic,integration,checker,0,1,1,120,proved,limits,283.2052,283.498,1,,proved-extra-axioms,plain,0.8391,1.120,1,,not-stated,,,,0,
+integration.checker.li2_partition_1000.checked.dyadic,integration,checker,0,1,1,121,timeout,limits,,,1,,proved-extra-axioms,plain,1.7680,2.119,1,,not-stated,,,,0,
+integration.checker.li2_partition_2300.checked.dyadic,integration,checker,0,1,1,121,timeout,limits,,,1,,proved-extra-axioms,plain,4.0922,4.450,1,,not-stated,,,,0,
+integration.checker.li2_uniform_power_two_7.checked.dyadic,integration,checker,0,1,1,144,proved-extra-axioms,plain,,,1,,proved-extra-axioms,plain,0.2554,0.803,1,,not-stated,,,,0,
+integration.checker.li2_dyadic_level_7.checked.dyadic,integration,checker,0,1,1,106,proved-extra-axioms,plain,,,1,,proved-extra-axioms,plain,0.3593,1.555,1,,not-stated,,,,0,
+integration.checker.li2_uniform_power_two_9.checked.dyadic,integration,checker,0,1,1,144,proved-extra-axioms,limits,,,1,,proved-extra-axioms,plain,0.8199,0.769,1,,not-stated,,,,0,
+integration.checker.li2_dyadic_level_9.checked.dyadic,integration,checker,0,1,1,106,proved-extra-axioms,limits,,,1,,proved-extra-axioms,plain,1.0002,1.170,1,,not-stated,,,,0,
+integration.checker.li2_partition_100.public.rational,integration,checker,0,1,1,149,proved,plain,158.8472,159.683,1,,proved-extra-axioms,plain,1.4219,2.438,1,,not-stated,,,,0,
+integration.checker.li2_partition_500.public.rational,integration,checker,0,1,1,149,timeout,limits,,,1,,proved-extra-axioms,plain,8.3183,8.438,1,,not-stated,,,,0,
+integration.checker.li2_partition_100.public.dyadic,integration,checker,0,1,1,147,proved,plain,54.8748,55.422,1,,proved-extra-axioms,plain,0.2889,0.806,1,,not-stated,,,,0,
+integration.checker.li2_partition_500.public.dyadic,integration,checker,0,1,1,147,proved,limits,264.8423,267.430,1,,proved-extra-axioms,plain,1.3637,1.997,1,,not-stated,,,,0,
+krawczyk.coupled_quadratic_2x2.auto,krawczyk,root,0,1,3,43,proved,plain,0.2607,0.202,2,,proved-extra-axioms,plain,0.0216,0.419,2,,not-stated,,,,0,
+krawczyk.coupled_quadratic_2x2.cert,krawczyk,root,0,1,1,43,proved,plain,0.3139,0.437,2,,proved-extra-axioms,plain,0.0117,0.061,2,,not-stated,,,,0,
+krawczyk.exp_minus_one_1x1.cert,krawczyk,root,0,1,1,49,proved,plain,0.3963,0.846,2,,proved-extra-axioms,plain,0.0102,0.000,2,,not-stated,,,,0,
+krawczyk.shifted_exp_1x1.auto,krawczyk,root,0,1,1,63,proved,plain,0.9734,1.089,2,,proved-extra-axioms,plain,0.0207,0.167,2,,not-stated,,,,0,
+krawczyk.exp_minus_one_1x1.natural,krawczyk,root,0,0,1,61,failed,strong,,,1,LeanCert internal proof-construction error,failed,strong,,,1,LeanCert internal proof-construction error,failed,plain,,,1,not an inequality
+krawczyk.shifted_exp_1x1.natural,krawczyk,root,0,0,1,68,failed,strong,,,1,LeanCert internal proof-construction error,failed,strong,,,1,LeanCert internal proof-construction error,failed,plain,,,1,not an inequality
+algebra.bezout.degree_3,algebra,identity,0,1,1,22,proved,plain,0.0138,0.531,2,,proved-extra-axioms,plain,0.0021,0.159,2,,not-stated,,,,0,
+algebra.bezout.degree_64,algebra,identity,0,1,1,22,proved,plain,0.1738,0.313,2,,proved-extra-axioms,plain,0.0031,0.000,2,,not-stated,,,,0,
+algebra.bezout.degree_256,algebra,identity,0,1,1,22,proved,plain,0.5447,0.614,2,,proved-extra-axioms,plain,0.0033,0.110,2,,not-stated,,,,0,
+dyadic.complete_tree.depth_4,dyadic-subdivision,structure,0,1,1,178,proved,plain,0.0240,0.000,2,,proved-extra-axioms,plain,0.0113,0.346,2,,not-stated,,,,0,
+dyadic.direct_cells.depth_4,dyadic-subdivision,structure,0,1,1,190,proved,plain,0.0245,0.000,2,,proved-extra-axioms,plain,0.0119,0.025,2,,not-stated,,,,0,
+dyadic.prepared_cells.depth_4,dyadic-subdivision,structure,0,1,1,194,proved,plain,0.0283,0.027,2,,proved-extra-axioms,plain,0.0105,0.000,2,,not-stated,,,,0,
+dyadic.sequential_cells.depth_4,dyadic-subdivision,structure,0,1,1,198,proved,plain,0.0443,0.268,2,,proved-extra-axioms,plain,0.0119,0.000,2,,not-stated,,,,0,
+dyadic.addresses_only.depth_4,dyadic-subdivision,structure,0,1,1,75,proved,plain,0.0071,0.000,2,,proved-extra-axioms,plain,0.0100,0.000,2,,not-stated,,,,0,
+dyadic.frontier_check.depth_4,dyadic-subdivision,structure,0,1,1,53,proved,plain,0.0346,0.000,2,,proved-extra-axioms,plain,0.0042,0.260,2,,not-stated,,,,0,
+dyadic.complete_tree.depth_8,dyadic-subdivision,structure,0,1,1,178,proved,plain,0.4392,0.395,2,,proved-extra-axioms,plain,0.0104,0.000,2,,not-stated,,,,0,
+dyadic.direct_cells.depth_8,dyadic-subdivision,structure,0,1,1,190,proved,plain,0.4617,0.929,2,,proved-extra-axioms,plain,0.0132,0.343,2,,not-stated,,,,0,
+dyadic.prepared_cells.depth_8,dyadic-subdivision,structure,0,1,1,194,proved,plain,0.4685,0.870,2,,proved-extra-axioms,plain,0.0105,0.407,2,,not-stated,,,,0,
+dyadic.sequential_cells.depth_8,dyadic-subdivision,structure,0,1,1,198,proved,plain,0.3049,0.245,2,,proved-extra-axioms,plain,0.0098,0.198,2,,not-stated,,,,0,
+dyadic.addresses_only.depth_8,dyadic-subdivision,structure,0,1,1,75,proved,plain,0.0302,0.368,2,,proved-extra-axioms,plain,0.0101,0.575,2,,not-stated,,,,0,
+dyadic.frontier_check.depth_8,dyadic-subdivision,structure,0,1,1,53,proved,plain,1.0685,1.429,2,,proved-extra-axioms,plain,0.0049,0.000,2,,not-stated,,,,0,
+dyadic.complete_tree.depth_12,dyadic-subdivision,structure,0,1,1,181,proved,limits,7.7074,7.856,2,,proved-extra-axioms,plain,0.0391,0.097,2,,not-stated,,,,0,
+dyadic.direct_cells.depth_12,dyadic-subdivision,structure,0,1,1,193,proved,limits,7.6382,7.755,2,,proved-extra-axioms,plain,0.0331,0.003,2,,not-stated,,,,0,
+dyadic.prepared_cells.depth_12,dyadic-subdivision,structure,0,1,1,197,proved,limits,7.7001,7.907,2,,proved-extra-axioms,plain,0.0461,0.494,2,,not-stated,,,,0,
+dyadic.sequential_cells.depth_12,dyadic-subdivision,structure,0,1,1,201,proved,limits,13.9833,14.316,2,,proved-extra-axioms,plain,0.0339,0.508,2,,not-stated,,,,0,
+dyadic.addresses_only.depth_12,dyadic-subdivision,structure,0,1,1,78,proved,plain,0.5623,1.417,2,,proved-extra-axioms,plain,0.0116,0.023,2,,not-stated,,,,0,
+dyadic.frontier_check.depth_12,dyadic-subdivision,structure,0,1,1,54,proved,limits,64.4428,65.274,1,,proved-extra-axioms,plain,0.0479,0.364,2,,not-stated,,,,0,
+showcase.point_log,showcase,bound,1,0,1,19,proved,plain,0.3994,0.843,2,,proved-extra-axioms,plain,0.1253,0.313,2,,proved,plain,0.0484,0.262,2,
+showcase.quantified_nonlinear,showcase,bound,1,0,1,52,proved,plain,0.7147,0.791,2,,proved-extra-axioms,plain,0.2435,0.693,2,,proved,plain,0.0567,0.381,2,
+showcase.multivariate_box,showcase,bound,1,0,1,65,proved,plain,0.6383,0.800,2,,proved-extra-axioms,plain,0.7356,1.494,2,,proved,plain,0.0770,0.837,2,
+showcase.unique_root,showcase,root,0,0,1,43,proved,plain,1.4534,1.429,2,,proved-extra-axioms,plain,1.5092,1.721,2,,failed,strong,,,1,not an inequality
+showcase.exact_integral,showcase,integral,0,0,1,34,proved,plain,0.0483,0.069,2,,proved,plain,0.0466,0.063,2,,failed,strong,,,1,an atom has no bound
+trust.point.log_2,trust-point,bound,1,0,1,21,proved,plain,0.3927,0.507,2,,proved-extra-axioms,plain,0.1010,0.025,2,,proved,plain,0.0667,0.188,2,
+trust.point.log_3,trust-point,bound,1,0,1,22,proved,plain,0.4364,0.477,2,,proved-extra-axioms,plain,0.0770,0.042,2,,proved,plain,0.0542,0.230,2,
+trust.point.log_4,trust-point,bound,1,0,1,22,proved,plain,0.5521,1.278,2,,proved-extra-axioms,plain,0.0862,0.451,2,,proved,plain,0.0584,0.179,2,
+trust.point.log_5,trust-point,bound,1,0,1,22,proved,plain,0.5875,1.111,2,,proved-extra-axioms,plain,0.0879,0.858,2,,proved,plain,0.0749,0.275,2,
+trust.point.log_6,trust-point,bound,1,0,1,22,proved,plain,0.7407,1.824,2,,proved-extra-axioms,plain,0.1015,0.901,2,,proved,plain,0.0465,0.128,2,
+trust.point.log_7,trust-point,bound,1,0,1,22,proved,plain,0.7573,1.596,2,,proved-extra-axioms,plain,0.1034,0.581,2,,proved,plain,0.0580,0.285,2,
+trust.point.log_8,trust-point,bound,1,0,1,22,proved,plain,0.5634,0.548,2,,proved-extra-axioms,plain,0.1073,0.828,2,,proved,plain,0.0557,0.186,2,
+trust.point.log_9,trust-point,bound,1,0,1,22,proved,plain,0.6051,1.047,2,,proved-extra-axioms,plain,0.0856,1.089,2,,proved,plain,0.0936,0.400,2,
+trust.point.log_10,trust-point,bound,1,0,1,23,proved,plain,0.6975,1.394,2,,proved-extra-axioms,plain,0.1182,1.431,2,,proved,plain,0.0632,1.307,2,
+trust.point.log_11,trust-point,bound,1,0,1,23,proved,plain,0.7249,2.078,2,,proved-extra-axioms,plain,0.0905,0.083,2,,proved,plain,0.0711,0.118,2,
+trust.subdiv_16.cell_0,trust-subdiv,bound,1,0,1,59,proved,plain,0.6544,0.857,2,,proved-extra-axioms,plain,0.3945,0.405,2,,proved,plain,0.0669,0.708,2,
+trust.subdiv_16.cell_1,trust-subdiv,bound,1,0,1,59,proved,plain,0.4781,0.538,2,,proved-extra-axioms,plain,0.5383,1.905,2,,proved,plain,0.0655,0.720,2,
+trust.subdiv_16.cell_2,trust-subdiv,bound,1,0,1,59,proved,plain,0.7948,1.994,2,,proved-extra-axioms,plain,0.5166,0.543,2,,proved,plain,0.0538,0.098,2,
+trust.subdiv_16.cell_3,trust-subdiv,bound,1,0,1,59,proved,plain,0.7455,0.802,2,,proved-extra-axioms,plain,0.5693,1.382,2,,proved,plain,0.0661,1.463,2,
+trust.subdiv_16.cell_4,trust-subdiv,bound,1,0,1,59,proved,plain,0.7932,1.635,2,,proved-extra-axioms,plain,0.5561,1.449,2,,proved,plain,0.0674,1.578,2,
+trust.subdiv_16.cell_5,trust-subdiv,bound,1,0,1,59,proved,plain,0.6538,0.695,2,,proved-extra-axioms,plain,0.5025,1.481,2,,proved,plain,0.0677,1.657,2,
+trust.subdiv_16.cell_6,trust-subdiv,bound,1,0,1,59,proved,plain,0.6621,0.785,2,,proved-extra-axioms,plain,0.5273,1.033,2,,proved,plain,0.0708,1.972,2,
+trust.subdiv_16.cell_7,trust-subdiv,bound,1,0,1,59,proved,plain,0.7686,1.406,2,,proved-extra-axioms,plain,0.5703,1.193,2,,proved,plain,0.0667,0.099,2,
+trust.subdiv_16.cell_8,trust-subdiv,bound,1,0,1,59,proved,plain,0.6415,1.115,2,,proved-extra-axioms,plain,0.6152,1.878,2,,proved,plain,0.0642,0.733,2,
+trust.subdiv_16.cell_9,trust-subdiv,bound,1,0,1,60,proved,plain,0.7808,1.935,2,,proved-extra-axioms,plain,0.4098,0.746,2,,proved,plain,0.0596,0.707,2,
+trust.subdiv_16.cell_10,trust-subdiv,bound,1,0,1,61,proved,plain,0.7678,1.402,2,,proved-extra-axioms,plain,0.5072,1.061,2,,proved,plain,0.0526,0.513,2,
+trust.subdiv_16.cell_11,trust-subdiv,bound,1,0,1,61,proved,plain,0.7280,1.507,2,,proved-extra-axioms,plain,0.5209,1.332,2,,proved,plain,0.0527,0.583,2,
+trust.subdiv_16.cell_12,trust-subdiv,bound,1,0,1,61,proved,plain,0.7509,1.913,2,,proved-extra-axioms,plain,0.4959,1.237,2,,proved,plain,0.0563,0.908,2,
+trust.subdiv_16.cell_13,trust-subdiv,bound,1,0,1,61,proved,plain,0.6695,1.339,2,,proved-extra-axioms,plain,0.4519,1.285,2,,proved,plain,0.0529,0.163,2,
+trust.subdiv_16.cell_14,trust-subdiv,bound,1,0,1,61,proved,plain,0.5951,0.625,2,,proved-extra-axioms,plain,0.5502,1.607,2,,proved,plain,0.0614,1.216,2,
+trust.subdiv_16.cell_15,trust-subdiv,bound,1,0,1,61,proved,plain,0.6343,0.634,2,,proved-extra-axioms,plain,0.5100,1.138,2,,proved,plain,0.0649,0.972,2,
+trust.subdiv_64.cell_0,trust-subdiv,bound,1,0,1,59,proved,plain,0.6712,1.195,2,,proved-extra-axioms,plain,0.3991,0.410,2,,proved,plain,0.0659,1.348,2,
+trust.subdiv_64.cell_1,trust-subdiv,bound,1,0,1,59,proved,plain,0.7754,1.296,2,,proved-extra-axioms,plain,0.5066,0.488,2,,proved,plain,0.0537,0.717,2,
+trust.subdiv_64.cell_2,trust-subdiv,bound,1,0,1,59,proved,plain,0.6163,1.030,2,,proved-extra-axioms,plain,0.5279,0.976,2,,proved,plain,0.0701,0.379,2,
+trust.subdiv_64.cell_3,trust-subdiv,bound,1,0,1,59,proved,plain,0.7968,1.277,2,,proved-extra-axioms,plain,0.5454,1.133,2,,proved,plain,0.0686,1.802,2,
+trust.subdiv_64.cell_4,trust-subdiv,bound,1,0,1,59,proved,plain,0.6928,0.784,2,,proved-extra-axioms,plain,0.3422,0.366,2,,proved,plain,0.0670,0.160,2,
+trust.subdiv_64.cell_5,trust-subdiv,bound,1,0,1,59,proved,plain,0.6437,0.722,2,,proved-extra-axioms,plain,0.4131,0.404,2,,proved,plain,0.0692,0.149,2,
+trust.subdiv_64.cell_6,trust-subdiv,bound,1,0,1,59,proved,plain,0.6357,0.666,2,,proved-extra-axioms,plain,0.5344,1.120,2,,proved,plain,0.0545,0.713,2,
+trust.subdiv_64.cell_7,trust-subdiv,bound,1,0,1,59,proved,plain,0.6410,0.594,2,,proved-extra-axioms,plain,0.5242,1.158,2,,proved,plain,0.0554,0.148,2,
+trust.subdiv_64.cell_8,trust-subdiv,bound,1,0,1,59,proved,plain,0.6345,0.643,2,,proved-extra-axioms,plain,0.4103,0.414,2,,proved,plain,0.0566,0.651,2,
+trust.subdiv_64.cell_9,trust-subdiv,bound,1,0,1,60,proved,plain,0.6864,0.870,2,,proved-extra-axioms,plain,0.4915,1.086,2,,proved,plain,0.0556,0.864,2,
+trust.subdiv_64.cell_10,trust-subdiv,bound,1,0,1,61,proved,plain,0.7639,1.420,2,,proved-extra-axioms,plain,0.3437,0.362,2,,proved,plain,0.0662,1.054,2,
+trust.subdiv_64.cell_11,trust-subdiv,bound,1,0,1,61,proved,plain,0.6015,0.564,2,,proved-extra-axioms,plain,0.4251,0.649,2,,proved,plain,0.0693,1.438,2,
+trust.subdiv_64.cell_12,trust-subdiv,bound,1,0,1,61,proved,plain,0.7413,0.766,2,,proved-extra-axioms,plain,0.4556,0.489,2,,proved,plain,0.0662,0.323,2,
+trust.subdiv_64.cell_13,trust-subdiv,bound,1,0,1,61,proved,plain,0.7280,0.759,2,,proved-extra-axioms,plain,0.4968,0.962,2,,proved,plain,0.0659,0.735,2,
+trust.subdiv_64.cell_14,trust-subdiv,bound,1,0,1,61,proved,plain,0.7293,0.807,2,,proved-extra-axioms,plain,0.5274,1.036,2,,proved,plain,0.0459,1.256,2,
+trust.subdiv_64.cell_15,trust-subdiv,bound,1,0,1,61,proved,plain,0.6768,0.869,2,,proved-extra-axioms,plain,0.4802,0.952,2,,proved,plain,0.0552,0.128,2,
+trust.subdiv_64.cell_16,trust-subdiv,bound,1,0,1,61,proved,plain,0.6437,1.038,2,,proved-extra-axioms,plain,0.4627,1.159,2,,proved,plain,0.0556,0.421,2,
+trust.subdiv_64.cell_17,trust-subdiv,bound,1,0,1,61,proved,plain,0.7772,1.127,2,,proved-extra-axioms,plain,0.5002,0.562,2,,proved,plain,0.0663,1.296,2,
+trust.subdiv_64.cell_18,trust-subdiv,bound,1,0,1,61,proved,plain,0.6535,1.530,2,,proved-extra-axioms,plain,0.5792,1.644,2,,proved,plain,0.0670,0.451,2,
+trust.subdiv_64.cell_19,trust-subdiv,bound,1,0,1,61,proved,plain,0.7095,1.429,2,,proved-extra-axioms,plain,0.5559,2.047,2,,proved,plain,0.0667,0.528,2,
+trust.subdiv_64.cell_20,trust-subdiv,bound,1,0,1,61,proved,plain,0.6403,1.172,2,,proved-extra-axioms,plain,0.5422,1.142,2,,proved,plain,0.0598,1.524,2,
+trust.subdiv_64.cell_21,trust-subdiv,bound,1,0,1,61,proved,plain,0.7493,1.362,2,,proved-extra-axioms,plain,0.5790,1.882,2,,proved,plain,0.0656,1.024,2,
+trust.subdiv_64.cell_22,trust-subdiv,bound,1,0,1,61,proved,plain,0.6955,1.243,2,,proved-extra-axioms,plain,0.4423,0.925,2,,proved,plain,0.0703,1.732,2,
+trust.subdiv_64.cell_23,trust-subdiv,bound,1,0,1,61,proved,plain,0.7968,1.215,2,,proved-extra-axioms,plain,0.5764,2.003,2,,proved,plain,0.0657,0.507,2,
+trust.subdiv_64.cell_24,trust-subdiv,bound,1,0,1,61,proved,plain,0.7811,1.358,2,,proved-extra-axioms,plain,0.4671,0.981,2,,proved,plain,0.0653,1.116,2,
+trust.subdiv_64.cell_25,trust-subdiv,bound,1,0,1,61,proved,plain,0.6319,1.025,2,,proved-extra-axioms,plain,0.5718,1.599,2,,proved,plain,0.0777,0.648,2,
+trust.subdiv_64.cell_26,trust-subdiv,bound,1,0,1,61,proved,plain,0.5614,0.849,2,,proved-extra-axioms,plain,0.5701,1.784,2,,proved,plain,0.0718,1.569,2,
+trust.subdiv_64.cell_27,trust-subdiv,bound,1,0,1,61,proved,plain,0.8843,2.249,2,,proved-extra-axioms,plain,0.4772,1.245,2,,proved,plain,0.0746,0.969,2,
+trust.subdiv_64.cell_28,trust-subdiv,bound,1,0,1,61,proved,plain,0.8168,1.703,2,,proved-extra-axioms,plain,0.4940,0.946,2,,proved,plain,0.0729,1.571,2,
+trust.subdiv_64.cell_29,trust-subdiv,bound,1,0,1,61,proved,plain,0.8237,2.226,2,,proved-extra-axioms,plain,0.5851,1.383,2,,proved,plain,0.0720,1.516,2,
+trust.subdiv_64.cell_30,trust-subdiv,bound,1,0,1,61,proved,plain,0.8334,1.368,2,,proved-extra-axioms,plain,0.5691,1.720,2,,proved,plain,0.0583,1.364,2,
+trust.subdiv_64.cell_31,trust-subdiv,bound,1,0,1,61,proved,plain,0.6698,1.654,2,,proved-extra-axioms,plain,0.6039,1.912,2,,proved,plain,0.0690,1.722,2,
+trust.subdiv_64.cell_32,trust-subdiv,bound,1,0,1,61,proved,plain,0.9124,1.768,2,,proved-extra-axioms,plain,0.6237,1.547,2,,proved,plain,0.0669,1.521,2,
+trust.subdiv_64.cell_33,trust-subdiv,bound,1,0,1,61,proved,plain,0.8218,1.429,2,,proved-extra-axioms,plain,0.6168,1.180,2,,proved,plain,0.0704,1.113,2,
+trust.subdiv_64.cell_34,trust-subdiv,bound,1,0,1,61,proved,plain,0.8022,1.246,2,,proved-extra-axioms,plain,0.5232,1.183,2,,proved,plain,0.0743,1.821,2,
+trust.subdiv_64.cell_35,trust-subdiv,bound,1,0,1,61,proved,plain,0.7499,1.397,2,,proved-extra-axioms,plain,0.4170,0.828,2,,proved,plain,0.0689,1.837,2,
+trust.subdiv_64.cell_36,trust-subdiv,bound,1,0,1,61,proved,plain,0.6377,1.425,2,,proved-extra-axioms,plain,0.5012,0.950,2,,proved,plain,0.0698,0.644,2,
+trust.subdiv_64.cell_37,trust-subdiv,bound,1,0,1,61,proved,plain,0.7256,1.396,2,,proved-extra-axioms,plain,0.4872,0.769,2,,proved,plain,0.0873,1.296,2,
+trust.subdiv_64.cell_38,trust-subdiv,bound,1,0,1,61,proved,plain,0.8301,1.894,2,,proved-extra-axioms,plain,0.5778,1.347,2,,proved,plain,0.0760,1.604,2,
+trust.subdiv_64.cell_39,trust-subdiv,bound,1,0,1,61,proved,plain,0.8026,2.318,2,,proved-extra-axioms,plain,0.6018,2.051,2,,proved,plain,0.0685,1.055,2,
+trust.subdiv_64.cell_40,trust-subdiv,bound,1,0,1,61,proved,plain,0.8165,1.916,2,,proved-extra-axioms,plain,0.4352,0.569,2,,proved,plain,0.0634,0.380,2,
+trust.subdiv_64.cell_41,trust-subdiv,bound,1,0,1,61,proved,plain,0.7028,1.094,2,,proved-extra-axioms,plain,0.4566,1.029,2,,proved,plain,0.0666,0.218,2,
+trust.subdiv_64.cell_42,trust-subdiv,bound,1,0,1,61,proved,plain,0.8211,2.277,2,,proved-extra-axioms,plain,0.4220,0.913,2,,proved,plain,0.0552,0.974,2,
+trust.subdiv_64.cell_43,trust-subdiv,bound,1,0,1,61,proved,plain,0.7495,1.430,2,,proved-extra-axioms,plain,0.5049,0.879,2,,proved,plain,0.0680,0.893,2,
+trust.subdiv_64.cell_44,trust-subdiv,bound,1,0,1,61,proved,plain,0.8086,1.747,2,,proved-extra-axioms,plain,0.5575,1.622,2,,proved,plain,0.0664,0.109,2,
+trust.subdiv_64.cell_45,trust-subdiv,bound,1,0,1,61,proved,plain,0.6610,0.760,2,,proved-extra-axioms,plain,0.4685,1.163,2,,proved,plain,0.0579,1.139,2,
+trust.subdiv_64.cell_46,trust-subdiv,bound,1,0,1,61,proved,plain,0.8458,2.271,2,,proved-extra-axioms,plain,0.5306,1.190,2,,proved,plain,0.0665,0.187,2,
+trust.subdiv_64.cell_47,trust-subdiv,bound,1,0,1,61,proved,plain,0.8009,1.514,2,,proved-extra-axioms,plain,0.5688,1.889,2,,proved,plain,0.0680,1.559,2,
+trust.subdiv_64.cell_48,trust-subdiv,bound,1,0,1,61,proved,plain,0.8293,1.085,2,,proved-extra-axioms,plain,0.5475,1.978,2,,proved,plain,0.0711,1.261,2,
+trust.subdiv_64.cell_49,trust-subdiv,bound,1,0,1,61,proved,plain,0.8068,1.993,2,,proved-extra-axioms,plain,0.3560,0.829,2,,proved,plain,0.0692,1.812,2,
+trust.subdiv_64.cell_50,trust-subdiv,bound,1,0,1,61,proved,plain,0.8220,2.230,2,,proved-extra-axioms,plain,0.5305,0.623,2,,proved,plain,0.0618,0.846,2,
+trust.subdiv_64.cell_51,trust-subdiv,bound,1,0,1,61,proved,plain,0.8027,1.372,2,,proved-extra-axioms,plain,0.5594,1.247,2,,proved,plain,0.0638,1.251,2,
+trust.subdiv_64.cell_52,trust-subdiv,bound,1,0,1,61,proved,plain,0.8510,2.357,2,,proved-extra-axioms,plain,0.5619,1.811,2,,proved,plain,0.0570,0.115,2,
+trust.subdiv_64.cell_53,trust-subdiv,bound,1,0,1,61,proved,plain,0.6683,1.285,2,,proved-extra-axioms,plain,0.4501,0.976,2,,proved,plain,0.0679,1.315,2,
+trust.subdiv_64.cell_54,trust-subdiv,bound,1,0,1,61,proved,plain,0.8461,2.032,2,,proved-extra-axioms,plain,0.5817,0.874,2,,proved,plain,0.0544,0.894,2,
+trust.subdiv_64.cell_55,trust-subdiv,bound,1,0,1,61,proved,plain,0.6419,0.718,2,,proved-extra-axioms,plain,0.5090,0.932,2,,proved,plain,0.0680,1.256,2,
+trust.subdiv_64.cell_56,trust-subdiv,bound,1,0,1,61,proved,plain,0.8600,1.546,2,,proved-extra-axioms,plain,0.5665,1.621,2,,proved,plain,0.0683,1.545,2,
+trust.subdiv_64.cell_57,trust-subdiv,bound,1,0,1,61,proved,plain,0.7696,1.615,2,,proved-extra-axioms,plain,0.3760,0.436,2,,proved,plain,0.0660,0.693,2,
+trust.subdiv_64.cell_58,trust-subdiv,bound,1,0,1,61,proved,plain,0.8273,1.354,2,,proved-extra-axioms,plain,0.5516,1.321,2,,proved,plain,0.0547,0.323,2,
+trust.subdiv_64.cell_59,trust-subdiv,bound,1,0,1,61,proved,plain,0.8612,1.337,2,,proved-extra-axioms,plain,0.6005,1.471,2,,proved,plain,0.0790,0.692,2,
+trust.subdiv_64.cell_60,trust-subdiv,bound,1,0,1,61,proved,plain,0.6978,1.221,2,,proved-extra-axioms,plain,0.4534,0.588,2,,proved,plain,0.0566,0.888,2,
+trust.subdiv_64.cell_61,trust-subdiv,bound,1,0,1,61,proved,plain,0.7729,1.534,2,,proved-extra-axioms,plain,0.5446,0.572,2,,proved,plain,0.0637,1.466,2,
+trust.subdiv_64.cell_62,trust-subdiv,bound,1,0,1,61,proved,plain,0.6930,1.672,2,,proved-extra-axioms,plain,0.5627,1.634,2,,proved,plain,0.0672,1.633,2,
+trust.subdiv_64.cell_63,trust-subdiv,bound,1,0,1,61,proved,plain,0.8394,2.005,2,,proved-extra-axioms,plain,0.5299,1.325,2,,proved,plain,0.0680,0.138,2,
+trust.optimization,trust-optimization,bound,1,0,1,35,proved,plain,0.3134,0.320,2,,proved-extra-axioms,plain,0.3137,1.064,2,,proved,plain,0.0557,1.215,2,
+trust.integration,trust-integration,integral,0,0,1,107,not-run,,,,0,,not-run,,,,0,,not-run,,,,0,
+trust.finsum_100,trust-finsum,bound,1,0,1,44,proved,plain,0.3954,0.443,2,,proved-extra-axioms,plain,0.0204,0.611,2,,timeout,limits,,,1,
+trust.finsum_1000,trust-finsum,bound,1,0,1,47,proved,limits,4.2450,5.111,2,,proved-extra-axioms,plain,0.0466,0.694,2,,timeout,strong,,,1,
+trust.finsum_10000,trust-finsum,bound,1,0,1,50,failed,limits,,,1,maximum recursion depth,proved-extra-axioms,plain,0.2416,0.518,2,,timeout,limits,,,1,
+examples.000,examples,bound,1,0,7,19,proved,plain,0.4408,0.361,2,,proved-extra-axioms,plain,0.0899,0.050,2,,proved,plain,0.0466,0.378,2,
+examples.001,examples,bound,1,0,3,52,proved,plain,0.7296,0.620,2,,proved-extra-axioms,plain,0.1985,0.094,2,,proved,plain,0.0396,0.042,2,
+examples.002,examples,bound,1,0,3,65,proved,plain,0.5081,0.521,2,,proved-extra-axioms,plain,0.4993,0.478,2,,proved,plain,0.0609,0.156,2,
+examples.003,examples,existence,0,0,3,43,proved,plain,1.4218,1.464,2,,proved-extra-axioms,plain,1.3522,1.314,2,,failed,plain,,,1,not an inequality
+examples.004,examples,integral,0,0,5,34,proved,plain,0.0398,0.000,2,,proved,plain,0.0495,0.134,2,,failed,plain,,,1,an atom has no bound
+examples.005,examples,bound,1,0,3,49,proved,plain,0.2899,0.260,2,,proved-extra-axioms,plain,0.1192,0.226,2,,proved,plain,0.0773,0.034,2,
+examples.006,examples,bound,1,0,1,48,proved,plain,0.2714,0.352,2,,proved-extra-axioms,plain,0.1126,0.130,2,,proved,plain,0.1415,0.129,2,
+examples.007,examples,bound,1,0,1,49,proved,plain,0.3128,0.203,2,,proved-extra-axioms,plain,0.1043,0.111,2,,proved,plain,0.0804,0.070,2,
+examples.008,examples,bound,1,0,1,48,proved,plain,0.3291,0.440,2,,proved-extra-axioms,plain,0.1243,0.237,2,,proved,plain,0.1162,0.113,2,
+examples.010,examples,bound,1,0,1,39,proved,plain,0.6737,0.690,2,,proved-extra-axioms,plain,0.5400,0.474,2,,proved,plain,0.1262,0.006,2,
+examples.011,examples,bound,1,0,1,32,proved,plain,1.5896,1.962,2,,proved,plain,1.4880,1.412,2,,proved,plain,0.1506,0.085,2,
+examples.012,examples,bound,1,0,2,39,proved,plain,0.3606,0.251,2,,proved-extra-axioms,plain,0.2167,0.103,2,,proved,plain,0.0312,0.086,2,
+examples.013,examples,existence,0,0,4,34,proved,plain,0.1492,0.000,2,,proved-extra-axioms,plain,0.1179,0.002,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.014,examples,bound,1,0,1,31,proved,plain,1.8766,1.839,2,,proved-extra-axioms,plain,0.0984,0.050,2,,proved,plain,0.0708,0.392,2,
+examples.015,examples,bound,1,0,1,24,proved,plain,1.0242,1.093,2,,proved-extra-axioms,plain,0.0540,0.479,2,,proved,plain,0.0358,0.605,2,
+examples.016,examples,bound,1,0,1,39,proved,plain,0.7945,1.103,2,,proved-extra-axioms,plain,0.0636,0.000,2,,proved,plain,0.0329,0.028,2,
+examples.017,examples,bound,1,0,1,67,proved,plain,2.7110,2.825,2,,proved-extra-axioms,plain,0.9367,1.196,2,,proved,plain,0.4143,0.591,2,
+examples.023,examples,bound,1,0,1,40,proved,plain,0.0717,0.000,2,,proved-extra-axioms,plain,0.0654,0.088,2,,failed,strong,,,1,an atom has no bound
+examples.024,examples,bound,1,0,1,42,proved,plain,0.0676,0.017,2,,proved-extra-axioms,plain,0.0716,0.000,2,,failed,strong,,,1,an atom has no bound
+examples.025,examples,bound,1,0,1,36,proved,plain,0.0680,0.000,2,,proved-extra-axioms,plain,0.0739,0.071,2,,failed,strong,,,1,an atom has no bound
+examples.026,examples,tail,0,0,1,51,proved,plain,0.1570,0.230,2,,proved,plain,0.1172,0.105,2,,failed,strong,,,1,not an inequality
+examples.027,examples,tail,0,0,2,42,proved,plain,0.0956,0.158,2,,proved,plain,0.0947,0.429,2,,failed,strong,,,1,not an inequality
+examples.028,examples,existence,0,0,1,61,proved,plain,0.1213,0.330,2,,proved,plain,0.1215,0.047,2,,failed,plain,,,1,not an inequality
+examples.029,examples,existence,0,0,1,41,proved,plain,0.1236,0.204,2,,proved,plain,0.1334,0.046,2,,failed,plain,,,1,not an inequality
+examples.030,examples,existence,0,0,5,46,proved,plain,0.2150,0.460,2,,proved,plain,0.1196,0.000,2,,failed,plain,,,1,not an inequality
+examples.031,examples,existence,0,0,1,51,proved,plain,0.2068,0.098,2,,proved,plain,0.2103,0.171,2,,failed,plain,,,1,not an inequality
+examples.032,examples,bound,1,0,2,34,proved,plain,0.3388,0.370,2,,proved-extra-axioms,plain,0.2573,0.148,2,,proved,plain,0.0766,0.115,2,
+examples.043,examples,bound,1,0,4,36,proved,plain,0.1010,0.572,2,,proved,plain,0.0575,0.000,2,,proved,plain,0.4023,0.456,2,
+examples.044,examples,bound,1,0,2,41,proved,plain,0.0843,0.076,2,,proved,plain,0.0765,0.208,2,,proved,plain,0.4308,0.655,2,
+examples.045,examples,bound,1,0,1,34,proved,plain,0.0724,0.000,2,,proved,plain,0.0647,0.000,2,,proved,plain,0.0674,0.000,2,
+examples.046,examples,bound,1,0,2,34,proved,plain,0.0666,0.097,2,,proved,plain,0.0557,0.051,2,,proved,plain,0.0530,0.067,2,
+examples.047,examples,bound,1,0,2,42,proved,plain,0.0808,0.398,2,,proved-extra-axioms,plain,0.0152,0.000,2,,proved,plain,0.5152,0.760,2,
+examples.048,examples,bound,1,0,1,48,proved,plain,0.2396,0.276,2,,proved-extra-axioms,plain,0.1515,0.094,2,,proved,plain,0.5744,0.669,2,
+examples.049,examples,bound,1,0,1,49,proved,plain,0.2644,0.263,2,,proved-extra-axioms,plain,0.1679,0.134,2,,proved,plain,0.6627,0.658,2,
+examples.050,examples,bound,1,0,1,44,proved,plain,2.1106,2.405,2,,proved-extra-axioms,plain,0.6125,0.761,2,,proved,plain,0.1995,0.224,2,
+examples.051,examples,bound,1,0,2,38,proved,plain,0.1915,0.000,2,,proved,plain,0.0564,0.000,2,,failed,strong,,,1,an atom has no bound
+examples.052,examples,bound,1,0,1,53,proved,plain,3.3676,3.256,2,,proved-extra-axioms,plain,0.2589,0.085,2,,timeout,limits,,,1,
+examples.053,examples,bound,1,0,1,51,proved,plain,0.4662,0.305,2,,proved-extra-axioms,plain,0.1552,0.000,2,,proved,plain,0.9911,0.850,2,
+examples.054,examples,bound,1,0,1,57,proved,plain,0.4153,0.282,2,,proved-extra-axioms,plain,0.1779,0.000,2,,proved,plain,0.9529,0.857,2,
+examples.055,examples,bound,1,0,1,45,proved,plain,2.6749,2.496,2,,proved-extra-axioms,plain,0.0216,0.000,2,,proved,plain,0.5745,0.461,2,
+examples.056,examples,bound,1,0,1,57,proved,plain,4.0677,3.901,2,,proved-extra-axioms,plain,0.6074,0.388,2,,proved,plain,0.5981,0.530,2,
+examples.057,examples,bound,1,0,1,53,proved,limits,24.8430,24.998,1,,proved-extra-axioms,plain,0.3196,0.152,2,,timeout,limits,,,1,
+examples.058,examples,bound,1,0,1,67,proved,limits,33.6326,33.681,1,,proved-extra-axioms,limits,34.5961,34.742,1,,proved,plain,0.2887,0.228,2,
+examples.059,examples,bound,1,0,1,67,proved,plain,0.6147,0.415,2,,proved-extra-axioms,plain,0.2046,0.049,2,,proved,plain,1.9240,2.652,2,
+examples.060,examples,bound,1,0,1,49,proved,plain,3.8281,4.331,2,,proved-extra-axioms,plain,0.0295,0.429,2,,proved,plain,1.4693,2.370,2,
+examples.061,examples,bound,1,0,1,56,proved,plain,7.6705,8.102,2,,proved-extra-axioms,plain,0.0448,0.554,2,,proved,plain,1.1152,2.149,2,
+examples.062,examples,bound,1,0,1,86,proved,plain,5.4521,5.924,2,,proved-extra-axioms,plain,0.8663,1.879,2,,proved,plain,0.5544,1.667,2,
+examples.063,examples,bound,1,0,1,47,proved,plain,2.1875,2.651,2,,proved-extra-axioms,plain,0.3835,0.467,2,,proved,plain,0.8227,0.755,2,
+examples.064,examples,bound,1,0,1,48,proved,plain,0.1225,0.095,2,,proved,plain,0.0934,0.213,2,,proved,plain,0.2682,0.345,2,
+examples.065,examples,bound,1,0,1,61,proved,plain,1.2009,1.312,2,,proved-extra-axioms,plain,0.3188,0.263,2,,proved,plain,0.6758,0.845,2,
+examples.066,examples,bound,1,0,2,58,proved,plain,0.1254,0.104,2,,proved,plain,0.1306,0.140,2,,proved,plain,0.2017,0.237,2,
+examples.067,examples,bound,1,0,1,60,proved,plain,0.7164,0.902,2,,proved-extra-axioms,plain,0.2017,0.252,2,,proved,plain,0.2314,0.233,2,
+examples.068,examples,bound,1,0,1,53,proved,plain,0.0551,0.000,2,,proved-extra-axioms,plain,0.0217,0.433,2,,proved,plain,0.1389,0.412,2,
+examples.072,examples,bound,1,0,1,36,proved,plain,0.1305,0.109,2,,proved,plain,0.0501,0.000,2,,proved,plain,0.0219,0.006,2,
+examples.073,examples,bound,1,0,1,45,proved,plain,0.4006,0.256,2,,proved-extra-axioms,plain,0.1595,0.255,2,,proved,plain,0.0520,0.195,2,
+examples.074,examples,bound,1,0,1,41,proved,plain,0.0591,0.083,2,,proved-extra-axioms,plain,0.0215,0.373,2,,proved,plain,0.1972,0.486,2,
+examples.075,examples,bound,1,0,1,41,proved,plain,0.0429,0.079,2,,proved-extra-axioms,plain,0.0188,0.582,2,,proved,plain,0.1701,0.442,2,
+examples.076,examples,bound,1,0,1,46,proved,plain,0.0470,0.193,2,,proved-extra-axioms,plain,0.0268,0.435,2,,proved,plain,0.0379,0.303,2,
+examples.077,examples,bound,1,0,1,48,proved,plain,0.0365,0.076,2,,proved-extra-axioms,plain,0.0217,0.183,2,,proved,plain,0.0320,0.514,2,
+examples.078,examples,bound,1,0,1,58,proved,plain,0.1137,0.000,2,,proved,plain,0.1025,0.147,2,,proved,plain,0.0477,0.428,2,
+examples.079,examples,bound,1,0,1,48,proved,plain,0.0381,0.051,2,,proved-extra-axioms,plain,0.0223,0.238,2,,proved,plain,0.0406,0.003,2,
+examples.080,examples,bound,1,0,1,49,proved,plain,0.4335,0.325,2,,proved,plain,0.2761,0.178,2,,proved,plain,0.0525,0.075,2,
+examples.081,examples,bound,1,0,1,41,proved,plain,0.0761,0.000,2,,proved-extra-axioms,plain,0.0220,0.459,2,,proved,plain,0.0246,0.312,2,
+examples.082,examples,bound,1,0,1,57,proved,plain,1.2781,1.163,2,,proved-extra-axioms,plain,0.2778,0.163,2,,proved,plain,0.0505,0.309,2,
+examples.083,examples,bound,1,0,1,65,proved,plain,2.5394,2.616,2,,proved-extra-axioms,plain,0.7140,1.058,2,,proved,plain,0.1046,0.343,2,
+examples.084,examples,bound,1,0,1,69,proved,limits,45.2846,46.818,1,,proved-extra-axioms,limits,37.3170,37.494,1,,proved,plain,0.0961,0.308,2,
+examples.085,examples,bound,1,0,1,27,proved,plain,0.1138,0.222,2,,proved-extra-axioms,plain,0.0379,0.083,2,,proved,plain,0.0340,0.000,2,
+examples.086,examples,bound,1,0,1,33,proved,plain,0.1179,0.039,2,,proved-extra-axioms,plain,0.0271,0.000,2,,proved,plain,0.0407,0.101,2,
+examples.087,examples,bound,1,0,2,36,proved,plain,1.8243,2.267,2,,proved-extra-axioms,plain,0.0363,0.449,2,,proved,plain,0.0872,0.602,2,
+examples.089,examples,bound,1,0,1,64,proved,plain,1.0959,1.381,2,,proved-extra-axioms,plain,0.4198,0.921,2,,proved,plain,0.5250,0.784,2,
+examples.090,examples,bound,1,0,1,40,proved,plain,0.1001,0.290,2,,proved,plain,0.1011,0.405,2,,proved,plain,0.0310,0.192,2,
+examples.091,examples,integral,0,0,1,52,proved,plain,0.4053,0.496,2,,proved,plain,0.5559,0.616,2,,failed,plain,,,1,an atom has no bound
+examples.092,examples,integral,0,0,1,37,proved,plain,0.0632,0.077,2,,proved,plain,0.0413,0.000,2,,failed,plain,,,1,an atom has no bound
+examples.093,examples,integral,0,0,1,34,proved,plain,0.0491,0.206,2,,proved,plain,0.0535,0.125,2,,failed,plain,,,1,an atom has no bound
+examples.094,examples,integral,0,0,1,41,proved,plain,0.0615,0.008,2,,proved,plain,0.0671,0.164,2,,failed,plain,,,1,an atom has no bound
+examples.095,examples,integral,0,0,1,40,proved,plain,0.0517,0.141,2,,proved,plain,0.0799,0.587,2,,failed,plain,,,1,an atom has no bound
+examples.096,examples,integral,0,0,1,78,proved,plain,0.0918,0.522,2,,proved,plain,0.0959,0.775,2,,failed,plain,,,1,an atom has no bound
+examples.098,examples,integral,0,0,3,35,proved,plain,18.7603,18.959,2,,proved-extra-axioms,plain,0.1812,0.853,2,,failed,plain,,,1,an atom has no bound
+examples.099,examples,integral,0,0,1,35,proved,plain,0.3602,0.521,2,,proved-extra-axioms,plain,0.1969,0.782,2,,failed,plain,,,1,an atom has no bound
+examples.100,examples,integral,0,0,1,36,proved,plain,18.7039,18.806,1,,proved-extra-axioms,plain,0.1887,0.423,2,,failed,plain,,,1,an atom has no bound
+examples.101,examples,existence,0,0,2,39,proved,plain,1.6877,2.269,2,,proved-extra-axioms,plain,1.4150,2.003,2,,failed,plain,,,1,not an inequality
+examples.102,examples,disequality,1,0,2,38,proved,plain,0.3949,0.895,2,,proved-extra-axioms,plain,0.4322,1.203,2,,proved,plain,0.2558,0.681,2,
+examples.103,examples,existence,0,0,1,43,proved,plain,0.3414,0.489,2,,proved-extra-axioms,plain,0.2868,0.420,2,,failed,plain,,,1,not an inequality
+examples.104,examples,existence,0,0,1,43,proved,plain,0.3759,1.074,2,,proved-extra-axioms,plain,0.2544,0.522,2,,failed,plain,,,1,not an inequality
+examples.105,examples,existence,0,0,1,76,proved,plain,5.1696,5.902,2,,proved-extra-axioms,plain,0.8960,1.578,2,,failed,plain,,,1,not an inequality
+examples.106,examples,existence,0,0,1,68,proved,plain,0.7786,1.201,2,,proved-extra-axioms,plain,0.7897,1.243,2,,failed,plain,,,1,not an inequality
+examples.107,examples,existence,0,0,2,55,proved,plain,0.2452,0.923,2,,proved,plain,0.2464,1.481,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.108,examples,existence,0,0,2,71,proved,plain,0.3860,1.291,2,,proved,plain,0.4474,1.819,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.109,examples,bound,1,0,1,53,proved,plain,1.0387,2.205,2,,proved-extra-axioms,plain,0.7046,2.051,2,,proved,plain,0.1318,1.785,2,
+examples.110,examples,bound,1,0,1,52,proved,plain,0.9172,2.425,2,,proved-extra-axioms,plain,0.6399,2.043,2,,proved,plain,0.1630,1.417,2,
+examples.111,examples,bound,1,0,1,15,proved,plain,0.0242,1.125,2,,proved,plain,0.0256,0.917,2,,proved,plain,0.0398,1.436,2,
+examples.112,examples,bound,1,0,3,53,proved,plain,0.8006,1.462,2,,proved-extra-axioms,plain,0.4326,1.442,2,,proved,plain,0.1003,1.477,2,
+examples.113,examples,bound,1,0,3,39,proved,plain,0.4917,0.971,2,,proved-extra-axioms,plain,0.1397,0.801,2,,proved,plain,0.0736,0.344,2,
+examples.114,examples,existence,0,0,2,39,proved,plain,0.2728,1.213,2,,proved,plain,0.1863,0.720,2,,failed,plain,,,1,not an inequality
+examples.115,examples,bound,1,0,1,38,proved,plain,0.4968,0.499,2,,proved-extra-axioms,plain,0.4304,1.046,2,,proved,plain,0.1307,0.764,2,
+examples.116,examples,conjunction,1,0,1,38,proved,plain,0.0409,0.150,2,,proved,plain,0.0422,0.394,2,,proved,plain,0.0541,0.246,2,
+examples.117,examples,conjunction,1,0,1,34,proved,plain,0.5437,0.827,2,,proved-extra-axioms,plain,0.2863,0.340,2,,proved,plain,0.0738,0.244,2,
+examples.118,examples,conjunction,1,0,1,75,proved,plain,1.0670,1.796,2,,proved-extra-axioms,plain,1.0830,1.490,2,,failed,strong,,,1,not an inequality
+examples.119,examples,existence,0,0,1,34,proved,plain,0.0619,1.035,2,,proved,plain,0.0649,0.263,2,,proved,plain,0.1266,0.685,2,
+examples.120,examples,existence,0,0,1,34,proved,plain,0.8264,1.276,2,,proved,plain,1.0212,1.657,2,,proved,plain,0.0754,0.314,2,
+examples.121,examples,existence,0,0,1,42,proved,plain,0.5661,0.827,2,,proved-extra-axioms,plain,0.8437,1.672,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.122,examples,existence,0,0,1,46,proved,plain,0.9331,2.288,2,,proved-extra-axioms,plain,0.8813,1.532,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.123,examples,existence,0,0,1,40,proved,plain,0.5749,0.645,2,,proved,plain,0.8053,1.393,2,,proved,plain,0.1187,1.191,2,
+examples.124,examples,existence,0,0,1,35,proved,plain,0.2828,0.950,2,,proved,plain,0.2357,0.340,2,,failed,plain,,,1,not an inequality
+examples.125,examples,existence,0,0,1,83,proved,plain,0.4586,1.284,2,,proved,plain,0.3423,0.898,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.126,examples,existence,0,0,1,89,proved,plain,0.3566,1.420,2,,proved,plain,0.4175,1.154,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.127,examples,existence,0,0,1,73,proved,plain,0.3374,1.212,2,,proved,plain,0.2472,1.099,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.128,examples,bound,1,0,1,59,proved,plain,0.7906,1.007,2,,proved-extra-axioms,plain,0.7442,1.426,2,,proved,plain,0.0819,0.436,2,
+examples.129,examples,bound,1,0,1,11,proved,plain,0.0111,1.126,2,,proved,plain,0.0089,0.442,2,,proved,plain,0.0207,0.836,2,
+examples.131,examples,existence,0,0,1,34,proved,plain,0.1643,0.531,2,,proved-extra-axioms,plain,0.1573,0.376,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.134,examples,existence,0,0,1,38,proved,plain,0.2965,1.313,2,,proved-extra-axioms,plain,0.2264,0.858,2,,proved,plain,0.1312,1.271,2,
+examples.135,examples,existence,0,0,1,34,proved,plain,0.1487,0.654,2,,proved-extra-axioms,plain,0.1165,0.062,2,,proved,plain,0.1027,0.425,2,
+examples.136,examples,existence,0,0,1,39,proved,plain,0.1619,0.246,2,,proved-extra-axioms,plain,0.1182,0.384,2,,failed,plain,,,1,not an inequality
+examples.137,examples,bound,1,0,2,62,proved,plain,0.0962,0.582,2,,proved-extra-axioms,plain,0.0995,0.291,2,,proved,plain,0.1076,1.004,2,
+examples.138,examples,bound,1,0,3,103,proved,plain,1.5108,1.695,2,,proved-extra-axioms,plain,0.0942,0.062,2,,proved,strong,0.0615,1.264,2,
+examples.139,examples,bound,1,0,2,78,proved,plain,2.6818,3.379,2,,proved-extra-axioms,plain,0.4533,0.990,2,,proved,plain,0.1295,0.924,2,
+examples.140,examples,bound,1,0,1,34,proved,plain,0.1572,0.430,2,,proved-extra-axioms,plain,0.1289,0.560,2,,proved,plain,0.1074,0.186,2,
+examples.141,examples,bound,1,0,1,34,proved,plain,0.1580,0.898,2,,proved-extra-axioms,plain,0.1305,0.511,2,,proved,plain,0.1211,1.587,2,
+examples.142,examples,bound,1,0,1,34,proved,plain,0.1501,0.336,2,,proved-extra-axioms,plain,0.1385,1.022,2,,proved,plain,0.1072,1.213,2,
+examples.143,examples,bound,1,0,1,37,proved,plain,0.5231,1.291,2,,proved-extra-axioms,plain,0.1108,0.821,2,,proved,plain,0.0301,0.681,2,
+examples.144,examples,bound,1,0,1,37,proved,plain,0.3273,0.896,2,,proved-extra-axioms,plain,0.0963,0.415,2,,proved,plain,0.0308,0.454,2,
+examples.145,examples,bound,1,0,1,37,proved,plain,0.3052,1.648,2,,proved-extra-axioms,plain,0.1001,0.476,2,,proved,plain,0.0364,0.339,2,
+examples.146,examples,bound,1,0,1,38,proved,plain,0.1258,0.711,2,,proved-extra-axioms,plain,0.0894,0.855,2,,proved,plain,0.0403,1.774,2,
+examples.147,examples,bound,1,0,2,61,proved,plain,1.6309,2.727,2,,proved-extra-axioms,plain,0.3333,0.606,2,,proved,plain,0.0725,0.574,2,
+examples.148,examples,bound,1,0,1,61,proved,plain,2.0989,3.341,2,,proved-extra-axioms,plain,0.3506,0.528,2,,proved,plain,0.0903,0.875,2,
+examples.149,examples,bound,1,0,1,88,proved,plain,3.3283,3.905,2,,proved-extra-axioms,plain,0.6119,1.925,2,,proved,plain,0.1055,1.332,2,
+examples.150,examples,existence,0,0,1,34,proved,plain,0.2762,1.604,2,,proved-extra-axioms,plain,0.1975,1.274,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.151,examples,existence,0,0,1,30,proved,plain,0.2219,1.377,2,,proved-extra-axioms,plain,0.2304,1.500,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.152,examples,existence,0,0,1,41,proved,plain,0.9186,2.109,2,,proved-extra-axioms,plain,0.1747,1.358,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.153,examples,existence,0,0,1,37,proved,plain,0.6729,1.737,2,,proved-extra-axioms,plain,0.1603,1.134,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.154,examples,bound,1,0,1,31,proved,plain,0.1817,1.156,2,,proved-extra-axioms,plain,0.1247,0.975,2,,proved,plain,0.1259,1.308,2,
+examples.155,examples,bound,1,0,1,34,proved,plain,0.1669,1.295,2,,proved-extra-axioms,plain,0.1320,0.819,2,,proved,plain,0.1020,1.346,2,
+examples.156,examples,bound,1,0,1,41,proved,plain,0.4677,1.088,2,,proved-extra-axioms,plain,0.1390,0.737,2,,proved,plain,0.0473,0.683,2,
+examples.157,examples,bound,1,0,1,41,proved,plain,0.3022,1.643,2,,proved-extra-axioms,plain,0.0895,0.107,2,,proved,plain,0.0425,0.277,2,
+examples.158,examples,bound,1,0,1,41,proved,plain,0.2591,0.380,2,,proved-extra-axioms,plain,0.2369,0.351,2,,proved,plain,0.1062,0.519,2,
+examples.159,examples,bound,1,0,1,38,proved,plain,0.1358,0.287,2,,proved-extra-axioms,plain,0.1317,0.224,2,,proved,plain,0.1053,1.164,2,
+examples.160,examples,bound,1,0,1,44,proved,plain,0.1464,0.247,2,,proved-extra-axioms,plain,0.1710,1.109,2,,proved,plain,0.0482,0.866,2,
+examples.161,examples,bound,1,0,1,38,proved,plain,0.6132,0.873,2,,proved-extra-axioms,plain,0.1217,0.289,2,,proved,plain,0.0406,0.589,2,
+examples.162,examples,bound,1,0,1,38,proved,plain,0.7195,0.941,2,,proved-extra-axioms,plain,0.0985,0.309,2,,proved,plain,0.0412,0.334,2,
+examples.163,examples,bound,1,0,1,38,proved,plain,0.1219,1.232,2,,proved-extra-axioms,plain,0.1009,0.679,2,,proved,plain,0.0482,0.472,2,
+examples.164,examples,existence,0,0,1,39,proved,plain,0.1386,0.454,2,,proved-extra-axioms,plain,0.1086,0.111,2,,failed,plain,,,1,not an inequality
+examples.165,examples,existence,0,0,1,39,proved,plain,0.1143,0.327,2,,proved-extra-axioms,plain,0.1082,0.132,2,,failed,plain,,,1,not an inequality
+examples.166,examples,existence,0,0,1,68,proved,plain,4.1976,4.354,2,,proved-extra-axioms,plain,0.3748,0.843,2,,failed,plain,,,1,not an inequality
+examples.167,examples,existence,0,0,2,64,proved,plain,0.3184,0.362,2,,proved-extra-axioms,plain,0.3110,0.340,2,,failed,plain,,,1,not an inequality
+examples.168,examples,existence,0,0,1,65,proved,plain,0.3272,0.510,2,,proved-extra-axioms,plain,0.3469,1.035,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.169,examples,disequality,1,0,1,38,proved,plain,0.1544,0.058,2,,proved-extra-axioms,plain,0.1952,0.421,2,,proved,plain,0.3418,0.732,2,
+examples.170,examples,bound,1,0,1,49,proved,plain,0.4665,0.937,2,,proved-extra-axioms,plain,0.0594,0.365,2,,proved,plain,0.0398,0.274,2,
+examples.171,examples,bound,1,0,1,50,proved,plain,0.7711,0.788,2,,proved-extra-axioms,plain,0.6244,0.889,2,,proved,plain,0.1980,0.467,2,
+examples.178,examples,bound,1,0,1,32,proved-extra-axioms,plain,,,1,,proved-extra-axioms,plain,0.1784,0.187,2,,proved,plain,0.0429,0.000,2,
+examples.179,examples,bound,1,0,1,33,proved-extra-axioms,plain,,,1,,proved-extra-axioms,plain,0.2039,0.333,2,,proved,plain,0.0389,0.208,2,
+examples.180,examples,bound,1,0,1,32,proved-extra-axioms,plain,,,1,,proved-extra-axioms,plain,0.2054,0.399,2,,proved,plain,0.0365,0.114,2,
+examples.181,examples,bound,1,0,1,33,proved-extra-axioms,plain,,,1,,proved-extra-axioms,plain,0.2737,0.346,2,,proved,plain,0.0379,0.158,2,
+examples.182,examples,bound,1,0,1,34,proved-extra-axioms,plain,,,1,,proved-extra-axioms,plain,0.2565,0.339,2,,proved,plain,0.0535,0.077,2,
+examples.183,examples,bound,1,0,1,35,proved-extra-axioms,plain,,,1,,proved-extra-axioms,plain,0.1856,0.231,2,,proved,plain,0.0464,0.027,2,
+examples.184,examples,bound,1,0,6,17,proved,plain,0.4170,0.437,2,,proved-extra-axioms,plain,0.0778,0.131,2,,proved,plain,0.0577,0.083,2,
+examples.185,examples,bound,1,0,1,25,proved,plain,0.3863,0.378,2,,proved-extra-axioms,plain,0.0783,0.304,2,,proved,plain,0.0472,0.000,2,
+examples.186,examples,bound,1,0,1,17,proved,plain,0.6425,0.639,2,,proved-extra-axioms,plain,0.3025,0.223,2,,proved,plain,0.0560,0.607,2,
+examples.187,examples,bound,1,0,3,42,proved,plain,0.4483,0.441,2,,proved-extra-axioms,plain,0.1369,0.095,2,,proved,plain,0.0423,0.064,2,
+examples.188,examples,existence,0,0,1,38,proved,plain,0.1372,0.000,2,,proved-extra-axioms,plain,0.1264,0.305,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.189,examples,existence,0,0,1,43,proved,plain,0.1831,0.131,2,,proved-extra-axioms,plain,0.1343,0.188,2,,failed,plain,,,1,not an inequality
+examples.190,examples,bound,1,0,1,50,failed,limits,,,1,maximum recursion depth,proved-extra-axioms,plain,0.0919,0.042,2,,timeout,limits,,,1,
+examples.191,examples,bound,1,0,1,45,proved,plain,0.2558,0.180,2,,proved-extra-axioms,plain,0.0168,0.140,2,,timeout,limits,,,1,
+examples.194,examples,ceiling,0,0,2,17,proved,plain,0.5685,0.583,2,,proved-extra-axioms,plain,0.3438,0.202,2,,failed,strong,,,1,not an inequality
+examples.195,examples,ceiling,0,0,2,18,proved,plain,0.0668,0.000,2,,proved-extra-axioms,plain,0.0412,0.054,2,,failed,strong,,,1,not an inequality
+examples.196,examples,ceiling,0,0,2,14,proved,plain,0.0437,0.063,2,,proved-extra-axioms,plain,0.0345,0.000,2,,failed,strong,,,1,not an inequality
+examples.197,examples,ceiling,0,0,1,18,proved,plain,0.4607,0.856,2,,proved-extra-axioms,plain,0.0321,0.127,2,,failed,strong,,,1,not an inequality
+examples.198,examples,ceiling,0,0,1,21,proved,plain,0.8511,1.126,2,,proved-extra-axioms,plain,0.3141,0.341,2,,failed,strong,,,1,not an inequality
+examples.199,examples,ceiling,0,0,1,22,proved,plain,0.0702,0.296,2,,proved-extra-axioms,plain,0.0597,0.435,2,,failed,strong,,,1,not an inequality
+examples.200,examples,ceiling,0,0,1,21,proved,plain,0.6680,0.912,2,,proved-extra-axioms,plain,0.4287,0.683,2,,failed,strong,,,1,not an inequality
+examples.201,examples,ceiling,0,0,1,25,proved,plain,0.7419,1.332,2,,proved-extra-axioms,plain,0.3841,0.718,2,,failed,strong,,,1,not an inequality
+examples.202,examples,ceiling,0,0,1,31,proved,plain,0.9940,1.647,2,,proved-extra-axioms,plain,0.3844,1.141,2,,failed,strong,,,1,not an inequality
+examples.203,examples,ceiling,0,0,1,31,proved,plain,0.7299,1.336,2,,proved-extra-axioms,plain,0.3842,0.858,2,,failed,strong,,,1,not an inequality
+examples.204,examples,ceiling,0,0,1,31,proved,plain,1.0093,1.468,2,,proved-extra-axioms,plain,0.3377,0.631,2,,failed,strong,,,1,not an inequality
+examples.205,examples,ceiling,0,0,1,17,proved,plain,0.8060,1.811,2,,proved-extra-axioms,plain,0.3304,0.841,2,,failed,strong,,,1,not an inequality
+examples.206,examples,ceiling,0,0,1,21,proved,plain,0.9061,1.548,2,,proved-extra-axioms,plain,0.3296,0.645,2,,failed,strong,,,1,not an inequality
+examples.207,examples,ceiling,0,0,1,19,proved,plain,0.4629,0.745,2,,proved-extra-axioms,plain,0.0337,0.194,2,,failed,strong,,,1,not an inequality
+examples.208,examples,ceiling,0,0,1,23,proved,plain,0.4805,1.210,2,,proved-extra-axioms,plain,0.0404,0.058,2,,failed,strong,,,1,not an inequality
+examples.209,examples,ceiling,0,0,1,22,proved,plain,0.4095,0.968,2,,proved-extra-axioms,plain,0.0708,0.315,2,,failed,strong,,,1,not an inequality
+examples.210,examples,ceiling,0,0,1,14,proved,plain,0.2336,0.224,2,,proved,plain,0.3009,0.891,2,,failed,strong,,,1,not an inequality
+examples.211,examples,ceiling,0,0,1,14,proved,plain,0.3268,0.800,2,,proved,plain,0.2369,0.478,2,,failed,strong,,,1,not an inequality
+examples.212,examples,ceiling,0,0,1,18,proved,plain,0.3513,0.811,2,,proved,plain,0.3251,0.482,2,,failed,strong,,,1,not an inequality
+examples.213,examples,ceiling,0,0,1,36,proved,plain,0.4922,0.916,2,,proved-extra-axioms,plain,0.0503,0.241,2,,failed,strong,,,1,not an inequality
+examples.214,examples,ceiling,0,0,1,49,proved,plain,0.5287,0.936,2,,proved-extra-axioms,plain,0.0476,0.111,2,,failed,strong,,,1,not an inequality
+examples.215,examples,bound,1,0,4,30,proved,plain,0.1173,0.569,2,,proved-extra-axioms,plain,0.1100,0.232,2,,proved,plain,0.0335,0.659,2,
+examples.216,examples,bound,1,0,3,30,proved,plain,0.1109,0.519,2,,proved-extra-axioms,plain,0.0841,0.602,2,,proved,plain,0.0340,0.349,2,
+examples.217,examples,bound,1,0,1,31,proved,plain,0.1006,0.127,2,,proved-extra-axioms,plain,0.1673,0.762,2,,proved,plain,0.0334,0.099,2,
+examples.218,examples,bound,1,0,1,34,proved,plain,0.1033,0.195,2,,proved-extra-axioms,plain,0.0850,0.036,2,,proved,plain,0.0310,0.221,2,
+examples.219,examples,bound,1,0,1,34,proved,plain,0.1694,0.216,2,,proved-extra-axioms,plain,0.1248,0.450,2,,proved,plain,0.1075,0.561,2,
+examples.220,examples,bound,1,0,1,34,proved,plain,0.1513,0.157,2,,proved-extra-axioms,plain,0.1350,0.546,2,,proved,plain,0.1008,0.703,2,
+examples.221,examples,bound,1,0,1,34,proved,plain,0.1112,0.000,2,,proved-extra-axioms,plain,0.1129,0.252,2,,proved,plain,0.0292,0.492,2,
+examples.222,examples,bound,1,0,2,35,proved,plain,0.1511,0.480,2,,proved-extra-axioms,plain,0.1412,0.495,2,,proved,plain,0.0364,0.771,2,
+examples.223,examples,bound,1,0,1,35,proved,plain,0.1833,0.165,2,,proved-extra-axioms,plain,0.1174,0.590,2,,proved,plain,0.0373,0.660,2,
+examples.224,examples,bound,1,0,1,36,proved,plain,0.2612,0.786,2,,proved-extra-axioms,plain,0.0810,0.189,2,,proved,plain,0.0379,0.539,2,
+examples.225,examples,bound,1,0,1,35,proved,plain,0.2160,0.453,2,,proved-extra-axioms,plain,0.0922,0.330,2,,proved,plain,0.0352,0.623,2,
+examples.226,examples,bound,1,0,2,36,proved,plain,0.2095,0.364,2,,proved-extra-axioms,plain,0.1055,0.192,2,,proved,plain,0.0315,0.122,2,
+examples.227,examples,bound,1,0,5,35,proved,plain,0.4613,1.014,2,,proved-extra-axioms,plain,0.0831,0.220,2,,proved,plain,0.0289,0.263,2,
+examples.228,examples,bound,1,0,2,35,proved,plain,0.4338,0.850,2,,proved-extra-axioms,plain,0.0920,0.049,2,,proved,plain,0.0280,0.118,2,
+examples.229,examples,bound,1,0,1,35,proved,plain,0.5041,0.522,2,,proved-extra-axioms,plain,0.0715,0.510,2,,proved,plain,0.0357,0.277,2,
+examples.230,examples,bound,1,0,3,37,proved,plain,0.0937,0.079,2,,proved-extra-axioms,plain,0.0888,0.037,2,,proved,plain,0.0449,0.331,2,
+examples.231,examples,bound,1,0,3,38,proved,plain,0.0866,0.000,2,,proved-extra-axioms,plain,0.0875,0.080,2,,proved,plain,0.0354,0.253,2,
+examples.232,examples,bound,1,0,1,36,proved,plain,0.7372,1.143,2,,proved-extra-axioms,plain,0.0884,0.014,2,,proved,plain,0.0437,0.854,2,
+examples.233,examples,bound,1,0,1,36,proved,plain,0.7329,0.997,2,,proved-extra-axioms,plain,0.0739,0.044,2,,proved,plain,0.0413,0.356,2,
+examples.234,examples,bound,1,0,1,36,proved,plain,0.7151,1.019,2,,proved-extra-axioms,plain,0.1140,0.467,2,,proved,plain,0.0444,0.299,2,
+examples.235,examples,bound,1,0,1,36,proved,plain,0.6885,1.376,2,,proved-extra-axioms,plain,0.0971,0.409,2,,proved,plain,0.0446,0.148,2,
+examples.236,examples,bound,1,0,1,14,proved,plain,0.0954,0.897,2,,proved-extra-axioms,plain,0.0648,0.356,2,,proved,plain,0.0656,0.764,2,
+examples.237,examples,bound,1,0,1,14,proved,plain,0.1101,0.542,2,,proved-extra-axioms,plain,0.0786,0.351,2,,proved,plain,0.0633,0.624,2,
+examples.238,examples,bound,1,0,1,17,proved,plain,1.4859,1.772,2,,proved-extra-axioms,plain,1.3947,1.556,2,,proved,plain,0.0430,0.137,2,
+examples.239,examples,bound,1,0,1,17,proved,plain,0.8577,0.868,2,,proved-extra-axioms,plain,0.7929,0.859,2,,proved,plain,0.0624,0.410,2,
+examples.240,examples,bound,1,0,1,29,proved,plain,2.4423,2.942,2,,proved-extra-axioms,plain,1.9276,2.555,2,,proved,plain,0.0785,0.434,2,
+examples.241,examples,bound,1,0,1,18,proved,plain,0.1230,0.435,2,,proved-extra-axioms,plain,0.1031,0.423,2,,proved,plain,0.0600,0.285,2,
+examples.242,examples,bound,1,0,2,34,proved,plain,0.1473,1.026,2,,proved,plain,0.1023,0.440,2,,proved,plain,0.0377,1.032,2,
+examples.243,examples,bound,1,0,3,35,proved,plain,0.2820,0.733,2,,proved,plain,0.2937,0.665,2,,proved,plain,0.0365,0.680,2,
+examples.244,examples,bound,1,0,1,35,proved,plain,0.3304,0.604,2,,proved,plain,0.2671,0.921,2,,proved,plain,0.0383,1.068,2,
+examples.245,examples,bound,1,0,1,37,proved,plain,0.9650,1.341,2,,proved-extra-axioms,plain,0.1108,1.163,2,,proved,plain,0.0395,0.985,2,
+examples.246,examples,bound,1,0,1,38,proved,plain,0.7208,1.225,2,,proved-extra-axioms,plain,0.1078,0.394,2,,proved,plain,0.0466,0.884,2,
+examples.247,examples,bound,1,0,2,37,proved,plain,0.1281,1.299,2,,proved-extra-axioms,plain,0.1194,0.424,2,,proved,plain,0.0474,0.772,2,
+examples.248,examples,bound,1,0,1,48,proved,plain,0.4701,1.093,2,,proved-extra-axioms,plain,0.1035,0.499,2,,proved,plain,0.0423,0.436,2,
+examples.249,examples,bound,1,0,1,49,proved,plain,0.3441,0.868,2,,proved-extra-axioms,plain,0.1050,0.516,2,,proved,plain,0.0437,0.529,2,
+examples.250,examples,bound,1,0,1,48,proved,plain,0.4605,1.309,2,,proved-extra-axioms,plain,0.1127,0.674,2,,proved,plain,0.0513,0.526,2,
+examples.251,examples,bound,1,0,1,49,proved,plain,0.4147,1.016,2,,proved-extra-axioms,plain,0.0923,0.254,2,,proved,plain,0.0492,0.725,2,
+examples.252,examples,bound,1,0,1,48,proved,plain,0.2143,0.397,2,,proved-extra-axioms,plain,0.1072,0.161,2,,proved,plain,0.0345,0.502,2,
+examples.253,examples,bound,1,0,2,30,proved,plain,0.1076,0.566,2,,proved-extra-axioms,plain,0.1449,0.429,2,,proved,plain,0.0371,0.458,2,
+examples.254,examples,bound,1,0,2,31,proved,plain,0.1329,0.697,2,,proved-extra-axioms,plain,0.1197,0.526,2,,proved,plain,0.0306,0.125,2,
+examples.255,examples,bound,1,0,2,35,proved,plain,0.2432,0.687,2,,proved-extra-axioms,plain,0.0996,0.410,2,,proved,plain,0.0675,0.930,2,
+examples.256,examples,bound,1,0,2,35,proved,plain,0.6406,0.618,2,,proved-extra-axioms,plain,0.1110,0.323,2,,proved,plain,0.0439,0.502,2,
+examples.257,examples,bound,1,0,1,38,proved,plain,0.3403,1.329,2,,proved-extra-axioms,plain,0.1213,0.285,2,,proved,plain,0.0471,0.307,2,
+examples.258,examples,bound,1,0,1,39,proved,plain,0.3328,0.926,2,,proved-extra-axioms,plain,0.1043,0.895,2,,proved,plain,0.0308,0.333,2,
+examples.259,examples,bound,1,0,1,39,proved,plain,0.1338,0.075,2,,proved-extra-axioms,plain,0.1267,1.263,2,,proved,plain,0.0440,1.199,2,
+examples.260,examples,bound,1,0,1,40,proved,plain,0.1393,0.990,2,,proved-extra-axioms,plain,0.1103,1.221,2,,proved,plain,0.0537,0.643,2,
+examples.261,examples,bound,1,0,1,30,proved,plain,0.1091,0.703,2,,proved-extra-axioms,plain,0.1248,0.688,2,,proved,plain,0.0336,0.372,2,
+examples.262,examples,bound,1,0,1,50,proved,plain,0.1311,0.812,2,,proved-extra-axioms,plain,0.1073,0.711,2,,proved,plain,0.0714,0.733,2,
+examples.263,examples,conjunction,1,0,1,44,proved,plain,0.1261,1.072,2,,proved-extra-axioms,plain,0.1113,0.399,2,,proved,plain,0.0667,0.248,2,
+examples.264,examples,bound,1,0,1,44,proved,plain,0.1249,0.746,2,,proved-extra-axioms,plain,0.0873,0.413,2,,proved,plain,0.0505,0.403,2,
+examples.265,examples,bound,1,0,1,45,proved,plain,0.2566,0.626,2,,proved-extra-axioms,plain,0.2055,1.202,2,,proved,plain,0.0712,1.143,2,
+examples.266,examples,bound,1,0,1,40,proved,plain,0.2668,1.066,2,,proved-extra-axioms,plain,0.1816,1.095,2,,proved,plain,0.1168,1.270,2,
+examples.268,examples,bound,1,0,1,39,proved,plain,0.1252,1.356,2,,proved-extra-axioms,plain,0.1032,1.296,2,,proved,plain,0.0397,0.890,2,
+examples.269,examples,bound,1,0,1,39,proved,plain,0.3652,1.313,2,,proved-extra-axioms,plain,0.3789,1.276,2,,proved,plain,0.1031,1.311,2,
+examples.270,examples,bound,1,0,1,44,proved,plain,0.1464,0.923,2,,proved-extra-axioms,plain,0.1308,1.341,2,,proved,plain,0.0441,0.838,2,
+examples.271,examples,bound,1,0,1,48,proved,plain,0.1029,0.868,2,,proved-extra-axioms,plain,0.1245,1.185,2,,failed,strong,,,1,a partial function rejected the box
+examples.272,examples,bound,1,0,1,46,proved,plain,0.0900,0.699,2,,proved-extra-axioms,plain,0.0788,0.841,2,,failed,strong,,,1,a partial function rejected the box
+examples.273,examples,bound,1,0,1,48,proved,plain,0.1590,0.643,2,,proved-extra-axioms,plain,0.1452,0.978,2,,failed,strong,,,1,a partial function rejected the box
+examples.274,examples,bound,1,0,1,44,proved,plain,0.1327,0.984,2,,proved-extra-axioms,plain,0.0907,0.696,2,,failed,strong,,,1,a partial function rejected the box
+examples.275,examples,bound,1,0,1,44,proved,plain,1.0806,2.287,2,,proved-extra-axioms,plain,0.0814,0.735,2,,proved,plain,0.0513,1.312,2,
+examples.276,examples,bound,1,0,1,45,proved,plain,0.1328,1.343,2,,proved-extra-axioms,plain,0.1590,0.505,2,,proved,plain,0.0631,1.321,2,
+examples.277,examples,bound,1,0,1,45,proved,plain,0.0927,0.387,2,,proved-extra-axioms,plain,0.1022,1.102,2,,proved,plain,0.0529,0.548,2,
+examples.278,examples,bound,1,0,1,46,proved,plain,0.1134,1.188,2,,proved-extra-axioms,plain,0.1092,0.726,2,,proved,plain,0.0645,0.676,2,
+examples.281,examples,bound,1,0,1,24,proved,plain,1.1777,2.372,2,,proved-extra-axioms,plain,0.4338,1.797,2,,proved,plain,0.0331,0.920,2,
+examples.282,examples,bound,1,0,1,25,proved,plain,0.0596,0.799,2,,proved-extra-axioms,plain,0.0578,1.439,2,,proved,plain,0.0458,1.211,2,
+examples.283,examples,bound,1,0,1,17,proved,plain,0.0448,0.950,2,,proved-extra-axioms,plain,0.0322,0.959,2,,proved,plain,0.0610,0.237,2,
+examples.284,examples,bound,1,0,1,24,proved,plain,2.1910,3.503,2,,proved-extra-axioms,plain,1.8034,2.425,2,,proved,plain,0.0323,0.120,2,
+examples.285,examples,bound,1,0,1,38,proved,plain,0.1203,1.310,2,,proved,plain,0.1118,0.916,2,,proved,plain,0.0378,1.429,2,
+examples.286,examples,bound,1,0,1,43,proved,plain,0.4460,1.882,2,,proved,plain,0.4788,1.345,2,,proved,plain,0.0480,1.472,2,
+examples.287,examples,bound,1,0,1,43,proved,plain,0.3482,1.751,2,,proved,plain,0.3176,1.962,2,,proved,plain,0.0529,1.325,2,
+examples.288,examples,existence,0,0,1,47,proved,plain,0.1490,1.392,2,,proved-extra-axioms,plain,0.1347,1.792,2,,failed,plain,,,1,not an inequality
+examples.289,examples,existence,0,0,1,47,proved,plain,0.1586,1.343,2,,proved-extra-axioms,plain,0.0897,0.893,2,,failed,plain,,,1,not an inequality
+examples.290,examples,existence,0,0,1,47,proved,plain,0.1679,1.269,2,,proved-extra-axioms,plain,0.1953,0.697,2,,failed,plain,,,1,not an inequality
+examples.291,examples,existence,0,0,1,37,proved,plain,0.2277,1.454,2,,proved-extra-axioms,plain,0.1813,0.948,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.292,examples,existence,0,0,1,51,proved,plain,0.2660,1.477,2,,proved,plain,0.1947,1.067,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.295,examples,existence,0,0,1,36,proved,plain,0.1718,0.790,2,,proved-extra-axioms,plain,0.1477,0.752,2,,failed,plain,,,1,interval found no witness of the statement among the values that it tries: the real variab
+examples.296,examples,existence,0,0,1,41,proved,plain,0.2402,1.592,2,,proved-extra-axioms,plain,0.1937,1.497,2,,failed,plain,,,1,not an inequality
+examples.299,examples,existence,0,0,1,72,proved,plain,5.8364,7.368,2,,proved-extra-axioms,plain,0.4177,0.696,2,,failed,plain,,,1,not an inequality
+examples.300,examples,existence,0,0,1,84,proved,plain,5.4814,6.672,2,,proved-extra-axioms,plain,0.3976,0.595,2,,failed,plain,,,1,not an inequality
+examples.301,examples,existence,0,0,1,84,proved,plain,5.7332,7.253,2,,proved-extra-axioms,plain,0.5323,2.173,2,,failed,plain,,,1,not an inequality
+examples.302,examples,existence,0,0,1,88,proved,plain,0.6901,2.446,2,,proved-extra-axioms,plain,0.5457,2.548,2,,failed,plain,,,1,not an inequality
+examples.303,examples,bound,1,0,2,40,proved,plain,0.5486,2.107,2,,proved-extra-axioms,plain,0.2004,1.420,2,,proved,plain,0.0797,1.341,2,
+examples.304,examples,bound,1,0,1,41,proved,plain,0.5538,2.192,2,,proved-extra-axioms,plain,0.2230,1.458,2,,proved,plain,0.0641,0.553,2,
+examples.305,examples,bound,1,0,1,42,proved,plain,0.6797,1.362,2,,proved-extra-axioms,plain,0.1963,0.493,2,,proved,plain,0.0702,1.784,2,
+examples.306,examples,bound,1,0,1,43,proved,plain,0.6220,1.272,2,,proved-extra-axioms,plain,0.1915,0.397,2,,proved,plain,0.0584,0.429,2,
+examples.307,examples,bound,1,0,1,55,proved,plain,0.9683,1.237,2,,proved-extra-axioms,plain,0.3186,0.607,2,,proved,plain,0.0846,1.144,2,
+examples.308,examples,bound,1,0,1,30,proved,plain,0.1176,0.857,2,,proved-extra-axioms,plain,0.1427,1.675,2,,proved,plain,0.0703,0.522,2,
+examples.309,examples,bound,1,0,1,34,proved,plain,0.1463,1.353,2,,proved-extra-axioms,plain,0.1016,1.089,2,,proved,plain,0.0645,0.727,2,
+examples.310,examples,bound,1,0,1,67,proved,plain,1.6598,2.538,2,,proved-extra-axioms,plain,0.8132,2.420,2,,proved,plain,0.1242,1.097,2,
+examples.311,examples,bound,1,0,1,74,proved,plain,1.8619,2.339,2,,proved-extra-axioms,plain,0.7480,1.024,2,,proved,plain,0.1645,1.027,2,
+examples.312,examples,bound,1,0,1,49,proved,plain,0.2040,0.621,2,,proved-extra-axioms,plain,0.1866,1.168,2,,proved,plain,0.1371,1.216,2,
+examples.313,examples,bound,1,0,1,60,proved,plain,1.1270,2.173,2,,proved-extra-axioms,plain,0.8893,1.446,2,,proved,plain,0.0554,0.416,2,
+examples.314,examples,bound,1,0,1,61,proved,plain,0.9601,1.011,2,,proved-extra-axioms,plain,0.9406,2.064,2,,proved,plain,0.0545,0.369,2,
+examples.315,examples,bound,1,0,1,60,proved,plain,1.4087,2.147,2,,proved-extra-axioms,plain,0.3096,0.490,2,,proved,plain,0.0767,0.569,2,
+examples.316,examples,bound,1,0,1,61,proved,plain,1.1938,1.972,2,,proved-extra-axioms,plain,0.3333,0.920,2,,proved,plain,0.0940,0.797,2,
+examples.317,examples,bound,1,0,1,51,proved,plain,0.1578,0.676,2,,proved-extra-axioms,plain,0.1200,0.487,2,,proved,plain,0.0672,0.345,2,
+examples.318,examples,bound,1,0,1,43,proved,plain,0.3781,0.460,2,,proved-extra-axioms,plain,0.1138,0.709,2,,proved,plain,0.0396,0.139,2,
+examples.319,examples,bound,1,0,1,45,proved,plain,0.4967,0.779,2,,proved-extra-axioms,plain,0.1104,0.817,2,,proved,plain,0.0533,0.785,2,
+examples.320,examples,bound,1,0,1,49,proved,plain,0.4493,1.057,2,,proved-extra-axioms,plain,0.1062,0.120,2,,proved,plain,0.0352,0.830,2,
+examples.321,examples,bound,1,0,1,45,proved,plain,0.3237,0.997,2,,proved-extra-axioms,plain,0.2135,0.250,2,,proved,plain,0.1340,0.546,2,
+examples.322,examples,bound,1,0,1,36,proved,plain,0.1123,0.237,2,,proved-extra-axioms,plain,0.1212,0.680,2,,proved,plain,0.0424,0.294,2,
+examples.323,examples,bound,1,0,1,46,proved,plain,0.3812,0.506,2,,proved-extra-axioms,plain,0.1082,0.185,2,,proved,plain,0.0509,0.179,2,
+examples.324,examples,bound,1,0,1,30,proved,plain,0.0826,0.178,2,,proved-extra-axioms,plain,0.0795,0.400,2,,proved,plain,0.0352,0.224,2,
+examples.325,examples,bound,1,0,1,36,proved,plain,0.2343,0.489,2,,proved-extra-axioms,plain,0.0984,0.236,2,,proved,plain,0.0485,0.280,2,
+examples.326,examples,bound,1,0,1,36,proved,plain,0.2763,1.853,2,,proved-extra-axioms,plain,0.0847,0.257,2,,proved,plain,0.0584,0.292,2,
+examples.327,examples,bound,1,0,1,35,proved,plain,0.5314,0.565,2,,proved-extra-axioms,plain,0.0942,0.364,2,,proved,plain,0.0364,0.162,2,
+examples.328,examples,bound,1,0,1,38,proved,plain,0.0966,0.762,2,,proved-extra-axioms,plain,0.0792,0.554,2,,proved,plain,0.0571,1.293,2,
+examples.329,examples,bound,1,0,1,37,proved,plain,0.0830,0.293,2,,proved-extra-axioms,plain,0.0835,0.544,2,,proved,plain,0.0630,0.923,2,
+examples.330,examples,bound,1,0,1,38,proved,plain,0.0946,0.764,2,,proved-extra-axioms,plain,0.0782,0.461,2,,proved,plain,0.0649,1.583,2,

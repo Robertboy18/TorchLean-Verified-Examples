@@ -1,0 +1,265 @@
+lean,family,outcome,wall_s,how,cases,certificate_boxes,closed,derived_bounds,pinned,trace_lines
+20161105-Sturm-MBO__mbo_E11.lean,20161105-Sturm-MBO,proved,2.203,a certificate of one box,0,1,by a certificate x1,0,0,1
+20161105-Sturm-MBO__mbo_E11E21.lean,20161105-Sturm-MBO,proved,15.947,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,6
+20161105-Sturm-MBO__mbo_E11E23.lean,20161105-Sturm-MBO,proved,17.699,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,6
+20161105-Sturm-MBO__mbo_E11E26.lean,20161105-Sturm-MBO,proved,20.232,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,6
+20161105-Sturm-MBO__mbo_E11E27.lean,20161105-Sturm-MBO,proved,2.707,a certificate of one box,0,1,by a certificate x1,0,4,6
+20161105-Sturm-MBO__mbo_E16.lean,20161105-Sturm-MBO,proved,7.985,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,6
+20161105-Sturm-MBO__mbo_E17.lean,20161105-Sturm-MBO,proved,8.461,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,6
+20161105-Sturm-MBO__mbo_E20.lean,20161105-Sturm-MBO,proved,7.313,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,6
+20161105-Sturm-MBO__mbo_E21.lean,20161105-Sturm-MBO,proved,2.378,a certificate of one box,0,1,by a certificate x1,0,3,5
+20161105-Sturm-MBO__mbo_E21E23.lean,20161105-Sturm-MBO,proved,7.391,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,4
+20161105-Sturm-MBO__mbo_E21E26.lean,20161105-Sturm-MBO,proved,8.665,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,4
+20161105-Sturm-MBO__mbo_E21E27.lean,20161105-Sturm-MBO,proved,3.506,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,4
+20161105-Sturm-MBO__mbo_E21E28.lean,20161105-Sturm-MBO,proved,10.437,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,4
+20161105-Sturm-MBO__mbo_E22.lean,20161105-Sturm-MBO,proved,7.716,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,6
+20161105-Sturm-MBO__mbo_E23.lean,20161105-Sturm-MBO,proved,2.883,a certificate of one box,0,1,by a certificate x1,0,3,5
+20161105-Sturm-MBO__mbo_E23E26.lean,20161105-Sturm-MBO,proved,13.797,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,3,5
+20161105-Sturm-MBO__mbo_E23E27.lean,20161105-Sturm-MBO,proved,3.971,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,3,5
+20161105-Sturm-MBO__mbo_E23E28.lean,20161105-Sturm-MBO,proved,9.531,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,3,5
+20161105-Sturm-MBO__mbo_E25.lean,20161105-Sturm-MBO,proved,9.246,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,6
+20161105-Sturm-MBO__mbo_E26.lean,20161105-Sturm-MBO,proved,2.581,a certificate of one box,0,1,by a certificate x1,0,3,5
+20161105-Sturm-MBO__mbo_E26E27.lean,20161105-Sturm-MBO,proved,5.625,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,3,5
+20161105-Sturm-MBO__mbo_E26E28.lean,20161105-Sturm-MBO,proved,15.677,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,3,5
+20161105-Sturm-MBO__mbo_E27.lean,20161105-Sturm-MBO,proved,2.198,a certificate of one box,0,1,by a certificate x1,0,0,1
+20161105-Sturm-MBO__mbo_E27E28.lean,20161105-Sturm-MBO,proved,4.974,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,4
+20161105-Sturm-MBO__mbo_E28.lean,20161105-Sturm-MBO,proved,2.822,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,4
+20161105-Sturm-MBO__mbo_E7.lean,20161105-Sturm-MBO,proved,2.823,a certificate of one box,0,1,by a certificate x1,0,3,5
+20161105-Sturm-MBO__mbo_E7E11.lean,20161105-Sturm-MBO,proved,3.954,a certificate of one box,0,1,by a certificate x1,0,4,6
+20161105-Sturm-MBO__mbo_E7E27.lean,20161105-Sturm-MBO,proved,2.58,a certificate of one box,0,1,by a certificate x1,0,4,6
+20161105-Sturm-MBO__mbo_E9.lean,20161105-Sturm-MBO,proved,7.007,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,6
+20180501-Economics-Mulligan__MulliganEconomicsModel0004c.lean,20180501-Economics-Mulligan,proved,3.425,"linarith or nlinarith, without a box",0,0,"by nlinarith, without a box x1",0,2,3
+20180501-Economics-Mulligan__MulliganEconomicsModel0006c.lean,20180501-Economics-Mulligan,proved,5.78,"linarith or nlinarith, without a box",0,0,"by nlinarith, without a box x1",2,2,5
+20180501-Economics-Mulligan__MulliganEconomicsModel0009c.lean,20180501-Economics-Mulligan,proved,3.325,"linarith or nlinarith, without a box",0,0,"by nlinarith, without a box x1",0,2,3
+20180501-Economics-Mulligan__MulliganEconomicsModel0018c.lean,20180501-Economics-Mulligan,proved,4.496,"linarith or nlinarith, without a box",0,0,"by nlinarith, without a box x1",0,0,1
+20180501-Economics-Mulligan__MulliganEconomicsModel0074c.lean,20180501-Economics-Mulligan,proved,3.204,"linarith or nlinarith, without a box",0,0,by linarith x1,0,0,1
+20180501-Economics-Mulligan__MulliganEconomicsModel0078c.lean,20180501-Economics-Mulligan,proved,5.139,"linarith or nlinarith, without a box",0,0,"by linarith, without a box x1",0,0,1
+20200911-Pine__1599121980156583000.lean,20200911-Pine,proved,15.996,certificates of more than one box,5,467,by a certificate x4; by nlinarith x1,1,0,9
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_AmerMathMonthly_vol125no10_p922a.lean,20220314-Uncu,proved,4.915,"linarith or nlinarith, without a box",0,0,by linarith x1,1,0,2
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_AmerMathMonthly_vol125no10_p922b.lean,20220314-Uncu,proved,6.045,"linarith or nlinarith, without a box",0,0,"by nlinarith, without a box x1",2,0,3
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_AmerMathMonthly_vol125no10_p922c.lean,20220314-Uncu,proved,4.414,"linarith or nlinarith, without a box",0,0,by linarith x1,1,0,2
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_ISSAC05_2.lean,20220314-Uncu,proved,2.317,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,4
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_ISSAC05_Bessack_1_0.lean,20220314-Uncu,proved,2.137,"a definite form, without a box",0,0,by a form that is definite without a box x1,0,0,1
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_ISSAC05_Bessack_1_1.lean,20220314-Uncu,proved,3.773,"linarith or nlinarith, without a box",0,0,by linarith x1,0,0,1
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_ISSAC05_Bessack_2_0.lean,20220314-Uncu,proved,2.459,"linarith or nlinarith, without a box",0,0,by linarith x1,0,0,1
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_ISSAC05_Bessack_2_1.lean,20220314-Uncu,proved,3.146,"linarith or nlinarith, without a box",0,0,by linarith x1,2,0,3
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_ISSAC05_Bessack_3_0.lean,20220314-Uncu,proved,3.106,"linarith or nlinarith, without a box",0,0,by linarith x1,2,0,3
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_ISSAC05_Mitrinovic_5_15.lean,20220314-Uncu,proved,3.631,certificates of more than one box,0,16,by a certificate x1,1,0,2
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_ISSAC05_Sec4b.lean,20220314-Uncu,proved,2.844,"linarith or nlinarith, without a box",0,0,"by nlinarith, without a box x1",0,0,1
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_ISSAC05_Weierstrass_1_RHS.lean,20220314-Uncu,proved,4.573,"linarith or nlinarith, without a box",0,0,by linarith x1,2,0,4
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_ISSAC05_Weierstrass_2_RHS.lean,20220314-Uncu,proved,2.945,"linarith or nlinarith, without a box",0,0,by linarith x1,1,0,2
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_JSC_SUMCracker_16b.lean,20220314-Uncu,proved,2.178,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,0,1
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_Mitrinovic_4_16.lean,20220314-Uncu,proved,2.783,"linarith or nlinarith, without a box",0,0,by linarith x1,1,0,2
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_Mitrinovic_4_17.lean,20220314-Uncu,proved,2.883,"linarith or nlinarith, without a box",0,0,by linarith x1,0,0,2
+20220314-Uncu__Polynomial_Proof_Calls__ProveIneq_Mitrinovic_4_41.lean,20220314-Uncu,proved,3.931,"linarith or nlinarith, without a box",0,0,"by nlinarith, without a box x1",1,0,2
+20220314-Uncu__Rational_Function_Proof_Calls_With_Basic_Denominator_Simplifications__BDC_ProveIneq_ISSAC05_Bessack_2_m1.lean,20220314-Uncu,proved,2.461,"linarith or nlinarith, without a box",0,0,by linarith x1,0,0,1
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_ISSAC05_Bessack_2_m1.lean,20220314-Uncu,proved,3.086,"linarith or nlinarith, without a box",2,0,"by linarith x1; on the ranges of the atoms, without a box x1",0,0,3
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_ISSAC05_Bessack_3_m1.lean,20220314-Uncu,proved,3.731,"linarith or nlinarith, without a box",2,0,"by nlinarith, without a box x1; on the ranges of the atoms, without a box x1",1,0,4
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_ISSAC05_Bessack_3_m2.lean,20220314-Uncu,proved,3.666,"linarith or nlinarith, without a box",2,0,"by linarith x1; on the ranges of the atoms, without a box x1",0,0,3
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_ISSAC05_Bessack_4_m3.lean,20220314-Uncu,proved,3.164,"linarith or nlinarith, without a box",2,0,"by linarith x1; on the ranges of the atoms, without a box x1",0,0,3
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_ISSAC05_LevinLHS.lean,20220314-Uncu,proved,4.959,"linarith or nlinarith, without a box",4,0,"by linarith x2; on the ranges of the atoms, without a box x2",4,2,11
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_ISSAC10_ex2d.lean,20220314-Uncu,proved,7.054,"linarith or nlinarith, without a box",4,0,"by nlinarith, without a box x1; on the ranges of the atoms, without a box x3",0,0,5
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_Mitrinovic_3_31.lean,20220314-Uncu,proved,8.97,"linarith or nlinarith, without a box",16,0,"by nlinarith, without a box x1; on the ranges of the atoms, without a box x15",1,8,34
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_Mitrinovic_4_23.lean,20220314-Uncu,proved,11.088,"linarith or nlinarith, without a box",16,0,"by linarith x2; on the ranges of the atoms, without a box x14",2,8,27
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_Mitrinovic_4_29_1.lean,20220314-Uncu,proved,5.159,"linarith or nlinarith, without a box",16,0,"by nlinarith, without a box x1; on the ranges of the atoms, without a box x15",1,0,18
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_Mitrinovic_4_3.lean,20220314-Uncu,proved,3.228,"linarith or nlinarith, without a box",4,0,"by linarith x1; on the ranges of the atoms, without a box x3",0,0,5
+20220314-Uncu__Rational_Function_Proof_Calls_With_Disjunctive_Denominator_Simplifications__DDC_ProveIneq_Mitrinovic_4_30_1.lean,20220314-Uncu,proved,6.915,"linarith or nlinarith, without a box",16,0,"by nlinarith, without a box x1; on the ranges of the atoms, without a box x15",2,0,19
+hong__hong_1.lean,hong,proved,2.059,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,0,1
+hong__hong_10.lean,hong,proved,4.94,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_11.lean,hong,proved,5.662,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_12.lean,hong,proved,6.528,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_13.lean,hong,proved,7.434,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_14.lean,hong,proved,11.125,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_15.lean,hong,proved,12.616,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_16.lean,hong,proved,11.566,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_17.lean,hong,proved,15.134,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_18.lean,hong,proved,14.55,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_19.lean,hong,proved,17.006,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_2.lean,hong,proved,2.38,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_20.lean,hong,proved,18.853,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_3.lean,hong,proved,3.324,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_4.lean,hong,proved,2.558,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_5.lean,hong,proved,2.742,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_6.lean,hong,proved,3.204,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_7.lean,hong,proved,4.334,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_8.lean,hong,proved,4.577,a certificate of one box,0,1,by a certificate x1,1,0,2
+hong__hong_9.lean,hong,proved,4.333,a certificate of one box,0,1,by a certificate x1,1,0,2
+hycomp__ball_count_1d_plain.01.qfree_global_0.lean,hycomp,proved,3.223,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.01.redlog_global_0.lean,hycomp,proved,4.013,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.01.seq_lazy_global_0.lean,hycomp,proved,3.285,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.01.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.871,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.01.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.403,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.01.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,4.152,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.02.qfree_global_0.lean,hycomp,proved,3.607,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.02.redlog_global_0.lean,hycomp,proved,4.339,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.02.seq_lazy_global_0.lean,hycomp,proved,3.504,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.02.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.907,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.02.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.952,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.02.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.548,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.03.qfree_global_0.lean,hycomp,proved,3.305,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.03.redlog_global_0.lean,hycomp,proved,3.444,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.03.seq_lazy_global_0.lean,hycomp,proved,3.765,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.03.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.595,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.03.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.407,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.03.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.504,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.04.qfree_global_0.lean,hycomp,proved,3.227,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.04.redlog_global_0.lean,hycomp,proved,3.505,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.04.seq_lazy_global_0.lean,hycomp,proved,3.347,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.04.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.584,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.04.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.223,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.04.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.427,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.05.qfree_global_0.lean,hycomp,proved,3.105,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.05.redlog_global_0.lean,hycomp,proved,3.272,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.05.seq_lazy_global_0.lean,hycomp,proved,3.283,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.05.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.585,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.05.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.367,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.05.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.465,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_1d_plain.10.qfree_global_0.lean,hycomp,proved,3.685,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_1d_plain.10.redlog_global_0.lean,hycomp,proved,3.846,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_1d_plain.10.seq_lazy_global_0.lean,hycomp,proved,4.194,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_1d_plain.10.seq_lazy_lemmas_global_0.lean,hycomp,proved,4.109,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_1d_plain.10.seq_lazy_linear_enc_global_0.lean,hycomp,proved,4.108,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_1d_plain.10.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,4.29,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.01.redlog_global_0.lean,hycomp,proved,4.515,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.01.seq_lazy_global_0.lean,hycomp,proved,3.828,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.01.seq_lazy_lemmas_global_0.lean,hycomp,proved,4.714,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.01.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.968,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.01.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,4.276,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.02.redlog_global_0.lean,hycomp,proved,4.33,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.02.seq_lazy_global_0.lean,hycomp,proved,3.766,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.02.seq_lazy_lemmas_global_0.lean,hycomp,proved,4.733,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.02.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.787,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.02.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,4.716,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.03.redlog_global_0.lean,hycomp,proved,4.392,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.03.seq_lazy_global_0.lean,hycomp,proved,3.87,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.03.seq_lazy_lemmas_global_0.lean,hycomp,proved,4.53,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.03.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.91,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.03.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,4.409,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.04.redlog_global_0.lean,hycomp,proved,4.53,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.04.seq_lazy_global_0.lean,hycomp,proved,3.889,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.04.seq_lazy_lemmas_global_0.lean,hycomp,proved,4.631,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.04.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.867,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.04.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,4.471,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.05.redlog_global_0.lean,hycomp,proved,4.481,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.05.seq_lazy_global_0.lean,hycomp,proved,4.01,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.05.seq_lazy_lemmas_global_0.lean,hycomp,proved,5.077,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.05.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.909,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.05.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,4.511,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill.10.redlog_global_0.lean,hycomp,proved,5.681,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__ball_count_2d_hill.10.seq_lazy_global_0.lean,hycomp,proved,4.936,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__ball_count_2d_hill.10.seq_lazy_lemmas_global_0.lean,hycomp,proved,5.964,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__ball_count_2d_hill.10.seq_lazy_linear_enc_global_0.lean,hycomp,proved,5.117,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__ball_count_2d_hill.10.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,5.764,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__ball_count_2d_hill_simple.01.qfree_global_0.lean,hycomp,proved,2.942,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.01.redlog_global_0.lean,hycomp,proved,3.101,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.01.seq_lazy_global_0.lean,hycomp,proved,3.184,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.01.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.647,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.01.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.284,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.01.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.506,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.02.qfree_global_0.lean,hycomp,proved,2.94,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.02.redlog_global_0.lean,hycomp,proved,3.103,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.02.seq_lazy_global_0.lean,hycomp,proved,3.104,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.02.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.587,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.02.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.146,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.02.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.365,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.03.qfree_global_0.lean,hycomp,proved,2.921,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.03.redlog_global_0.lean,hycomp,proved,3.062,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.03.seq_lazy_global_0.lean,hycomp,proved,3.224,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.03.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.626,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.03.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.225,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.03.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.486,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.04.qfree_global_0.lean,hycomp,proved,3.043,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.04.redlog_global_0.lean,hycomp,proved,3.023,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.04.seq_lazy_global_0.lean,hycomp,proved,3.284,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.04.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.546,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.04.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.125,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.04.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.486,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.05.qfree_global_0.lean,hycomp,proved,2.983,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.05.redlog_global_0.lean,hycomp,proved,3.103,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.05.seq_lazy_global_0.lean,hycomp,proved,3.183,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.05.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.506,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.05.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.163,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.05.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.566,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_hill_simple.10.qfree_global_0.lean,hycomp,proved,3.627,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill_simple.10.redlog_global_0.lean,hycomp,proved,3.808,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill_simple.10.seq_lazy_global_0.lean,hycomp,proved,3.989,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill_simple.10.seq_lazy_lemmas_global_0.lean,hycomp,proved,4.392,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill_simple.10.seq_lazy_linear_enc_global_0.lean,hycomp,proved,4.132,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_hill_simple.10.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,4.253,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_plain.01.qfree_global_0.lean,hycomp,proved,3.123,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.01.redlog_global_0.lean,hycomp,proved,3.424,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.01.seq_lazy_global_0.lean,hycomp,proved,3.345,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.01.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.809,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.01.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.345,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.01.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.708,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.02.qfree_global_0.lean,hycomp,proved,3.224,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.02.redlog_global_0.lean,hycomp,proved,3.566,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.02.seq_lazy_global_0.lean,hycomp,proved,3.586,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.02.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.687,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.02.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.625,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.02.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.951,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.03.qfree_global_0.lean,hycomp,proved,3.345,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.03.redlog_global_0.lean,hycomp,proved,3.568,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.03.seq_lazy_global_0.lean,hycomp,proved,3.407,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.03.seq_lazy_lemmas_global_0.lean,hycomp,proved,3.833,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.03.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.447,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.03.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.772,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.04.qfree_global_0.lean,hycomp,proved,3.286,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.04.redlog_global_0.lean,hycomp,proved,3.767,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.04.seq_lazy_global_0.lean,hycomp,proved,3.668,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.04.seq_lazy_lemmas_global_0.lean,hycomp,proved,4.131,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.04.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.951,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.04.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,3.69,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.05.qfree_global_0.lean,hycomp,proved,3.647,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.05.redlog_global_0.lean,hycomp,proved,3.688,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.05.seq_lazy_global_0.lean,hycomp,proved,3.467,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.05.seq_lazy_lemmas_global_0.lean,hycomp,proved,4.715,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.05.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.768,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.05.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,4.092,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,2,3
+hycomp__ball_count_2d_plain.10.qfree_global_0.lean,hycomp,proved,6.589,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_plain.10.redlog_global_0.lean,hycomp,proved,4.901,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_plain.10.seq_lazy_global_0.lean,hycomp,proved,7.84,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_plain.10.seq_lazy_lemmas_global_0.lean,hycomp,proved,5.644,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_plain.10.seq_lazy_linear_enc_global_0.lean,hycomp,proved,4.696,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_plain.10.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,5.575,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.01.seq_lazy_global_0.lean,hycomp,proved,5.461,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.01.seq_lazy_lemmas_global_0.lean,hycomp,proved,10.095,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.01.seq_lazy_linear_enc_global_0.lean,hycomp,proved,5.201,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.01.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,8.199,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.02.seq_lazy_global_0.lean,hycomp,proved,5.499,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.02.seq_lazy_lemmas_global_0.lean,hycomp,proved,9.954,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.02.seq_lazy_linear_enc_global_0.lean,hycomp,proved,5.099,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.02.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,7.096,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.03.seq_lazy_global_0.lean,hycomp,proved,5.137,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.03.seq_lazy_lemmas_global_0.lean,hycomp,proved,7.316,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.03.seq_lazy_linear_enc_global_0.lean,hycomp,proved,5.121,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.03.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,5.808,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.04.seq_lazy_global_0.lean,hycomp,proved,6.251,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.04.seq_lazy_lemmas_global_0.lean,hycomp,proved,7.398,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.04.seq_lazy_linear_enc_global_0.lean,hycomp,proved,5.422,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.04.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,6.027,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.05.seq_lazy_global_0.lean,hycomp,proved,5.626,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.05.seq_lazy_lemmas_global_0.lean,hycomp,proved,7.517,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.05.seq_lazy_linear_enc_global_0.lean,hycomp,proved,7.114,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.05.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,6.211,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__ball_count_2d_slope.10.seq_lazy_global_0.lean,hycomp,proved,6.714,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__ball_count_2d_slope.10.seq_lazy_lemmas_global_0.lean,hycomp,proved,11.809,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__ball_count_2d_slope.10.seq_lazy_linear_enc_global_0.lean,hycomp,proved,6.735,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__ball_count_2d_slope.10.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,7.637,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__etcs_braking_2.01.qfree_global_0.lean,hycomp,proved,5.281,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__etcs_braking_2.01.redlog_global_0.lean,hycomp,proved,7.516,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,4,5
+hycomp__etcs_braking_2.01.seq_lazy_global_0.lean,hycomp,proved,9.026,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__etcs_braking_2.01.seq_lazy_lemmas_global_0.lean,hycomp,proved,8.745,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__etcs_braking_2.01.seq_lazy_linear_enc_global_0.lean,hycomp,proved,8.442,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__etcs_braking_2.01.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,7.377,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,6,7
+hycomp__simple_ballistics_reach.01.seq_lazy_global_0.lean,hycomp,proved,4.914,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,1,2
+hycomp__simple_ballistics_reach.01.seq_lazy_lemmas_global_0.lean,hycomp,proved,7.052,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,1,2
+hycomp__simple_ballistics_reach.01.seq_lazy_linear_enc_global_0.lean,hycomp,proved,3.772,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,1,2
+hycomp__simple_ballistics_reach.01.seq_lazy_linear_enc_lemmas_global_0.lean,hycomp,proved,7.052,"the ranges of the atoms alone, without a box",0,0,"on the ranges of the atoms, without a box x1",0,1,2
+zankl__gen-13.lean,zankl,proved,2.179,"a definite form, without a box",0,0,by a form that is definite without a box x1,0,0,1
+zankl__gen-14.lean,zankl,proved,2.137,"a definite form, without a box",0,0,by a form that is definite without a box x1,0,0,1
+zankl__gen-15.lean,zankl,proved,2.641,certificates of more than one box,0,14,by a certificate x1,1,0,2
+zankl__gen-17.lean,zankl,proved,3.448,a certificate of one box,0,1,by a certificate x1,2,0,3
+zankl__matrix-1-all-52.lean,zankl,proved,9.607,"linarith or nlinarith, without a box",0,0,"by linarith, without a box x1",1,0,4
+zankl__matrix-1-all-56.lean,zankl,proved,4.554,"a definite form, without a box",0,0,by a form that is definite without a box x1,0,1,5
+zankl__matrix-2-all-27.lean,zankl,proved,12.748,"a definite form, without a box",0,0,by a form that is definite without a box x1,0,2,7

@@ -1,0 +1,7 @@
+solver,benchmarks,solved,sat,unsat,cpu_seconds_solved,wall_seconds_solved,benchmarks_with_fixed_inputs
+Bitwuzla,275,255,140,115,12529.7,12564.3,0
+COLIBRI,275,232,133,99,1682.0,1710.9,0
+cvc5,275,230,139,91,18499.1,18530.3,0
+colibri2,275,199,117,82,5739.6,5764.5,0
+Z3-Owl,275,173,104,69,23773.1,23798.6,0
+Z3-Owl-base,275,139,82,57,27555.6,27576.0,0

@@ -1,0 +1,40 @@
+goal,source,lcn_status,why,fl_status
+examples.009,LeanCert/Test/BernsteinBounds.lean:80,failed,typeclass instance problem is stuck Membership ℚ ?m.1 Note: Lean will not try to resolve t,failed
+examples.018,LeanCert/Test/EnclosureTactic.lean:15,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.019,LeanCert/Test/EnclosureTactic.lean:19,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.020,LeanCert/Test/EnclosureTactic.lean:24,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.021,LeanCert/Test/EnclosureTactic.lean:28,failed,Function expected at narrowIdentity but this term has type ?m.1 Note: Expected a function ,failed
+examples.022,LeanCert/Test/EnclosureTactic.lean:32,failed,Function expected at fatPositive but this term has type ?m.1 Note: Expected a function bec,failed
+examples.033,LeanCert/Test/ExtensionExecution.lean:61,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.034,LeanCert/Test/ExtensionExecution.lean:65,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.035,LeanCert/Test/ExtensionExecution.lean:72,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.036,LeanCert/Test/ExtensionExecution.lean:76,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.037,LeanCert/Test/ExtensionExecution.lean:88,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.038,LeanCert/Test/ExtensionExecution.lean:95,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.039,LeanCert/Test/ExtensionExecution.lean:100,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.040,LeanCert/Test/ExtensionExecution.lean:117,failed,Function expected at shifted but this term has type ?m.1 Note: Expected a function because,failed
+examples.041,LeanCert/Test/ExtensionExecution.lean:123,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.042,LeanCert/Test/ExtensionExecution.lean:135,failed,Function expected at positiveBranch but this term has type ?m.1 Note: Expected a function ,failed
+examples.069,LeanCert/Test/FinSumBound.lean:190,failed,"finsum_bound: LeanCert.Tactic.FinSumFailure.internalFailure ""cannot evaluate code because ",proved
+examples.070,LeanCert/Test/FinSumBound.lean:194,failed,"finsum_bound: LeanCert.Tactic.FinSumFailure.internalFailure ""cannot evaluate code because ",proved
+examples.071,LeanCert/Test/FinSumBound.lean:218,failed,"finsum_bound: LeanCert.Tactic.FinSumFailure.internalFailure ""cannot evaluate code because ",proved
+examples.088,LeanCert/Test/FinSumBound.lean:331,failed,"finsum_bound auto: LeanCert.Tactic.FinSumFailure.verificationFailure ""finsum_bound auto me",proved
+examples.097,LeanCert/Test/LeanCertIntegrals.lean:78,failed,failed to synthesize instance of type class NormedAddCommGroup ℕ Hint: Type class instance,failed
+examples.130,LeanCert/Test/NaturalSyntaxRepairs.lean:21,failed,unsupported expression,failed
+examples.132,LeanCert/Test/NaturalSyntaxRepairs.lean:41,failed,unsupported expression,failed
+examples.133,LeanCert/Test/NaturalSyntaxRepairs.lean:44,failed,unsupported expression,failed
+examples.172,LeanCert/Test/TacticAuto.lean:78,failed,typeclass instance problem is stuck Membership ℚ ?m.1 Note: Lean will not try to resolve t,failed
+examples.173,LeanCert/Test/TacticAuto.lean:82,failed,typeclass instance problem is stuck Membership ℚ ?m.1 Note: Lean will not try to resolve t,failed
+examples.174,LeanCert/Test/TacticAuto.lean:86,failed,typeclass instance problem is stuck Membership ℝ ?m.1 Note: Lean will not try to resolve t,failed
+examples.175,LeanCert/Test/TacticAuto.lean:90,failed,typeclass instance problem is stuck Membership ℝ ?m.1 Note: Lean will not try to resolve t,failed
+examples.176,LeanCert/Test/TacticAuto.lean:94,failed,typeclass instance problem is stuck Membership ℝ ?m.1 Note: Lean will not try to resolve t,failed
+examples.177,LeanCert/Test/TacticAuto.lean:98,failed,typeclass instance problem is stuck Membership ℝ ?m.1 Note: Lean will not try to resolve t,failed
+examples.192,LeanCert/Test/WitnessSum.lean:113,failed,"finsum_bound: LeanCert.Tactic.FinSumFailure.internalFailure ""cannot evaluate code because ",proved
+examples.193,LeanCert/Test/WitnessSum.lean:125,failed,"finsum_bound: LeanCert.Tactic.FinSumFailure.internalFailure ""cannot evaluate code because ",timeout
+examples.267,LeanCert/Test/test_edge_bounds.lean:7,failed,typeclass instance problem is stuck Membership ℚ ?m.1 Note: Lean will not try to resolve t,failed
+examples.279,LeanCert/Test/test_edge_bounds.lean:45,failed,typeclass instance problem is stuck Membership ℝ ?m.1 Note: Lean will not try to resolve t,failed
+examples.280,LeanCert/Test/test_edge_bounds.lean:48,failed,typeclass instance problem is stuck Membership ℚ ?m.1 Note: Lean will not try to resolve t,failed
+examples.293,LeanCert/Test/test_edge_discovery_seticc.lean:5,failed,typeclass instance problem is stuck Membership ℚ ?m.1 Note: Lean will not try to resolve t,failed
+examples.294,LeanCert/Test/test_edge_discovery_seticc.lean:8,failed,typeclass instance problem is stuck Membership ℚ ?m.1 Note: Lean will not try to resolve t,failed
+examples.297,LeanCert/Test/test_edge_discovery_seticc.lean:17,failed,typeclass instance problem is stuck HMul (?m.31 x) (?m.31 x) (?m.33 x y) Note: Lean will n,failed
+examples.298,LeanCert/Test/test_edge_discovery_seticc.lean:22,failed,typeclass instance problem is stuck Membership (?m.19 x) ?m.1 Note: Lean will not try to r,failed

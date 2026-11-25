@@ -38,6 +38,7 @@ PROJECTS = (
     ("week-06-heuristic-estimators", "Estimating model behavior from its structure", "Heuristic estimation"),
     ("week-07-program-equilibrium", "Programs that read each other's code", "Program equilibrium"),
     ("week-08-bounded-lob", "Löb's theorem with a budget", "Bounded proofs"),
+    ("week-09-floatlib-benchmarks", "FloatLib 4.1.0 on other people's benchmarks", "Benchmarks"),
 )
 TEXT_SUFFIXES = {".lean", ".md", ".py", ".sh", ".cpp", ".c", ".h", ".cu", ".json", ".svg", ".toml"}
 LEAN_LEXER = get_lexer_by_name('lean4')
@@ -181,12 +182,14 @@ def cite_article(html, folder, destination):
 
 def page(folder, title, kind, number, *, development=False):
     essay = ROOT / "site" / "articles" / f"{folder}.md"
-    is_essay = essay.is_file() and not development
+    # A week without a separate article or report reader publishes its README as the essay.
+    readme_essay = not essay.is_file() and not (ROOT / folder / "site" / "index.html").is_file()
+    is_essay = (essay.is_file() or readme_essay) and not development
     renderer = markdown.Markdown(
         extensions=["fenced_code", "tables", "toc", "sane_lists", "md_in_html", "pymdownx.arithmatex"],
         extension_configs={"pymdownx.arithmatex": {"generic": True}},
     )
-    body = renderer.convert((essay if is_essay else ROOT / folder / "README.md").read_text())
+    body = renderer.convert((essay if is_essay and not readme_essay else ROOT / folder / "README.md").read_text())
     toc = renderer.toc
     byline = '<p class="article-meta">Robert Joseph George · TorchLean Verified Examples</p>'
     if is_essay:

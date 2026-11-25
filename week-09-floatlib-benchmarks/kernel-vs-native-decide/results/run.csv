@@ -1,0 +1,13 @@
+key,value
+date,2026-11-20
+floatlib,4.1.0
+lean,4.36.0
+runs,5
+core_scheduling_cookie,True
+started_utc,2026-11-20T20:50:58Z 2026-11-20T21:14:09Z 2026-11-20T21:15:03Z 2026-11-20T21:15:57Z 2026-11-20T21:16:49Z
+finished_utc,2026-11-20T20:51:44Z 2026-11-20T21:14:58Z 2026-11-20T21:15:52Z 2026-11-20T21:16:44Z 2026-11-20T21:17:34Z
+loadavg_before,32.73 31.31 39.04; 89.74 84.38 72.06; 105.60 89.59 74.54; 98.05 90.43 75.71; 88.10 88.94 75.98
+loadavg_after,55.66 37.31 40.73; 103.26 88.59 74.06; 100.18 90.57 75.59; 90.91 89.50 76.02; 82.07 87.36 76.00
+machine_idle_percent_before,65.95 42.95 42.76 55.62 55.81
+machine_idle_percent_after,56.98 44.87 53.22 51.83 61.75
+sections,"matched: exit 0, 19 s; exact-native: exit 0, 4 s | matched: exit 0, 20 s; exact-native: exit 0, 4 s | matched: exit 0, 19 s; exact-native: exit 0, 4 s | matched: exit 0, 19 s; exact-native: exit 0, 4 s | matched: exit 0, 18 s; exact-native: exit 0, 4 s"
