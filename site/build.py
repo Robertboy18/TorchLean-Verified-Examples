@@ -73,6 +73,8 @@ class CodeText(HTMLParser):
 
 
 def color_blocks(html):
+    # Fenced ```lean blocks in the essays get the same coloring as the checked examples.
+    html = re.sub(r'<pre><code class="language-lean4?">', '<pre class="lean-code"><code>', html)
     def annotate(match):
         text = CodeText()
         text.feed(match[2])
