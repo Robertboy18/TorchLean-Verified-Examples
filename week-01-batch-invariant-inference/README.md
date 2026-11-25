@@ -81,7 +81,7 @@ is the main proof file.
 
 ## Build
 
-All the weeks share one Lean 4.35 Lake project at the repo root, so run these
+All the weeks share one Lean 4.36 Lake project at the repo root, so run these
 commands from there. (`lake-manifest.json` pins the exact TorchLean revision
 that the checked build used.)
 

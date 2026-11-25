@@ -458,5 +458,5 @@ assumptions.
 - Andrej Karpathy. [minGPT](https://github.com/karpathy/minGPT) and [nanoGPT](https://github.com/karpathy/nanoGPT). The training implementations I used as a starting point.
 - Ilya Loshchilov and Frank Hutter. [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101), 2019. AdamW.
 - Hugging Face. [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), [smol-smoltalk](https://huggingface.co/datasets/HuggingFaceTB/smol-smoltalk), and [SmolTalk2](https://huggingface.co/datasets/HuggingFaceTB/smoltalk2). Dataset cards for the pre-training and instruction-tuning data.
-- Lean. [Weakest-precondition semantics](https://github.com/leanprover/lean4/blob/v4.35.0/src/Std/WP.lean) and [`vcgen`](https://github.com/leanprover/lean4/blob/v4.35.0/src/Init/Tactics.lean#L2426). The program-verification tools used for the batch-packing proof.
+- Lean. [Weakest-precondition semantics](https://github.com/leanprover/lean4/blob/v4.36.0/src/Std/WP.lean) and [`vcgen`](https://github.com/leanprover/lean4/blob/v4.36.0/src/Init/Tactics.lean). The program-verification tools used for the batch-packing proof.
 - PyTorch. [Numerical accuracy](https://docs.pytorch.org/docs/2.14/notes/numerical_accuracy.html). The TF32 arithmetic choice disabled in the archived matched comparison.

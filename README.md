@@ -102,7 +102,7 @@ lake -R -Kcuda=true \
 ```
 
 Use the same CUDA build-directory options when you run an executable through `lake exe`. The
-project targets Lean 4.35, and since `lake-manifest.json` pins the dependencies, a fresh checkout
+project targets Lean 4.36, and since `lake-manifest.json` pins the dependencies, a fresh checkout
 builds those revisions without running `lake update`. For Elan, CPU-only builds, CUDA discovery,
 and supported platforms, see the
 [TorchLean installation guide](https://lean-dojo.github.io/TorchLean/installation/).

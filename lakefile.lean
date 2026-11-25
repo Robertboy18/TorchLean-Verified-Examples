@@ -215,4 +215,4 @@ require LeanProfiler from git
   "https://github.com/lean-dojo/LeanProfiler.git" @ "main"
 
 -- Share TorchLean's mathematical environment rather than resolving a separate Mathlib version.
-require mathlib from git "https://github.com/leanprover-community/mathlib4" @ "v4.35.0"
+require mathlib from git "https://github.com/leanprover-community/mathlib4" @ "v4.36.0"

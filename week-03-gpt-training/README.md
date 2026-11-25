@@ -575,7 +575,7 @@ preset's parameter count.
 
 ### Proving the data loops
 
-I wanted the loop proofs to describe the code the trainer actually calls, and Lean 4.35's `Std.WP`
+I wanted the loop proofs to describe the code the trainer actually calls, and Lean's `Std.WP`
 and `vcgen` let us prove a mutable range loop with a prefix invariant. So the implementation still
 pushes into arrays and exits a scan at its first failure. In the contracts, the lists describe the
 processed prefix rather than allocating runtime indices.
