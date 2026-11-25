@@ -1,208 +1,249 @@
-# FloatLib 4.1.0 on other people's benchmarks
+# So, how fast is numerical computation in Lean?
 
-[FloatLib](https://github.com/lean-dojo/FloatLib) has been sitting under these notes since
-[week 1](../week-01-batch-invariant-inference/), where three binary32 numbers changed their sum with the order
-of addition. It's our Lean library for floating-point arithmetic and verified numerical computation, and we just
-released [version 4.1.0](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0). This week I took it off its
-own test suite and ran it on eleven benchmarks that other people built for their own tools.
+FloatLib 4.1.0 is out! For anyone who hasn't been following these posts, [FloatLib](https://github.com/lean-dojo/FloatLib) is our library for floating-point arithmetic and verified numerical computation in Lean. It started out as something we needed for TorchLean, but at this point we're using it for quite a few things that have little to do with neural networks (computer algebra, numerical analysis, PDEs, etc.). I've been meaning to see how FloatLib performs on benchmarks that weren't written by us. There is something mildly unsatisfying about developing a numerical tactic and then evaluating it on examples that you chose yourself. So this week I collected eleven existing benchmarks, mostly from numerical analysis, SMT solving, control theory and NN verification, and ran FloatLib on them.
 
-It does really well! One line of `by interval` closes 281 of LLM2Cert's 291 proof obligations with no model at
-all, `float_decide` proves all 39,994 of SMT-LIB's single-operation floating-point tests, and one float operation costs
-Lean's kernel 39 to 276 µs at any width up to 4,096 bits, where Coq with Flocq takes a median of 24 times as
-long. Every answer below is a theorem that Lean's kernel checked.
+tl;dr: some pretty good results, some rather embarrassing ones, and a few things that I didn't quite expect. In particular, 281 of LLM2Cert's 291 proof obligations go through with a single `by interval`, all 39,994 floating-point conformance tests in SMT-LIB's Wintersteiger family are proved, and computing with 4,096-bit floats inside Lean's kernel is surprisingly cheap.
 
-## What FloatLib 4.1.0 is
+## A bit of context
 
-FloatLib is a Lean 4 library for arbitrary precision floating-point arithmetic. It has executable operations,
-numerical specifications and the proofs that connect them, for IEEE binary and decimal formats, posits, and the
-low precision formats of machine learning. Three of its tactics do the work in this post:
+FloatLib now supports IEEE binary and decimal floating-point formats, arbitrary precision, posits and various smaller formats used in ML. We have executable arithmetic, specifications of what that arithmetic should do, and proofs relating the two. The three tactics relevant to this post are:
 
-- `float_decide` proves a closed floating-point statement by running the calculation in Lean's kernel with
-  `decide +kernel`, so no compiler is trusted.
-- `interval` proves real inequalities, and refutes sets of real constraints, with interval arithmetic and a
-  branch and bound search.
-- `roundoff` takes a program and proves a bound on its rounding error: forward, in closed form, or backward.
+- `float_decide`: decide closed floating-point propositions by computation inside the kernel.
+- `interval`: prove inequalities over the reals using certified interval arithmetic and branch-and-bound.
+- `roundoff`: prove rounding error bounds for numerical programs.
+
+E.g.,
 
 ```lean
 import FloatLib
 open FloatLib.Floats
 
-example : (1.5 : Binary32) + 2.25 = 3.75 := by float_decide
+example : (1.5 : Binary32) + 2.25 = 3.75 := by
+  float_decide
 ```
 
-An instance counts only when Lean accepts it and `#print axioms` shows `propext`, `Classical.choice` and
-`Quot.sound` and nothing else. The runs are from 2026-11-20 and 2026-11-21, with Lean 4.36.0 on one shared
-96-thread Xeon, and each section links to a directory with the method, the versions and the full tables.
+Nothing particularly exciting about the statement itself. The nice part is that we're doing the arithmetic inside the kernel, without relying on `native_decide` or calling an external numerical library whose output we then have to trust. For the proof experiments below, I also checked `#print axioms` (only `propext`, `Classical.choice` and `Quot.sound`). The compiled evaluation experiments are a separate matter, as we'll see later.
 
-## LLM2Cert: 291 proof obligations and no model
+## LLM2Cert without the LLM (for the proof part!)
 
-[LLM2Cert](https://github.com/FormalCert-AI/llm2cert) synthesizes Lyapunov functions and barrier certificates
-with a language model, and in its All-Lean setting a model also writes the Lean proofs of the obligations. Its
-benchmark DynaCertBench has 291 of them, and all but three say that a set of real constraints has no point.
-That is what `interval` refutes, so I replaced every proof by the one line `by interval`.
+I came across [LLM2Cert](https://github.com/FormalCert-AI/llm2cert), which uses LLMs to synthesize Lyapunov functions and barrier certificates for dynamical systems. Very cool work. In their All-Lean setting, the LLM also produces Lean proofs of the conditions that these functions need to satisfy. Most of these conditions are inequalities. Given a candidate Lyapunov function \(V\), for instance, we might need to establish that \(V(x)>0\) away from the equilibrium and that its derivative along the dynamics satisfies
 
-With Lean's default limits that closes 281 obligations in 43.8 minutes of Lean time, with no model anywhere. It
-has nothing to say about the other three, which are statements on radial unboundedness. LLM2Cert's own records
-have 274, with 1.94 million model tokens and 13.6 hours of Lean time (Figure 1). LLM2Cert's model also finds the
-certificates, and once a certificate exists, its obligations don't need a model. [Details and files](llm2cert/).
+\[
+\nabla V(x)^\top f(x)<0
+\]
 
-<figure class="data-chart" id="figure-1">
-  <img src="llm2cert/figures/01-llm2cert-obligations.svg" alt="Three panels of bars, blue for interval and grey for LLM2Cert, with interval's far shorter in the third.">
-  <figcaption><strong>Figure 1.</strong> DynaCertBench's 291 obligations with <code>by interval</code> and no model (blue), next to LLM2Cert's own records (grey): (a) obligations closed, (b) certificates completed, of 81, (c) hours of Lean time.</figcaption>
-</figure>
+on some prescribed domain. Finding such a \(V\) can be very difficult; checking these conditions for a given \(V\) is a somewhat different problem. Looking at their DynaCertBench dataset, I figured that `interval` should be able to do quite a bit here. I took their definitions and statements verbatim and replaced all 291 proofs with
 
-## SMT-LIB QF_FP: 39,994 conformance tests as theorems
+```lean
+by interval
+```
 
-SMT-LIB's floating-point benchmarks include 39,994 single-operation tests. Each fixes the operands and a
-result, and asks whether one binary64 operation gives it. It's a conformance test that someone else wrote, and `float_decide`
-proves the benchmark's status for all 39,994, with none disagreeing.
+And, well:
 
-Lean's kernel checks each proof in 4.1 ms. The solvers answer in 5.8 ms (cvc5) and 23.5 ms (Z3) without a
-proof, and the whole Lean run takes 62 ms (Figure 2). The 275 search problems of SMT-COMP 2025 are a different
-task, one for a solver like Bitwuzla, which solved 255. [Details and files](smtlib-qf-fp/).
+| | Obligations | Complete certificates |
+|---|---:|---:|
+| LLM2Cert (All-Lean) | 274/291 | 64/81 |
+| `interval` | 281/291 | 71/81 |
+| `interval` (raised limits) | 282/291 | 72/81 |
 
-<figure class="data-chart" id="figure-2">
-  <img src="smtlib-qf-fp/figures/01-time-by-operation.svg" alt="Markers on a logarithmic time axis for fourteen operations: the whole Lean run highest, Z3 and cvc5 below it, and Lean's kernel check lowest.">
-  <figcaption><strong>Figure 2.</strong> Time per instance on SMT-LIB's single-operation floating-point tests (binary64), by operation: the whole Lean run of FloatLib's <code>float_decide</code> proof, its kernel check alone, and the solvers Z3 5.4.1 and cvc5 1.4.2, which give no proof. A marker is the median over 100 sampled instances of an operation, with whiskers from the 5th to the 95th percentile. The time axis is logarithmic, and lower is faster. Measured on 2026-11-21 with FloatLib 4.1.0 and Lean 4.36.0.</figcaption>
-</figure>
+![DynaCertBench results](llm2cert/figures/01-llm2cert-obligations.svg)
 
-## SMT-LIB QF_NRA: 56 of 66 where the variables are bounded
+The default run takes 43.8 minutes of cumulative Lean time across all 291 obligations. Their published results report 13.6 hours of Lean time on the successful obligations and ~1.94M model tokens. The machines and experimental setups differ, so don't take the ratio of these times too seriously. Of course, we're not synthesizing the Lyapunov functions here! LLM2Cert already did that. But I think this is a nice example of where we should be using LLMs and where we probably shouldn't. Let the model figure out what the certificate ought to be, and let the numerical tactic deal with the ensuing inequalities. Spending model tokens trying to prove hundreds of individual inequalities seems unnecessary if we can automate the mathematics once.
 
-An unsatisfiable QF_NRA benchmark says that a set of polynomial constraints has no real solution. Outside the
-MetiTarski family, 3,064 unsat candidates translate to a Lean goal, and in 66 of them the constraints bound
-every variable. One call of `interval` with 60 seconds proves 56 of those 66. On the same machine Z3 5.3.3
-answers 51, cvc5 1.4.2 answers 60 and Yices 2.8.0 answers 62 (Figure 3).
+Three of the remaining obligations concern radial unboundedness, i.e., \(V(x)\to\infty\) as \(\|x\|\to\infty\). This isn't really in the scope of our current interval tactic. The other failures are more interesting from the point of view of improving the search procedure.
 
-<figure class="data-chart" id="figure-3">
-  <img src="smtlib-qf-nra/figures/02-qfnra-solvers.svg" alt="Bars for interval and four solvers, four rising step curves, and a thin sliver for interval beside the solvers' bars.">
-  <figcaption><strong>Figure 3.</strong> <code>interval</code> next to SMT solvers: (a) the 17 selected instances that SMT-COMP 2025 ran, (b) all 66 on one machine, against wall time, (c) the 1,065 other candidates that the competition ran.</figcaption>
-</figure>
+[Details, statements and scripts](llm2cert/)
 
-The solvers answer in 0.02 to 0.03 seconds in the median, and `interval` takes 7.3, about 2 of them to start
-Lean and load the library. On the 1,065 larger candidates that SMT-COMP 2025 ran, the solvers answer 948 to 1,039
-and `interval` proves 17: past 20 variables, it proves one goal of 2,370.
-[Details and files](smtlib-qf-nra/).
+## 39,994 little floating-point theorems
 
-## VNN-COMP 2025: checking published counterexamples exactly
+SMT-LIB has a large collection of floating-point benchmarks under its QF_FP logic. Of particular interest here is the Wintersteiger family: 39,994 tests where the operands are fixed and we are asked whether a particular binary64 operation produces a specified result. These aren't really search problems. They're conformance tests for floating-point implementations, covering arithmetic, FMA, sqrt, remainder, comparisons, rounding, etc. I translated all of them into Lean statements about FloatLib's arithmetic and ran `float_decide`.
 
-A neural-network verifier that answers "sat" at VNN-COMP publishes a counterexample: an input point, in
-decimals. That is a concrete floating-point claim, so FloatLib can check it exactly, in binary32 with four
-orders of summation and in exact arithmetic.
+39,994/39,994, with zero disagreements. Nice!
 
-I replayed 5,737 published files from ten benchmark families. Of these, 1,625 are counterexamples as reported,
-and 3,156 more once the point is moved to the nearest binary32 number inside the box. Verifiers print points on
-the faces of the box, and the nearest binary32 number is often just outside it, by 7e-9 in the median. Another
-742 files are rejected, and for 97 the verdict depends on the order of summation (Figure 4). Every instance behind
-a rejected file still has another file that is an exact counterexample, so every "sat" result stands.
+![Floating-point benchmark timings](smtlib-qf-fp/figures/01-time-by-operation.svg)
 
-<figure class="data-chart" id="figure-4">
-  <img src="vnncomp-replay/figures/01-counterexample-verdicts.svg" alt="Ten horizontal bars, mostly dark and light blue, with a red part on the SafeNLP bar.">
-  <figcaption><strong>Figure 4.</strong> Verdicts of exact replay, one bar per benchmark family: a counterexample as reported, after the point is moved into the box, for the box with rounded bounds only, depending on rounding, or rejected.</figcaption>
-</figure>
+There is an interesting distinction between the cost of the arithmetic and the cost of getting Lean to actually prove something about it. On a sample of 1,400 instances, we get the following median times:
 
-Replay also finds an exact counterexample for 476 "unsat" results, and VNN-COMP's own scoring with tolerance
-1e-4 already penalises 466 of them. The verdicts come from compiled Lean code, and for the small networks they
-are kernel theorems too, 18,414 of them. [Details and files](vnncomp-replay/).
+| | Time |
+|---|---:|
+| Actual numerical decision in Lean's kernel | 0.48 ms |
+| Kernel checking the entire proof | 4.11 ms |
+| Entire Lean pipeline (batched) | 62.3 ms |
+| Z3 (one process per instance) | 23.5 ms |
+| cvc5 (one process per instance) | 5.75 ms |
 
-## NumFuzz: the same bounds, as theorems
+A lot of the kernel time is spent checking the rewrites from the public floating-point operations to the operations that the kernel evaluates. The actual arithmetic accounts for a relatively small portion of the work. I suspect we can do much better w.r.t. the construction of these proofs. FWIW, the SMT solvers are considerably faster end-to-end, particularly when we also allow them to process benchmarks in batches. We are measuring something slightly different in Lean, since we additionally produce and check a theorem about the numerical operation. Also, QF_FP contains genuinely difficult satisfiability problems where the operands aren't known. `float_decide` doesn't magically turn into Bitwuzla in this setting (unfortunately).
 
-[NumFuzz](https://github.com/ak-2485/NumFuzz) is a type system that infers relative rounding error bounds, and
-its paper compares it with FPTaylor and Gappa. I ran `roundoff` on the same programs, and the other tools'
-numbers are the paper's.
+[Full QF_FP results](smtlib-qf-fp/)
 
-`roundoff` proves the forward theorem of 75 of the artifact's 80 programs. On the paper's 17 small benchmarks its
-bound equals NumFuzz's in 13 and is smaller in 4. Gappa is tighter on 7, by up to a factor of 2, since it follows
-the direction of each rounding. NumFuzz prints its bound in 0.002 to 0.008 seconds, and Lean proves the theorem
-with its number in 1.7 to 68.
+## Nonlinear real arithmetic (things get a bit worse)
 
-My favourite part is the long programs: Horner's rule, the dot product and the serial sum are each proved once, as
-a loop, for every length. [Details and files](numfuzz/).
+The QF_NRA benchmarks are more challenging for us. Here we have polynomial constraints over real-valued variables, and we want to prove that no assignment satisfies all the constraints. Our current approach uses interval arithmetic to bound expressions over boxes, subdividing a box whenever we can't rule out the constraints on it. The individual exclusion arguments are certified, so a successful search results in a proof in Lean.
 
-## LeanCert: two interval tactics on the same goals
+Out of 3,064 translated candidate UNSAT instances outside the MetiTarski family, there are 66 for which we can extract bounds on all the variables. With a 60s budget, we prove 56 of them.
 
-[LeanCert](https://github.com/alerad/leancert) is a Lean library for certified numerics, and the closest thing to
-`interval` in Lean. I stated its benchmark suites as goals, added the statements its examples and tests prove,
-and gave every goal to both tactics, one call each.
+| | Solved |
+|---|---:|
+| FloatLib | 56/66 |
+| Z3 | 51/66 |
+| cvc5 | 60/66 |
+| Yices | 62/66 |
 
-Over the 357 goals in `interval`'s scope, each tactic proves 341, and 327 are proved by both. On those
-`interval` takes 66 ms in the median and LeanCert 638 ms. Among the 14 that only LeanCert proves are finite sums
-of a hundred terms and bounds on the Euler-Mascheroni constant. Another 62 goals of its suites are outside
-`interval` altogether (integrals, roots, derivatives), and LeanCert proves 30 of those. LeanCert's numbers are
-for its kernel-checked route, since its default one closes certificates with `native_decide`.
-[Details and files](leancert/).
+![Nonlinear real arithmetic comparison](smtlib-qf-nra/figures/02-qfnra-solvers.svg)
 
-## One operation in the kernel: Lean with FloatLib, Coq with Flocq
+Coverage isn't too bad on these particular examples, but the timings are another story. The SMT solvers take ~20–30ms in the median; we take 7.3s, including loading Lean. On the other 1,065 candidates that SMT-COMP 2025 ran, we prove a grand total of 17. Oof.
 
-`float_decide` runs arithmetic in Lean's kernel, so what does one operation cost there? FloatLib's kernel path
-takes 39 to 276 µs, from 32 to 4,096 bits. On the same operands, [Flocq](https://flocq.gitlabpages.inria.fr/)
-4.2.2 in Coq 8.20.1 takes 1.4 to 31,329 times as long under `vm_compute` where it finishes, with a median of 24
-(Figure 5). At binary32 the two are close, and the gap grows with the width: FloatLib's line stays nearly flat all
-the way to 4,096 bits. [Details and files](kernel-vs-coq/).
+The issue here is essentially the search. Subdividing a high-dimensional box without exploiting enough of the algebraic structure of the constraints gets expensive very quickly. I'd like to borrow more ideas from existing SMT solvers: constraint propagation, elimination of variables, polynomial reasoning, better branching heuristics, etc. There's no shortage of really good mathematics and algorithms in this literature. Another approach would be to let an external solver do more of the search and have it return something we can check efficiently in Lean. We don't necessarily need to formalize every detail of the search algorithm.
 
-<figure class="data-chart" id="figure-5">
-  <img src="kernel-vs-coq/figures/01-kernel-coq-flocq.svg" alt="Lines in five panels. FloatLib's is nearly flat at the bottom, and Coq's climb steeply.">
-  <figcaption><strong>Figure 5.</strong> Time of one operation inside the proof checker against format width, on logarithmic axes: FloatLib in Lean's kernel, and Flocq in Coq under vm_compute and under lazy. A cross marks a width where Coq gave no result.</figcaption>
-</figure>
+[Full QF_NRA results](smtlib-qf-nra/)
 
-## `decide +kernel` against `native_decide`
+## When is a counterexample actually a counterexample?
 
-`native_decide` compiles a statement and trusts the compiler, and FloatLib never uses it. On five closed
-statements `decide +kernel` takes 0.90 to 2.04 times its time with nothing trusted beyond the kernel. On a
-sixth, `native_decide` fails and the kernel proves it in 6.2 ms.
-[Details and files](kernel-vs-native-decide/).
+Probably my favourite experiment this week. At VNN-COMP, a neural network verifier that returns SAT can provide a witness: some input \(x\) for which the network violates the property. Sounds straightforward enough, but what exactly is \(x\)? What arithmetic are we using to compute the network? Are we interpreting the network as a composition of real-valued functions, or are we evaluating it in binary32? What order are the sums accumulated in?
 
-## Compiled code: the host FPU, SoftFloat and MPFR
+These distinctions matter much more than one might initially think. Take the rather boring example of an input constraint
 
-FloatLib's proved `Binary32` and `Binary64` operations run at MPFR's speed in compiled code: over the 12 cells
-(six operations in two formats) a median of 1.0 times MPFR 4.1.0's time, faster in 6. They take 24 to 118 ns,
-the host FPU 8 to 13, and Berkeley SoftFloat 3e is 1.6 times faster in the median (Figure 6). From 256 to 4,096
-bits FloatLib runs on its exact baseline over Lean's arbitrary-precision naturals, at 2.1 to 35 times MPFR's
-time. [Details and files](compiled-vs-mpfr-softfloat-fpu/).
+\[
+x\leq 0.1.
+\]
 
-<figure class="data-chart" id="figure-6">
-  <img src="compiled-vs-mpfr-softfloat-fpu/figures/01-public-binary32-64.svg" alt="Two panels, binary32 above binary64, with four markers per operation: the host FPU lowest, SoftFloat above it, MPFR and FloatLib close to each other above that.">
-  <figcaption><strong>Figure 6.</strong> Time of FloatLib's public binary32 and binary64 operations in compiled code, next to the host processor's own arithmetic, Berkeley SoftFloat 3e and MPFR 4.1.0. A marker is the median of 9 trials of the time per operation in a loop in which each result selects the next operands, with whiskers from the fastest to the slowest trial. The time axis is logarithmic, and lower is faster. Measured on 2026-11-20 with FloatLib 4.1.0 and Lean 4.36.0.</figcaption>
-</figure>
+The binary32 number nearest to \(0.1\) is actually
 
-## FPBench with `roundoff`
+\[
+0.100000001490116119384765625.
+\]
 
-FPBench is the standard collection of programs for rounding error tools: 272 cases here, 136 programs in binary32
-and in binary64. `roundoff` proves 184 forward, 180 closed-form and 22 backward conditional theorems, which keep
-their premises (for example, that nothing overflows). For a numerical bound, a second proof discharges the premises on the input
-box and proves one number: 33 forward and 18 closed. Another 84 cases don't translate yet. [Details and files](fpbench/).
+So if the specification is over the reals, rounding the decimal witness to binary32 can give us an input that is no longer in the specified domain. We haven't even started evaluating the NN yet!
 
-## MetiTarski and Flyspeck with `interval`
+I replayed 5,737 published counterexample files from ten VNN-COMP 2025 benchmark families. For each supported network, we evaluated the network using FloatLib's binary32 arithmetic (four different orders of summation) and exact rational arithmetic, and checked the corresponding input and output constraints.
 
-Two classic sets of real inequalities, with one call of `interval` per goal and 20 seconds each. It proves 340 of
-the 948 MetiTarski goals and 6 of the 164 Flyspeck records, of which only 20 translate. That's one general tactic with a small
-budget, on problems MetiTarski and the Flyspeck tools were built for. [Details and files](metitarski-flyspeck/).
+![Counterexample replay results](vnncomp-replay/figures/01-counterexample-verdicts.svg)
 
-## How to reproduce
+| | Files |
+|---|---:|
+| Valid as reported | 1,625 |
+| Valid after moving the input into the box | 3,156 |
+| Valid for rounded input bounds only | 117 |
+| Depends on rounding | 97 |
+| Rejected | 742 |
 
-This week is its own Lake project, on Lean 4.36.0, separate from the repository's root project:
+Quite a few of the witnesses only become valid when we move their coordinates to the nearest binary32 numbers inside the input box. The median violation of the input constraints in the relevant boundary cases is only ~7e-9. For 97 files, whether we actually have a counterexample depends on the numerical evaluation.
+
+Before anyone gets the wrong idea: the 742 rejected files do **not** amount to 742 incorrect SAT results. For those instances, there are other valid witnesses. Of the 1,004 SAT instances in these families, we found exact counterexamples for 974, rounded-box counterexamples for another 18, and couldn't replay the remaining 12 because of the size of the networks. We also found counterexamples to 476 UNSAT results, 466 of which the competition already penalizes using its own scoring tolerance. The full replay uses compiled Lean code. For the smaller networks, we additionally have 18,414 kernel-checked theorems. We're checking witnesses here, not verifying arbitrary neural networks.
+
+This gets at one of the things that originally bothered me about NN verification. Proving a theorem about some real-valued abstraction of a network is perfectly reasonable mathematics, but relating it to the program being executed is a mathematical problem in its own right. If the program uses a different numerical semantics, what precisely have we proved about it? Hopefully we'll be able to explore this at a much larger scale with TorchLean.
+
+[Full VNN-COMP results](vnncomp-replay/)
+
+## Roundoff: proving the bound rather than printing it
+
+Given a numerical program, how far is its output from the mathematical quantity that it's supposed to compute? There are quite a few nice tools for this problem already, e.g., Gappa, FPTaylor and NumFuzz. I took the 80 programs in the [NumFuzz](https://github.com/ak-2485/NumFuzz) artifact and attempted to prove their forward error bounds using `roundoff`. We get 75/80. On the 17 smaller examples in their paper, our bounds agree with NumFuzz's on 13 and are tighter on four. Gappa does better than us on seven examples (up to a factor of two), since it makes better use of the direction of the individual rounding errors. NumFuzz computes its bounds in milliseconds; we take 1.7–68s to establish the corresponding theorems.
+
+What I like much more than the individual bounds, though, is being able to reason about algorithms of arbitrary length. Consider a dot product computed via serial summation,
+
+\[
+s_n=\sum_{i=1}^{n}a_i b_i.
+\]
+
+Under the usual floating-point assumptions, we can reason about how the error grows with \(n\). We shouldn't have to rerun a numerical error analyzer for every possible value of \(n\)! We can prove a general theorem about the loop and instantiate it whenever we need it. We do this for Horner's method, dot products and serial summation. This becomes particularly useful in ML, where a large fraction of the computations we're interested in are parameterized by tensor dimensions, batch sizes, etc.
+
+I also ran `roundoff` on FPBench (136 programs, each in binary32 and binary64). We get 184 conditional forward error theorems, 180 closed-form error theorems and 22 backward error theorems. For 33 forward and 18 closed-form bounds, we're additionally able to discharge the premises over the specified input boxes. Another 84 cases don't translate yet. The conditional vs. unconditional distinction is worth mentioning. A theorem assuming that intermediate computations don't overflow is useful, but we may additionally need to prove that they don't overflow for the inputs we're actually interested in. This is another place where the different numerical tactics can help each other.
+
+[NumFuzz](numfuzz/) · [FPBench](fpbench/)
+
+## LeanCert!
+
+[LeanCert](https://github.com/alerad/leancert) is another really nice library for certified numerical computation in Lean. I wanted to see where our interval tactics differ, both in performance and in what mathematics they can currently handle. I collected the goals from its benchmark suites, examples and tests, and gave them to both tactics. On the 357 goals within the scope of FloatLib's `interval`, we each prove 341, with 327 proved by both. On the intersection, the median times are 66ms for us and 638ms for LeanCert (using its kernel-checked route, rather than `native_decide`).
+
+The 14 goals that LeanCert proves and we don't are arguably more useful to me than the timing comparison. Some involve finite sums of a hundred terms; others involve bounds on the Euler–Mascheroni constant. There are also another 62 goals outside the current scope of our interval tactic, involving things like integrals, roots and derivatives, of which LeanCert proves 30.
+
+I'd love to see more interoperability between these libraries. It would be rather silly if everyone in Lean independently developed incompatible representations of certified intervals, approximation theorems and numerical certificates. There is a lot of room for sharing mathematical infrastructure here.
+
+[Comparison with LeanCert](leancert/)
+
+## 4,096-bit floats inside the kernel?!
+
+I was curious about the cost of doing a single floating-point operation inside a proof checker, particularly at higher precisions. For this comparison, I used FloatLib in Lean and [Flocq](https://flocq.gitlabpages.inria.fr/) 4.2.2 in Coq 8.20.1, with identical operands and format widths ranging from 32 to 4,096 bits.
+
+![FloatLib and Flocq evaluation times](kernel-vs-coq/figures/01-kernel-coq-flocq.svg)
+
+Here are the addition times in Lean:
+
+| Width | Time |
+|---|---:|
+| 32 bits | 39.9 µs |
+| 64 bits | 39.2 µs |
+| 128 bits | 44.3 µs |
+| 256 bits | 46.1 µs |
+| 512 bits | 62.3 µs |
+| 1,024 bits | 63.2 µs |
+| 4,096 bits | 64.0 µs |
+
+I find the last row particularly cool. Increasing the format width from 32 to 4,096 bits doesn't increase the cost nearly as much as one might expect for these operands. Across all the tested operations and widths, Lean takes between 39 and 276µs.
+
+Where Coq's `vm_compute` finishes, the median ratio is 24x in FloatLib's favour. Coq's evaluation time grows considerably with precision, and several high-precision examples don't finish within the given resource limits. NB: Flocq is a much more established mathematical formalization of floating-point arithmetic, and its computational representation wasn't necessarily designed with this particular use case in mind. I wouldn't read these numbers as saying anything about the relative quality of the two formalizations. We're comparing the cost of evaluating certain operations in two proof checkers.
+
+[Full comparison](kernel-vs-coq/)
+
+## `native_decide`?
+
+One thing I keep coming back to is whether we really need to resort to `native_decide` for numerical computations. Don't get me wrong, `native_decide` is very useful. But for numerical verification, avoiding the additional trust in Lean's compiled evaluation would be preferable whenever possible.
+
+I ran a small comparison on six statements. On the five where both approaches succeed, the runtime of `decide +kernel` ranges from 0.90 to 2.04 times that of `native_decide`. On the sixth, `native_decide` fails and the kernel proves the statement in 6.2ms. Six statements hardly constitute a comprehensive benchmark, lol. Still, I think it's worth putting more effort into efficient kernel computation. For genuinely enormous calculations, certificate generation and checking will probably be the more useful approach.
+
+[Details](kernel-vs-native-decide/)
+
+## And outside the kernel?
+
+We're also interested in using FloatLib as an actual numerical library, so I compared its compiled arithmetic with the host FPU, Berkeley SoftFloat and MPFR.
+
+![Compiled floating-point operation timings](compiled-vs-mpfr-softfloat-fpu/figures/01-public-binary32-64.svg)
+
+For binary32 and binary64, we are roughly at MPFR's speed on the twelve operation-format combinations tested, and faster in six of them. FloatLib takes 24–118ns per operation, the FPU 8–13ns, and SoftFloat is a median of 1.6x faster than us. High precision is a different story: between 256 and 4,096 bits, MPFR is 2.1–35x faster. We use an exact implementation over Lean's arbitrary-precision natural numbers at these widths, which is quite useful for proofs but leaves a lot of room for computational optimization.
+
+There are some genuinely interesting verification problems here. Can we implement the kinds of fast multiword arithmetic algorithms used by numerical libraries such as MPFR, prove their correctness once, and use them both for efficient computation and formal reasoning? How much of this can we eventually move to GPUs without introducing additional trust assumptions about the arithmetic?
+
+[Compiled arithmetic results](compiled-vs-mpfr-softfloat-fpu/)
+
+## MetiTarski and Flyspeck
+
+A couple of other benchmarks, mostly because I was curious about what would happen. With one call to `interval` and a 20s budget, we prove 340/948 MetiTarski goals. For Flyspeck, we manage to translate 20 of the 164 records and prove six of those. Much work remains here.
+
+These are interesting problems involving nonlinear and transcendental inequalities. Simply increasing the precision or subdividing intervals more aggressively isn't necessarily the right way to solve them. Sometimes a suitable algebraic manipulation, monotonicity argument or change of variables can turn a seemingly difficult inequality into a trivial numerical calculation. Would be quite fun to develop tactics that discover these intermediate arguments.
+
+[MetiTarski and Flyspeck](metitarski-flyspeck/)
+
+## Some thoughts
+
+I've been thinking quite a bit about what doing applied mathematics in Lean should look like. Suppose we're investigating a PDE and have found what appears to be a singularity profile numerically. We would like to compute the profile, study the linearized operator around it, estimate the residual, verify a stability argument, etc. Somewhere along the way, these calculations need to become rigorous mathematical statements. Why should the numerical experiments and the formal mathematics live in completely different worlds?
+
+This is part of the motivation behind our work on [PDEAtlas](https://lean-dojo.github.io/PDEAtlas/), [SymLean](https://lean-dojo.github.io/SymLean/) and FloatLib. In an ideal world, I'd like to spend an afternoon playing around with a numerical algorithm in Lean, make an interesting observation, and then use the very same mathematical objects to formulate and prove a theorem about it. (We're obviously quite far from this being a pleasant experience for arbitrary problems.)
+
+I also think the recent developments in AI for mathematics make this particularly relevant. The interesting thing for me isn't necessarily whether an LLM can write a proof of some horrible numerical inequality. I'd rather have it figure out *which* inequality we should prove! Or find a useful numerical profile, or identify the right mathematical abstraction, or notice that two apparently different arguments are really the same argument. The LLM2Cert experiment is a small illustration of this. Searching for a good Lyapunov function is interesting mathematics; generating 291 individual proofs of its numerical properties is something we should try to automate away.
+
+There is still a rather long list of things to fix: arbitrary-precision performance, interval search in higher dimensions, reasoning about large numerical programs, verified GPU arithmetic, etc. The failure cases in these benchmarks should keep us busy for a while :)
+
+## Reproducing things
+
+Everything is in the [repo](https://github.com/Robertboy18/TorchLean-Verified-Examples/tree/master/week-09-floatlib-benchmarks), including the raw numbers, scripts, benchmark translations and figures. This week's experiments use their own Lake project with FloatLib 4.1.0 and Lean 4.36.0.
 
 ```bash
 git clone https://github.com/Robertboy18/TorchLean-Verified-Examples.git
 cd TorchLean-Verified-Examples/week-09-floatlib-benchmarks
-lake update          # FloatLib v4.1.0, with the Mathlib it pins
-lake exe cache get   # Mathlib's compiled files
-lake build           # FloatLib, and a first check in FloatLibBenchmarks.lean
-python3 llm2cert/scripts/plot.py   # redraws a figure from its result files (Python and matplotlib)
+
+lake update
+lake exe cache get
+lake build
 ```
 
-[THIRD_PARTY.md](THIRD_PARTY.md) lists every input with its version, its license and how to get it. The scripts
-were moved into this layout after the runs, and every figure here is redrawn from the files in this directory. If
-a path needs a nudge, tell me.
+To regenerate, e.g., the LLM2Cert figure:
 
-## Scope
+```bash
+python3 llm2cert/scripts/plot.py
+```
 
-The VNN-COMP section checks published counterexamples and verifies no network. The times come from one shared
-machine, good to a factor of about 1.5 to 2, and published numbers from other machines are not a race. The Coq
-times are from 2026-11-15. The translations into Lean are tested scripts, and LeanCert ran on my port to Lean 4.36.
+Most runs are from Nov. 20–21, 2026, on a shared 96-thread Xeon. The Coq numbers are from a recorded Nov. 15 run, and some comparisons use the published results of other tools. There are detailed notes on the setup and limitations in the individual benchmark directories. The translations are tested scripts, and the LeanCert experiments use my port to Lean 4.36. [THIRD_PARTY.md](THIRD_PARTY.md) contains the benchmark sources and licenses.
 
-## Why I care about this
+If anyone has other numerical benchmarks that would be particularly painful for us, please send them over!
 
-I trust a library more after seeing it on problems it was never tuned for, next to tools that are very good at
-their own jobs. Every answer here is a theorem, not an output, and proof by computation in Lean is already
-practical: a kernel check on QF_FP is faster than a solver call, and `interval` is about 10 times faster than LeanCert
-on the goals both prove. Wide-precision arithmetic and goals with hundreds of variables are next :)
+[FloatLib](https://github.com/lean-dojo/FloatLib) · [Website](https://lean-dojo.github.io/FloatLib/) · [Experimental results](https://github.com/Robertboy18/TorchLean-Verified-Examples/tree/master/week-09-floatlib-benchmarks)

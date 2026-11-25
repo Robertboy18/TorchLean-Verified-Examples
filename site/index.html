@@ -134,12 +134,11 @@
       <article class="essay-entry">
         <p class="entry-kind">10 / Benchmarks</p>
         <div class="entry-copy">
-          <h2><a href="week-09-floatlib-benchmarks/">FloatLib 4.1.0 on other people's benchmarks</a></h2>
-          <p>FloatLib reports what it proves about itself, so I ran it on benchmarks that other people
-            built for their own tools. One call of <code>interval</code> closes 281 of LLM2Cert's 291
-            proof obligations with no model, and Lean's kernel proves all 39,994 single-operation tests
-            of SMT-LIB. It also loses: the solvers are faster, LeanCert proves sums and integrals that
-            <code>interval</code> doesn't, and Gappa is tighter on 7 of 17 programs.</p>
+          <h2><a href="week-09-floatlib-benchmarks/">So, how fast is numerical computation in Lean?</a></h2>
+          <p>FloatLib 4.1.0 is out, so I ran it on eleven benchmarks that weren't written by us. 281 of
+            LLM2Cert's 291 proof obligations go through with a single <code>by interval</code>, all 39,994
+            floating-point conformance tests in SMT-LIB's Wintersteiger family are proved, and computing
+            with 4,096-bit floats inside Lean's kernel is surprisingly cheap.</p>
           <a class="text-link" href="week-09-floatlib-benchmarks/">Read the essay →</a>
         </div>
       </article>
