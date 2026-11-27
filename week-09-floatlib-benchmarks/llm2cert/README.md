@@ -11,7 +11,7 @@ model is involved anywhere.
 
 ![Three panels of three horizontal bars each, two blue bars for interval with Lean's default limits and with raised limits and one grey bar for LLM2Cert. In the first two panels the three bars are of similar length, each ending in its count; in the third the two blue bars are a small fraction of the grey bar, and each bar ends in its time.](figures/01-llm2cert-obligations.svg)
 
-**Figure 1.** The 291 proof obligations of LLM2Cert's benchmark DynaCertBench, each given to FloatLib's interval tactic as the one-line proof `by interval` with no model, next to LLM2Cert's own All-Lean result, in which a language model writes the proofs. Panel (a) counts the obligations that Lean accepts with the three standard axioms only, panel (b) the 81 certificates all of whose obligations are closed, and panel (c) is the time Lean ran, in hours on a linear axis: for interval the sum over all 291 files, for LLM2Cert the time on the obligations it closed, to which its 1.94 million model tokens are added. interval was run on FloatLib 4.1.0 on 2026-11-20 with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs); LLM2Cert's numbers are those of its published records.
+**Figure 1.** The 291 proof obligations of LLM2Cert's benchmark DynaCertBench, each given to FloatLib's interval tactic as the one-line proof `by interval` with no model, next to LLM2Cert's own All-Lean result, in which a language model writes the proofs. Panel (a) counts the obligations that Lean accepts with the three standard axioms only, panel (b) the 81 certificates all of whose obligations are closed, and panel (c) is the time Lean ran, in hours on a linear axis: for interval the sum over all 291 files, for LLM2Cert the time on the obligations it closed, to which its 1.94 million model tokens are added. interval was run on FloatLib on 2026-11-20 with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs); LLM2Cert's numbers are those of its published records.
 
 | DynaCertBench, 291 obligations | closed | certificates (of 81) | model tokens | time Lean ran |
 | --- | ---: | ---: | ---: | --- |
@@ -65,7 +65,7 @@ obligations need no model once the certificate is there.
 
 | | |
 | --- | --- |
-| FloatLib | 4.1.0 ([release](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0)), Lean 4.36.0, Mathlib v4.36.0 |
+| FloatLib | `main` at [`fc2fad1f`](https://github.com/lean-dojo/FloatLib/commit/fc2fad1f9c7de970f0a10a44c58cdf2909a867b4), Lean 4.36.0, Mathlib v4.36.0 |
 | LLM2Cert | <https://github.com/FormalCert-AI/llm2cert> at `37b6a0484fc8b532bb29588b56f5993193c42fcc`, MIT. Its numbers are a script count over `results/rq1/data/lean_records.json`: 274 of 291 closed, 64 of 81 certificates, 13.61 hours of Lean wall time on the obligations it closed, 1,942,231 tokens over all of them |
 | Statements | [`inputs/obligations.json`](inputs/obligations.json): the 291 locked Lean statements of the RQ1 All-Lean records, one per obligation, with LLM2Cert's license next to them |
 | Date and machine | 2026-11-20, an Intel Xeon Platinum 8275CL (2 sockets, 96 hardware threads, 1.1 TB), Amazon Linux 2023, shared with other jobs. The run with Lean's limits went from 2026-11-20T20:51:58Z to 2026-11-20T21:02:33Z (48.58 % idle at the start) and the run with raised limits from 2026-11-20T21:02:38Z to 2026-11-20T21:13:31Z. The largest Lean process took 7.5 GB |
@@ -93,7 +93,7 @@ each Lean process, the counts, the sums and the comparison with LLM2Cert's recor
 ## Run it again
 
 ```bash
-lake build                                       # in the week's directory: FloatLib 4.1.0
+lake build                                       # in the week's directory: FloatLib
 bash llm2cert/scripts/fetch.sh                   # LLM2Cert's records, pinned
 bash llm2cert/scripts/run.sh defaults raised     # about 45 minutes of Lean each
 python3 llm2cert/scripts/collect.py llm2cert/run/defaults llm2cert/run/raised \

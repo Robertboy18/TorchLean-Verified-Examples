@@ -153,7 +153,7 @@ def fig_time() -> None:
          "Lean's kernel takes to check the instance's proof, and the whole Lean run, which adds parsing, "
          "elaboration, the axiom report and an equal share of loading the library with 250 instances per "
          "process; for a solver the wall time of one process per instance. The time axis is logarithmic, and "
-         "lower is faster. Measured on FloatLib 4.1.0 on 2026-11-21 with Lean 4.36.0, the fastest of three runs "
+         "lower is faster. Measured on FloatLib on 2026-11-21 with Lean 4.36.0, the fastest of three runs "
          f"of each instance, one process at a time on one core of {MACHINE}.",
          "Two panels of markers with whiskers on a logarithmic time axis from 2 to 100 milliseconds, seven "
          "operations each: add, sub, mul, div, fma, sqrt and rem above, and rounding to an integer, min, max, "
@@ -252,7 +252,7 @@ def fig_reach() -> None:
          "rest of a bar are search problems, which `float_decide` does not attempt. In panel (b) a bar is one "
          f"solver of the single-query track on the competition's {track} selected benchmarks, from the published "
          "results, with FloatLib's count of benchmarks in reach among the same "
-         f"{track} below them. FloatLib 4.1.0 was run on 2026-11-21 with Lean 4.36.0 on {MACHINE}; the "
+         f"{track} below them. FloatLib was run on 2026-11-21 with Lean 4.36.0 on {MACHINE}; the "
          "competition ran in 2025 on its own cluster with 1,200 seconds per benchmark.",
          "Two panels of horizontal bars on an axis from 0 to 100 percent. Above, six bars for the families: the "
          "wintersteiger bar is entirely blue and ends in 39,994 of 39,994, and the bars of griggio, schanda, "

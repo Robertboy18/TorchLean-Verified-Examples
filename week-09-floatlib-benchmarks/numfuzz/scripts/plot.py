@@ -213,7 +213,7 @@ def fig_small(summary: dict) -> None:
         "logarithmic, and left is tighter in (a) and faster in (b). "
         "FloatLib's bound is the one Lean accepted on the box [0.1, 1000] that the paper gave Gappa and FPTaylor, "
         "and its time is Lean's elaboration of the forward theorem and of that bound, measured on 2026-11-21 on "
-        f"{MACHINE} with Lean 4.36.0 on FloatLib 4.1.0. The other tools' numbers are the paper's, measured on a "
+        f"{MACHINE} with Lean 4.36.0 on FloatLib. The other tools' numbers are the paper's, measured on a "
         "MacBook with a 1.4 GHz processor.")
     alt = (
         f"Two panels sharing {len(rows)} rows, one per program, each row holding up to four markers one above "
@@ -373,7 +373,7 @@ def fig_loops(summary: dict) -> None:
         "quotes. Bounds are in units of 2^-52, both axes are logarithmic, and lower is tighter. "
         "FloatLib's bounds hold for nonnegative binary64 inputs when no operation overflows, with the underflow of "
         "the products and fused operations kept as a separate absolute term; they come from Lean 4.36.0 on "
-        "FloatLib 4.1.0, run on "
+        "FloatLib, run on "
         f"2026-11-21 on {MACHINE}.")
     alt = (
         "Three panels with logarithmic axes and one blue line each, rising one for one with the size: from "

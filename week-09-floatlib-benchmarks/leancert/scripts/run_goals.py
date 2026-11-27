@@ -39,7 +39,7 @@ import time
 SUITE = pathlib.Path(__file__).resolve().parents[1]
 WORK = pathlib.Path(os.environ.get("WORK", SUITE / "work")).resolve()       # goals, Lean files, run records
 # Each tool runs under `lake env` of its own Lake project: the ported LeanCert checkout that `fetch.sh`
-# makes, and this week's project, which requires FloatLib 4.1.0.
+# makes, and this week's project, which requires FloatLib.
 PROJECT = {"lc": pathlib.Path(os.environ.get("LEANCERT_DIR", WORK / "leancert")).resolve(),
            "fl": pathlib.Path(os.environ.get("FLOATLIB_PROJECT", SUITE.parent)).resolve()}
 IMPORT = {"lc": "import LeanCert.Tactic", "fl": "import FloatLib"}

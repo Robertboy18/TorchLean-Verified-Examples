@@ -8,7 +8,7 @@ program is translated to a Lean program and given to `roundoff`, once per kind o
 
 ![Five horizontal bars on an axis from 0 to 100 percent, three for conditional theorems and two for numerical bounds, with a blue part for the proved cases that is about two thirds of the bar for the forward and closed conditional theorems and small for the others. Each bar ends in its count.](figures/01-fpbench-roundoff.svg)
 
-**Figure 1.** What FloatLib's roundoff tactic proves on FPBench. A bar is one kind of theorem over the whole suite, split into the cases proved, not proved and not translated to Lean, with the number proved at its end: 272 cases, the 136 programs of twelve FPBench suite files in binary32 and in binary64. Run on 2026-11-20 with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs); these are the suite runs recorded in the repository of FloatLib 4.1.0.
+**Figure 1.** What FloatLib's roundoff tactic proves on FPBench. A bar is one kind of theorem over the whole suite, split into the cases proved, not proved and not translated to Lean, with the number proved at its end: 272 cases, the 136 programs of twelve FPBench suite files in binary32 and in binary64. Run on 2026-11-20 with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs); these are the suite runs recorded in the repository of FloatLib.
 
 | theorem | proved | not proved | not translated | cases |
 | --- | ---: | ---: | ---: | ---: |
@@ -37,7 +37,7 @@ A count says what the tactic did on this suite, not what it does on all programs
 
 | | |
 | --- | --- |
-| FloatLib | 4.1.0 ([release](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0)), Lean 4.36.0 |
+| FloatLib | `main` at [`fc2fad1f`](https://github.com/lean-dojo/FloatLib/commit/fc2fad1f9c7de970f0a10a44c58cdf2909a867b4), Lean 4.36.0 |
 | FPBench | <https://github.com/FPBench/FPBench> at `8ac4ff6cf0c3be4f9669a562ef2bbbbc3b15182d`, MIT: all 12 `benchmarks/*.fpcore` suite files |
 | Limits | 60 seconds and 4 GB per Lean process, for a conditional theorem and for a numerical bound |
 | Date and machine | 2026-11-20T11:24:20Z to 2026-11-20T11:32:47Z, an Intel Xeon Platinum 8275CL (2 sockets, 96 hardware threads, 1.1 TB), Amazon Linux 2023, shared with other jobs |
@@ -46,7 +46,7 @@ A count says what the tactic did on this suite, not what it does on all programs
 `benchmarks/results/suites/`. Its driver fetches FPBench at the pinned commit with checksums, translates each
 FPCore program (`benchmarks/fpbench/translate.py`), and elaborates each proof in a fresh Lean environment that also
 checks the transitive axioms: a case counts only with `propext`, `Classical.choice` and `Quot.sound`. The suite was
-not run again for this week. The library sources of the recorded run differ from the 4.1.0 tag by one added
+not run again for this week. The library sources of the recorded run differ from the commit `fc2fad1f` by one added
 corollary and the version number, and no tactic differs.
 
 **From Lean:** every proof and its axioms. **From scripts:** the translation and the counts.
@@ -59,7 +59,7 @@ corollary and the version number, and no tactic differs.
 
 ## Run it again
 
-The harness is FloatLib's. In a FloatLib checkout at `v4.1.0`:
+The harness is FloatLib's. In a FloatLib checkout at `fc2fad1f`:
 
 ```bash
 bash benchmarks/suites/run.sh selftest

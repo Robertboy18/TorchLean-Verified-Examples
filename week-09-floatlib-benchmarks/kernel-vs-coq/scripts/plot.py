@@ -78,7 +78,7 @@ def fig_coq() -> None:
          "per operation, in milliseconds, in a loop of 100 operations (10 from 512 bits on) on the same operands; "
          "a cross at the top marks a width where Coq gave no result within 8 GB and 300 seconds. Both axes are "
          f"logarithmic, and lower is faster. The Lean times are the median of {facts['runs']} runs of FloatLib "
-         f"4.1.0 on {facts['date']} with Lean {facts['lean']} on {MACHINE}; the Coq times are the recorded run of "
+         f"on {facts['date']} with Lean {facts['lean']} on {MACHINE}; the Coq times are the recorded run of "
          "2026-11-15 on the same machine, in a container with 8 GB and two CPUs, and do not depend on FloatLib.",
          "Five panels of lines, one per operation, against format width from 32 to 4,096 bits on logarithmic "
          "axes: the FloatLib line is nearly flat near the bottom of each panel, the vm_compute line starts just "

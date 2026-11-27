@@ -16,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 
-# A FloatLib 4.1.0 checkout with its benchmark workspace; by default the copy Lake keeps for this week.
+# A FloatLib checkout with its benchmark workspace; by default the copy Lake keeps for this week.
 CHECKOUT = Path(os.environ.get("FLOATLIB_DIR", Path(__file__).resolve().parents[2] / ".lake/packages/floatlib")).resolve()
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(CHECKOUT / "benchmarks/plots"))

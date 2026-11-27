@@ -1,6 +1,6 @@
 #!/bin/bash
 # run_batches.sh DIR [PROCS]: elaborate every DIR/*.lean that has no .rc file yet, PROCS at a time (8 at most),
-# under `lake env` of this week's Lake project, where `lean` sees FloatLib 4.1.0. Nothing is written outside DIR.
+# under `lake env` of this week's Lake project, where `lean` sees FloatLib. Nothing is written outside DIR.
 set -u
 dir=$(realpath "$1"); procs=${2:-8}
 (( procs > 8 )) && procs=8

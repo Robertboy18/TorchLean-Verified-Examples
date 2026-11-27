@@ -9,7 +9,7 @@ evaluates quickly. This suite asks what that choice costs on six closed statemen
 
 ![Six rows, one per closed statement, each with its name above a linear time axis in milliseconds: a blue circle for decide +kernel and a grey cross for native_decide joined by a bar, all between 3 and 30 milliseconds; one row has no cross.](figures/01-kernel-native-decide.svg)
 
-**Figure 1.** Time to prove one closed statement by decide +kernel on FloatLib's kernel layer and by native_decide. A mark is the time Lean takes to elaborate one example, in milliseconds, elaboration included; native_decide compiles the statement and trusts the compiler, and a row without its mark is a statement on which it fails. The time axis is linear, and lower is faster. Measured on FloatLib 4.1.0 on 2026-11-20 (the median of 5 runs) with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs).
+**Figure 1.** Time to prove one closed statement by decide +kernel on FloatLib's kernel layer and by native_decide. A mark is the time Lean takes to elaborate one example, in milliseconds, elaboration included; native_decide compiles the statement and trusts the compiler, and a row without its mark is a statement on which it fails. The time axis is linear, and lower is faster. Measured on FloatLib on 2026-11-20 (the median of 5 runs) with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs).
 
 | statement | `decide +kernel` (ms) | `native_decide` (ms) | fastest to slowest run, kernel | fastest to slowest run, native |
 | --- | ---: | ---: | --- | --- |
@@ -32,7 +32,7 @@ evaluates quickly. This suite asks what that choice costs on six closed statemen
 
 | | |
 | --- | --- |
-| FloatLib | 4.1.0 ([release](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0)), Lean 4.36.0 |
+| FloatLib | `main` at [`fc2fad1f`](https://github.com/lean-dojo/FloatLib/commit/fc2fad1f9c7de970f0a10a44c58cdf2909a867b4), Lean 4.36.0 |
 | Statements | six closed Boolean statements on the functions of `Numerics.Kernel` (`benchmarks/exact/native.py` in FloatLib's repository) |
 | Date and machine | 2026-11-20, 5 runs between 20:50Z and 21:18Z on an Intel Xeon Platinum 8275CL (2 sockets, 96 hardware threads, 1.1 TB), Amazon Linux 2023, shared with other jobs, 43 to 66 percent idle |
 
@@ -54,6 +54,6 @@ and the slowest run.
 ## Run it again
 
 ```bash
-export FLOATLIB_DIR=/path/to/FloatLib            # at v4.1.0, built, with its benchmark workspace
+export FLOATLIB_DIR=/path/to/FloatLib            # at fc2fad1f, built, with its benchmark workspace
 bash kernel-vs-native-decide/scripts/run.sh kernel-vs-coq/work/timing{1,2,3,4,5}
 ```

@@ -38,7 +38,7 @@ def fig_fpbench() -> None:
          "split into the cases proved, not proved and not translated to Lean, with the number proved at its "
          "end: 272 cases, the 136 programs of twelve FPBench suite files in binary32 and in binary64. Run on "
          f"{facts['date']} with Lean {facts['lean']} on {MACHINE}; these are the suite runs recorded in the "
-         "repository of FloatLib 4.1.0.",
+         "repository of FloatLib.",
          "Five horizontal bars on an axis from 0 to 100 percent, three for conditional theorems and two for "
          "numerical bounds, with a blue part for the proved cases that is about two thirds of the bar for the "
          "forward and closed conditional theorems and small for the others. Each bar ends in its count.",
@@ -54,7 +54,7 @@ def fig_fpbench() -> None:
          "on this suite, not what it does on all programs. From Lean: every proof and its axioms. From "
          "scripts: the translation and the counts. The counts are `benchmarks/results/suites/counts.csv` of "
          f"FloatLib's repository ({facts['measured_utc']}); the library sources of that run differ from the "
-         "4.1.0 tag by one added corollary and the version number, and no tactic differs. "
+         "commit `fc2fad1f` by one added corollary and the version number, and no tactic differs. "
          "Source: `results/counts.csv`.")
 
 

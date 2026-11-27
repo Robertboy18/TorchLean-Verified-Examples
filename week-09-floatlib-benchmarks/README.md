@@ -1,6 +1,6 @@
 # So, how fast is numerical computation in Lean?
 
-FloatLib 4.1.0 is out! For anyone who hasn't been following these posts, [FloatLib](https://github.com/lean-dojo/FloatLib) is our library for floating-point arithmetic and verified numerical computation in Lean. It started out as something we needed for TorchLean, but at this point we're using it for quite a few things that have little to do with neural networks (computer algebra, numerical analysis, PDEs, etc.). I've been meaning to see how FloatLib performs on benchmarks that weren't written by us. There is something mildly unsatisfying about developing a numerical tactic and then evaluating it on examples that you chose yourself. So this week I collected eleven existing benchmarks, mostly from numerical analysis, SMT solving, control theory and NN verification, and ran FloatLib on them.
+A new FloatLib release is out! For anyone who hasn't been following these posts, [FloatLib](https://github.com/lean-dojo/FloatLib) is our library for floating-point arithmetic and verified numerical computation in Lean. It started out as something we needed for TorchLean, but at this point we're using it for quite a few things that have little to do with neural networks (computer algebra, numerical analysis, PDEs, etc.). I've been meaning to see how FloatLib performs on benchmarks that weren't written by us. There is something mildly unsatisfying about developing a numerical tactic and then evaluating it on examples that you chose yourself. So this week I collected eleven existing benchmarks, mostly from numerical analysis, SMT solving, control theory and NN verification, and ran FloatLib on them.
 
 tl;dr: some pretty good results, some rather embarrassing ones, and a few things that I didn't quite expect. In particular, 281 of LLM2Cert's 291 proof obligations go through with a single `by interval`, all 39,994 floating-point conformance tests in SMT-LIB's Wintersteiger family are proved, and computing with 4,096-bit floats inside Lean's kernel is surprisingly cheap.
 
@@ -225,7 +225,7 @@ There is still a rather long list of things to fix: arbitrary-precision performa
 
 ## Reproducing things
 
-Everything is in the [repo](https://github.com/Robertboy18/TorchLean-Verified-Examples/tree/master/week-09-floatlib-benchmarks), including the raw numbers, scripts, benchmark translations and figures. This week's experiments use their own Lake project with FloatLib 4.1.0 and Lean 4.36.0.
+Everything is in the [repo](https://github.com/Robertboy18/TorchLean-Verified-Examples/tree/master/week-09-floatlib-benchmarks), including the raw numbers, scripts, benchmark translations and figures. This week's experiments use their own Lake project with FloatLib and Lean 4.36.0.
 
 ```bash
 git clone https://github.com/Robertboy18/TorchLean-Verified-Examples.git

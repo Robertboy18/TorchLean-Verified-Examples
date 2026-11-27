@@ -145,7 +145,7 @@ def fig_families() -> None:
          f"selection), and panel (b), for information, {measured} other translated benchmarks, where the "
          "selection analysis finds no finite bound for some variable. "
          f"One call of interval per goal with Lean's default limits and {fact['limit_s']} seconds of wall time, "
-         f"run on {fact['date']} with FloatLib 4.1.0 and Lean {fact['lean']} on {fact['machine']}.",
+         f"run on {fact['date']} with FloatLib and Lean {fact['lean']} on {fact['machine']}.",
          f"Two panels of horizontal bars on an axis from 0 to 100 percent. Above, {len(groups[0][1])} bars for "
          f"the families with bounded variables, of which "
          f"{sum(parts[0] == sum(parts) for _, parts in groups[0][1])} are entirely blue, the colour of proved "

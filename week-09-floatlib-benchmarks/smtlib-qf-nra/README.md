@@ -49,7 +49,7 @@ proof is accepted by Lean's kernel with `propext`, `Classical.choice` and `Quot.
 
 ![Two panels of horizontal bars on an axis from 0 to 100 percent. Above, 8 bars for the families with bounded variables, of which 5 are entirely blue, the colour of proved goals, one is mostly grey and two are hatched or dotted. Below, 10 bars for the families of the other benchmarks, which are almost entirely grey, hatched or dotted, with a thin blue part at the left of a few. Each bar ends in its count.](figures/01-qfnra-families.svg)
 
-**Figure 1.** What FloatLib's interval tactic proves on the unsatisfiable SMT-LIB 2025 QF_NRA benchmarks outside MetiTarski, by benchmark family. A bar is one family, split into the goals that Lean accepted as proved, those the tactic refused, and those that stopped at Lean's default limit of heartbeats or of recursion depth, with the number proved at its end. Panel (a) has the 66 benchmarks whose variables are all bounded by their constraints (the selection), and panel (b), for information, all 2,998 other translated benchmarks, where the selection analysis finds no finite bound for some variable. One call of interval per goal with Lean's default limits and 60 seconds of wall time, run on 2026-11-21 with FloatLib 4.1.0 and Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs).
+**Figure 1.** What FloatLib's interval tactic proves on the unsatisfiable SMT-LIB 2025 QF_NRA benchmarks outside MetiTarski, by benchmark family. A bar is one family, split into the goals that Lean accepted as proved, those the tactic refused, and those that stopped at Lean's default limit of heartbeats or of recursion depth, with the number proved at its end. Panel (a) has the 66 benchmarks whose variables are all bounded by their constraints (the selection), and panel (b), for information, all 2,998 other translated benchmarks, where the selection analysis finds no finite bound for some variable. One call of interval per goal with Lean's default limits and 60 seconds of wall time, run on 2026-11-21 with FloatLib and Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs).
 
 One of the proofs settles a benchmark whose status in the release is `unknown`:
 `20200911-Pine/1599121980156583000.smt2`, which Z3-alpha, cvc5, Yices2 and SMT-RAT all answered unsat in the
@@ -223,7 +223,7 @@ theorem goal : ¬ ∃ (x0 x1 x2 : ℝ),
 
 | | |
 | --- | --- |
-| FloatLib | 4.1.0 ([release](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0)), Lean 4.36.0 (`611c117b`), Mathlib v4.36.0 (`fc4f59e5`) |
+| FloatLib | `main` at [`fc2fad1f`](https://github.com/lean-dojo/FloatLib/commit/fc2fad1f9c7de970f0a10a44c58cdf2909a867b4), Lean 4.36.0 (`611c117b`), Mathlib v4.36.0 (`fc4f59e5`) |
 | SMT-LIB 2025, QF_NRA | release 2025.08.04, `QF_NRA.tar.zst`, 210,801,606 bytes, MD5 `85a04fcea6dd10fb4c505703cac46e2c`, CC BY 4.0, <https://zenodo.org/records/16740866/files/QF_NRA.tar.zst>. 12,154 benchmarks, 7,006 of them in `meti-tarski` |
 | SMT-COMP 2025 results | `data/results-sq-2025.json.gz` of <https://github.com/SMT-COMP/smt-comp.github.io> at `cd15cbedd4ef312d615448100797a80e922cf575`. The single-query track ran 3,104 QF_NRA benchmarks, 1,955 of them outside MetiTarski, with 1,200 seconds each |
 | Z3 | 5.3.3, the binary of `z3_solver-5.3.3.0-py3-none-manylinux_2_27_x86_64.whl` (<https://github.com/Z3Prover/z3/releases/tag/z3-5.3.3>) |
@@ -261,7 +261,7 @@ not time.
 ## Run it again
 
 ```bash
-lake build                                                  # in the week's directory: FloatLib 4.1.0
+lake build                                                  # in the week's directory: FloatLib
 bash smtlib-qf-nra/scripts/fetch.sh                         # SMT-LIB QF_NRA (3.3 GB extracted), results, solvers
 R=smtlib-qf-nra/run; Q=$R/dl/non-incremental/QF_NRA; C=$R/dl/results-sq-2025.json.gz; P=smtlib-qf-nra/scripts
 python3 -I $P/scan_status.py $Q $R/scan.tsv

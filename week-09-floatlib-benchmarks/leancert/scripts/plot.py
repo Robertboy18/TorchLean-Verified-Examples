@@ -128,7 +128,7 @@ def fig_time() -> None:
         "side by side. Panel (a) holds the inequality goals of LeanCert's seven "
         "benchmark suites and of its two script benchmarks, panel (b) the inequalities, with six combinations of "
         "comparisons, that LeanCert's examples and tests prove with one tactic call. The time axis is logarithmic, a curve further left is faster and one that "
-        "ends higher proves more. Measured on FloatLib 4.1.0 and LeanCert 44b323a ported to Lean 4.36.0 and "
+        "ends higher proves more. Measured on FloatLib and LeanCert 44b323a ported to Lean 4.36.0 and "
         f"Mathlib v4.36.0, on 2026-11-21 on {MACHINE}, at most 7 Lean processes at once.")
     alt = (
         "Two panels with three rising step curves each on a logarithmic time axis from 0.004 to 300 seconds. "
@@ -192,7 +192,7 @@ def fig_suites() -> None:
         "suites and script benchmarks, stated as goals; the last row holds the inequalities, with six combinations of "
         "comparisons, that LeanCert's examples and tests prove with one tactic call. Goals of other shapes (integrals, root existence and uniqueness, exact "
         "identities, list constructions, derivatives) are not in the figure, because `interval` does not address "
-        "them. Measured on FloatLib 4.1.0 and LeanCert 44b323a ported to Lean 4.36.0 and Mathlib v4.36.0, on "
+        "them. Measured on FloatLib and LeanCert 44b323a ported to Lean 4.36.0 and Mathlib v4.36.0, on "
         f"2026-11-21 on {MACHINE}.")
     alt = (
         f"Horizontal bars in {len(table)} groups of three, one group per suite, on an axis from 0 to 100 percent: "

@@ -97,10 +97,10 @@ def main():
     rows = [
         ["mode-a-defaults", "FloatLib", "interval alone, Lean's default limits", a["closed"], a["certificates"],
          f"{a['seconds'] / 3600:.4f}", hours(a["seconds"]), 0, f"{a['median_s']:.1f}", "yes",
-         "measured here, FloatLib 4.1.0"],
+         "measured here, FloatLib"],
         ["mode-a-raised", "FloatLib", "interval alone, raised limits", b["closed"], b["certificates"],
          f"{b['seconds'] / 3600:.4f}", hours(b["seconds"]), 0, f"{b['median_s']:.1f}", "yes",
-         "measured here, FloatLib 4.1.0"],
+         "measured here, FloatLib"],
         ["llm2cert-all-lean", "LLM2Cert", "LLM2Cert All-Lean, a model writes the proofs", their_closed,
          their_complete, f"{their_seconds / 3600:.4f}", hours(their_seconds), their_tokens, "", "yes",
          "their lean_records.json (script count)"],
@@ -134,7 +134,7 @@ def main():
                   [f"idle_percent_start_{name}", get("idle")], [f"idle_percent_end_{name}", get("idle_end")]]
         if name == "defaults":
             facts += [["date", get("start")[:10]], ["lean", lean_version(get("lean"))],
-                      ["floatlib", "4.1.0"], ["workers", get("workers")]]
+                      ["floatlib", "fc2fad1f"], ["workers", get("workers")]]
     write(out, "llm2cert-run.csv", ["key", "value"], facts)
     kinds = collections.defaultdict(lambda: [0, 0, 0, 0])
     for entry in index:

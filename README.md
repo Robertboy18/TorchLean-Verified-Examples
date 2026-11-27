@@ -41,7 +41,7 @@ Some examples I've been working on :)
   (Open Problem 6), and differently written agents that still cooperate.
   `lake exe play_dupoc 500000` plays the tournament.
 - [So, how fast is numerical computation in Lean?](week-09-floatlib-benchmarks/).
-  FloatLib 4.1.0 on eleven benchmarks that weren't written by us: 281 of LLM2Cert's 291 proof
+  FloatLib on eleven benchmarks that weren't written by us: 281 of LLM2Cert's 291 proof
   obligations go through with a single `by interval`, all 39,994 floating-point conformance tests
   in SMT-LIB's Wintersteiger family are proved, and 4,096-bit floats inside Lean's kernel are
   surprisingly cheap.

@@ -3,7 +3,7 @@
 # One Lean module is compiled and one executable is linked; nothing in the library is rebuilt and
 # nothing is written in the FloatLib checkout or in its build directory.
 #   build_public.sh [OUT_DIR [--low-word-128]]      (OUT_DIR is `work/public` of this suite by default)
-# FLOATLIB_DIR is a FloatLib 4.1.0 checkout whose benchmark executables are built (its
+# FLOATLIB_DIR is a FloatLib checkout whose benchmark executables are built (its
 # `benchmarks/scripts/format-comparison.sh` builds them); by default the copy that Lake keeps for this
 # week, `.lake/packages/floatlib`. FLOATLIB_BUILD_DIR is its build directory.
 set -euo pipefail

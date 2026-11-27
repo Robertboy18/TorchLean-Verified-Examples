@@ -8,7 +8,7 @@ arithmetic, Berkeley SoftFloat 3e and MPFR 4.1.0. Then the same operations go up
 
 ![Two panels, binary32 above binary64, each with six groups of four markers, FloatLib, MPFR, SoftFloat and the host FPU from left to right, on a logarithmic time axis: in every group the host FPU is lowest, between 8 and 13 nanoseconds, SoftFloat lies between 18 and 33, MPFR between 32 and 59 and FloatLib between 24 and 118.](figures/01-public-binary32-64.svg)
 
-**Figure 1.** Time of FloatLib's public binary32 and binary64 operations in compiled code, next to the host processor's own arithmetic, Berkeley SoftFloat 3e and MPFR 4.1.0. A marker is the median of 9 trials of the time per operation, in nanoseconds, of a loop in which each result selects the next operands, and its whisker runs from the fastest to the slowest trial; the operations are addition, subtraction, multiplication, division, square root and fused multiply-add, rounded to nearest even. The time axis is logarithmic, and lower is faster. Measured on FloatLib 4.1.0 on 2026-11-20 in one run on one pinned core of an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs) with Lean 4.36.0.
+**Figure 1.** Time of FloatLib's public binary32 and binary64 operations in compiled code, next to the host processor's own arithmetic, Berkeley SoftFloat 3e and MPFR 4.1.0. A marker is the median of 9 trials of the time per operation, in nanoseconds, of a loop in which each result selects the next operands, and its whisker runs from the fastest to the slowest trial; the operations are addition, subtraction, multiplication, division, square root and fused multiply-add, rounded to nearest even. The time axis is logarithmic, and lower is faster. Measured on FloatLib on 2026-11-20 in one run on one pinned core of an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs) with Lean 4.36.0.
 
 Median of 9 trials (fastest to slowest trial), nanoseconds per operation:
 
@@ -39,7 +39,7 @@ Median of 9 trials (fastest to slowest trial), nanoseconds per operation:
 
 ![Six panels, one per operation, each with a FloatLib line and an MPFR line against format width from 32 to 4,096 bits on logarithmic axes: the two lines are close at 32 and 64 bits, the FloatLib line is above at 128 bits, steps up to about two microseconds or more at 256 bits and is nearly flat from there, while the MPFR line rises steadily, so that the gap narrows towards 4,096 bits in every panel, least for addition and subtraction.](figures/02-floatlib-mpfr-widths.svg)
 
-**Figure 2.** Compiled time of FloatLib's binary operations against MPFR 4.1.0 at the same precision, exponent range and rounding, from 32 to 4,096 bits. A marker is the median of 9 trials of the time per operation, in nanoseconds, of a loop in which each result selects the next operands, with a whisker from the fastest to the slowest trial. Both axes are logarithmic, and lower is faster. Measured on FloatLib 4.1.0 on 2026-11-20 in one run on one pinned core of an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs) with Lean 4.36.0.
+**Figure 2.** Compiled time of FloatLib's binary operations against MPFR 4.1.0 at the same precision, exponent range and rounding, from 32 to 4,096 bits. A marker is the median of 9 trials of the time per operation, in nanoseconds, of a loop in which each result selects the next operands, with a whisker from the fastest to the slowest trial. Both axes are logarithmic, and lower is faster. Measured on FloatLib on 2026-11-20 in one run on one pinned core of an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs) with Lean 4.36.0.
 
 FloatLib's time over MPFR's (ratio of medians, below 1 FloatLib is faster):
 
@@ -68,7 +68,7 @@ implementation's time, and at 8 ns the host FPU's row is mostly that.
 
 | | |
 | --- | --- |
-| FloatLib | 4.1.0 ([release](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0)), Lean 4.36.0, Mathlib `fc4f59e5` |
+| FloatLib | `main` at [`fc2fad1f`](https://github.com/lean-dojo/FloatLib/commit/fc2fad1f9c7de970f0a10a44c58cdf2909a867b4), Lean 4.36.0, Mathlib `fc4f59e5` |
 | MPFR | 4.1.0 (patch level 13, the system's library), with precision, exponent range, nearest-even and gradual underflow matched to the format |
 | Berkeley SoftFloat | 3e at `a0c6494cdc11865811dec815d5c0049fba9d82a8` (<https://github.com/ucb-bar/berkeley-softfloat-3>), built by its own makefile |
 | Host FPU | C `float` and `double` |
@@ -124,11 +124,11 @@ iteration counts (the harness's calibration), the medians, the spread and the ra
 
 ## Run it again
 
-The harness lives in FloatLib's repository, so this needs a FloatLib checkout at `v4.1.0` with its benchmark
+The harness lives in FloatLib's repository, so this needs a FloatLib checkout at `fc2fad1f` with its benchmark
 workspace built (`FLOATLIB_DIR`), MPFR's headers and a C compiler.
 
 ```bash
-export FLOATLIB_DIR=/path/to/FloatLib            # at v4.1.0
+export FLOATLIB_DIR=/path/to/FloatLib            # at fc2fad1f
 bash compiled-vs-mpfr-softfloat-fpu/scripts/build_public.sh
 python3 compiled-vs-mpfr-softfloat-fpu/scripts/run_comparison.py 9 compiled-vs-mpfr-softfloat-fpu/work/run
 python3 compiled-vs-mpfr-softfloat-fpu/scripts/summarize_comparison.py \

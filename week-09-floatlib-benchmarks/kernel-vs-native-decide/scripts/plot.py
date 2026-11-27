@@ -59,7 +59,7 @@ def fig_native() -> None:
          "native_decide. A mark is the time Lean takes to elaborate one example, in milliseconds, elaboration "
          "included; native_decide compiles the statement and trusts the compiler, and a row without its mark "
          "is a statement on which it fails. The time axis is linear, and lower is faster. "
-         f"Measured on FloatLib 4.1.0 on {facts['date']} (the median of {facts['runs']} runs) with Lean "
+         f"Measured on FloatLib on {facts['date']} (the median of {facts['runs']} runs) with Lean "
          f"{facts['lean']} on {MACHINE}.",
          f"{NUMBER[len(data)]} rows, one per closed statement, each with its name above a linear time axis in "
          "milliseconds: a blue circle for decide +kernel and a grey cross for native_decide joined by a bar, "

@@ -15,7 +15,7 @@ times carry that noise, and the time of one goal can be off by a factor of two b
 
 ![Horizontal bars in 9 groups of three, one group per suite, on an axis from 0 to 100 percent: FloatLib interval, LeanCert kernel-checked and LeanCert with its compiled checker. Evaluation: 40, 32 and 32 of 40. NumericalRefinement: 2, 2 and 2 of 2. DomainAwareAD: 8, 8 and 8 of 8. bench-showcase: 3, 3 and 3 of 3. bench-trust point: 10, 10 and 10 of 10. bench-trust subdiv: 80, 80 and 80 of 80. bench-trust optimization: 1, 1 and 1 of 1. bench-trust finsum: 0, 2 and 3 of 3. examples and tests: 197, 203 and 210 of 210.](figures/02-goals-per-suite.svg)
 
-**Figure 2.** Share of each suite's inequality goals that FloatLib's `interval` and LeanCert's own tactic prove with one call; the number at the end of a bar is the count of goals. The first eight rows are LeanCert's benchmark suites and script benchmarks, stated as goals; the last row holds the inequalities, with six combinations of comparisons, that LeanCert's examples and tests prove with one tactic call. Goals of other shapes (integrals, root existence and uniqueness, exact identities, list constructions, derivatives) are not in the figure, because `interval` does not address them. Measured on FloatLib 4.1.0 and LeanCert 44b323a ported to Lean 4.36.0 and Mathlib v4.36.0, on 2026-11-21 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs).
+**Figure 2.** Share of each suite's inequality goals that FloatLib's `interval` and LeanCert's own tactic prove with one call; the number at the end of a bar is the count of goals. The first eight rows are LeanCert's benchmark suites and script benchmarks, stated as goals; the last row holds the inequalities, with six combinations of comparisons, that LeanCert's examples and tests prove with one tactic call. Goals of other shapes (integrals, root existence and uniqueness, exact identities, list constructions, derivatives) are not in the figure, because `interval` does not address them. Measured on FloatLib and LeanCert 44b323a ported to Lean 4.36.0 and Mathlib v4.36.0, on 2026-11-21 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs).
 
 LeanCert's seven suites have 119 cases. They time compiled evaluators and checkers, and none of the cases is a
 theorem statement, so each case was first stated as a goal (112 goals). Every goal was given to LeanCert's own
@@ -46,7 +46,7 @@ tactic and to `interval`, one call each, with the same `lean` binary on the same
 
 ![Two panels with three rising step curves each on a logarithmic time axis from 0.004 to 300 seconds. In panel (a) the FloatLib curve ends at 144 of 147 goals, the kernel-checked LeanCert curve at 138 and the compiled-checker LeanCert curve at 139; in panel (b) they end at 197, 203 and 210 of 210 goals. The FloatLib curve rises furthest to the left in both panels.](figures/01-time-per-goal.svg)
 
-**Figure 1.** Goals proved against time per goal, by FloatLib's `interval` and by LeanCert's own tactic on the same statements, each with one call. A curve counts the goals proved within the time on the horizontal axis; the time is that of the whole `theorem` command inside Lean (elaboration, the tactic and the kernel check), the median of two repetitions for a run under 20 s and one repetition otherwise, with both tools running side by side. Panel (a) holds the inequality goals of LeanCert's seven benchmark suites and of its two script benchmarks, panel (b) the inequalities, with six combinations of comparisons, that LeanCert's examples and tests prove with one tactic call. The time axis is logarithmic, a curve further left is faster and one that ends higher proves more. Measured on FloatLib 4.1.0 and LeanCert 44b323a ported to Lean 4.36.0 and Mathlib v4.36.0, on 2026-11-21 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs), at most 7 Lean processes at once.
+**Figure 1.** Goals proved against time per goal, by FloatLib's `interval` and by LeanCert's own tactic on the same statements, each with one call. A curve counts the goals proved within the time on the horizontal axis; the time is that of the whole `theorem` command inside Lean (elaboration, the tactic and the kernel check), the median of two repetitions for a run under 20 s and one repetition otherwise, with both tools running side by side. Panel (a) holds the inequality goals of LeanCert's seven benchmark suites and of its two script benchmarks, panel (b) the inequalities, with six combinations of comparisons, that LeanCert's examples and tests prove with one tactic call. The time axis is logarithmic, a curve further left is faster and one that ends higher proves more. Measured on FloatLib and LeanCert 44b323a ported to Lean 4.36.0 and Mathlib v4.36.0, on 2026-11-21 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs), at most 7 Lean processes at once.
 
 In the tables, `n (a, b, c)` means `n` goals proved: `a` in a plain file with default options, `b` only with raised
 Lean limits, `c` only with the larger tactic options. Times are per goal, medians over the goals both tools prove.
@@ -156,7 +156,7 @@ with the interpreter, only to read off the enclosure each case computes.
 
 | | |
 | --- | --- |
-| FloatLib | 4.1.0 ([release](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0)) |
+| FloatLib | `main` at [`fc2fad1f`](https://github.com/lean-dojo/FloatLib/commit/fc2fad1f9c7de970f0a10a44c58cdf2909a867b4) |
 | LeanCert | <https://github.com/alerad/leancert> at `44b323a0d6af00211d5013f6e021432db032087c` (2026-10-28, Apache-2.0), ported as above |
 | Lean and Mathlib | `leanprover/lean4:v4.36.0`, the same `lean` binary for both tools, and Mathlib v4.36.0 |
 | Date and machine | 2026-11-21, an Intel Xeon Platinum 8275CL (2 sockets, 96 hardware threads, 1.1 TB), Amazon Linux 2023, shared with other jobs. Idle CPU between 0 % and 62 % (median 38 %) during the runs, at most seven Lean processes at once |
@@ -188,7 +188,7 @@ statements, the process wall times and the timeouts, the medians, counts and rat
 ## Run it again
 
 ```bash
-lake build                                                  # in the week's directory: FloatLib 4.1.0
+lake build                                                  # in the week's directory: FloatLib
 bash leancert/scripts/fetch.sh                              # LeanCert at its commit, ported to Lean v4.36.0
 bash leancert/scripts/lcbuild.sh LeanCert.Tactic LeanCert.Benchmark.Main
 python3 leancert/scripts/run_goals.py --help                # goals, runs and repetitions

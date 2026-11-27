@@ -42,7 +42,7 @@ rewrite of the public operations to their kernel operations. The whole family ta
 
 ![Two panels of markers with whiskers on a logarithmic time axis from 2 to 100 milliseconds, seven operations each: add, sub, mul, div, fma, sqrt and rem above, and rounding to an integer, min, max, abs, eq, lt and gt below. In every group the open FloatLib marker for the whole Lean run is highest, between 47 and 73 milliseconds, the Z3 square lies between 21 and 24, the cvc5 triangle is near 6, and the filled FloatLib marker for the kernel check is lowest, between 2.7 and 4.8, except for min and max, where it is just above the cvc5 triangle at about 6.4.](figures/01-time-by-operation.svg)
 
-**Figure 1.** Time per instance on SMT-LIB's single-operation floating-point benchmarks (the Wintersteiger family, binary64), by operation: FloatLib's proof by `float_decide` in Lean against the SMT solvers Z3 5.4.1 and cvc5 1.4.2. A marker is the median over the 100 sampled instances of an operation of the time per instance, in milliseconds, with a whisker from the 5th to the 95th percentile: for FloatLib the time Lean's kernel takes to check the instance's proof, and the whole Lean run, which adds parsing, elaboration, the axiom report and an equal share of loading the library with 250 instances per process; for a solver the wall time of one process per instance. The time axis is logarithmic, and lower is faster. Measured on FloatLib 4.1.0 on 2026-11-21 with Lean 4.36.0, the fastest of three runs of each instance, one process at a time on one core of an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs).
+**Figure 1.** Time per instance on SMT-LIB's single-operation floating-point benchmarks (the Wintersteiger family, binary64), by operation: FloatLib's proof by `float_decide` in Lean against the SMT solvers Z3 5.4.1 and cvc5 1.4.2. A marker is the median over the 100 sampled instances of an operation of the time per instance, in milliseconds, with a whisker from the 5th to the 95th percentile: for FloatLib the time Lean's kernel takes to check the instance's proof, and the whole Lean run, which adds parsing, elaboration, the axiom report and an equal share of loading the library with 250 instances per process; for a solver the wall time of one process per instance. The time axis is logarithmic, and lower is faster. Measured on FloatLib on 2026-11-21 with Lean 4.36.0, the fastest of three runs of each instance, one process at a time on one core of an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs).
 
 **The solvers are faster at this task, and that is fine.** Z3 and cvc5 fold the constants, so their time is the
 cost of starting a process and reading a file. On a sample of 1,400 instances, one process at a time on a core of
@@ -68,7 +68,7 @@ operation, checked by Lean's kernel with three axioms.
 
 ![Two panels of horizontal bars on an axis from 0 to 100 percent. Above, six bars for the families: the wintersteiger bar is entirely blue and ends in 39,994 of 39,994, and the bars of griggio, schanda, Vector, ramalho and UltimateAutomizer are almost or entirely light, ending in 2 of 214, 4 of 44, 6 of 91, 0 of 36 and 0 of 27. Below, five dark bars for Bitwuzla, COLIBRI, cvc5, colibri2 and Z3-Owl that fill between about two thirds and nine tenths of the axis, ending in 255 of 275 for Bitwuzla, and a light bar for FloatLib that ends in 0 of 275.](figures/02-reach-and-competition.svg)
 
-**Figure 2.** What FloatLib's `float_decide` reaches in the QF_FP benchmarks of SMT-LIB 2025, and what SMT solvers solved in that logic at SMT-COMP 2025. In panel (a) a bar is one benchmark family, with the share of its benchmarks whose inputs are all fixed and whose status Lean proved, and the count at its end; the rest of a bar are search problems, which `float_decide` does not attempt. In panel (b) a bar is one solver of the single-query track on the competition's 275 selected benchmarks, from the published results, with FloatLib's count of benchmarks in reach among the same 275 below them. FloatLib 4.1.0 was run on 2026-11-21 with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs); the competition ran in 2025 on its own cluster with 1,200 seconds per benchmark.
+**Figure 2.** What FloatLib's `float_decide` reaches in the QF_FP benchmarks of SMT-LIB 2025, and what SMT solvers solved in that logic at SMT-COMP 2025. In panel (a) a bar is one benchmark family, with the share of its benchmarks whose inputs are all fixed and whose status Lean proved, and the count at its end; the rest of a bar are search problems, which `float_decide` does not attempt. In panel (b) a bar is one solver of the single-query track on the competition's 275 selected benchmarks, from the published results, with FloatLib's count of benchmarks in reach among the same 275 below them. FloatLib was run on 2026-11-21 with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs); the competition ran in 2025 on its own cluster with 1,200 seconds per benchmark.
 
 **The other families are search problems.** `float_decide` evaluates a closed statement and does not search.
 
@@ -131,7 +131,7 @@ evaluated at the model: `constraint = true` for status sat, `constraint = false`
 ([`scripts/qffp2lean.py`](scripts/qffp2lean.py)) reads the syntax and the sorts of a term only: never the file's
 name, its expected result or the value of an operand.
 
-| SMT-LIB | Lean, on FloatLib 4.1.0 |
+| SMT-LIB | Lean, on FloatLib |
 | --- | --- |
 | `(_ FloatingPoint eb sb)` | `ExecFloat.Binary (exponentBits := eb) (fractionBits := sb - 1)`; at 11 and 53 this is `Binary64` |
 | `(fp s e f)`, `(_ +oo ..)`, `(_ -zero ..)`, `(_ NaN ..)`, `((_ to_fp eb sb) bits)` | `ExecFloat.Binary.ofNatBits` of the encoding; the NaN of SMT-LIB as the quiet NaN with an empty payload |
@@ -175,7 +175,7 @@ the translator knows, with Z3's value as the expected result. Lean proves all 4,
 
 | | |
 | --- | --- |
-| FloatLib | 4.1.0 ([release](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0)), Lean 4.36.0, Mathlib v4.36.0 |
+| FloatLib | `main` at [`fc2fad1f`](https://github.com/lean-dojo/FloatLib/commit/fc2fad1f9c7de970f0a10a44c58cdf2909a867b4), Lean 4.36.0, Mathlib v4.36.0 |
 | SMT-LIB 2025, QF_FP | release 2025.08.04, `QF_FP.tar.zst`, 7,524,054 bytes, MD5 `b7f9786b5317d7be8a185c861088f504`, CC BY 4.0, Zenodo record 16740866 (<https://zenodo.org/records/16740866>, DOI 10.5281/zenodo.16740866). 40,406 files: 39,994 wintersteiger, 214 griggio, 91 Vector, 44 schanda, 36 ramalho, 27 UltimateAutomizer |
 | SMT-COMP results | `data/results-sq-2025.json.gz`, `benchmarks-2025.json.gz` and `results-sq-2018.json.gz` of <https://github.com/SMT-COMP/smt-comp.github.io>, and the [division's page](https://smt-comp.github.io/2025/results/qf_fp-single-query) |
 | Z3 | 5.4.1, the binary of the PyPI wheel `z3_solver-5.4.1.0-py3-none-manylinux_2_27_x86_64.whl` |
@@ -215,7 +215,7 @@ Lean, Z3 and cvc5, and the competition's numbers, read from its JSON files. Noth
 ## Run it again
 
 ```bash
-lake build                                                  # in the week's directory: FloatLib 4.1.0
+lake build                                                  # in the week's directory: FloatLib
 bash smtlib-qf-fp/scripts/fetch.sh                          # SMT-LIB QF_FP, SMT-COMP results, Z3, cvc5
 R=smtlib-qf-fp/run; Q=$R/dl/non-incremental/QF_FP
 python3 -I smtlib-qf-fp/scripts/qffp2lean.py classify $Q $R/meta/classify.jsonl

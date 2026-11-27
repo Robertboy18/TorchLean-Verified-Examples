@@ -38,7 +38,7 @@ PROJECTS = (
     ("week-06-heuristic-estimators", "Estimating model behavior from its structure", "Heuristic estimation"),
     ("week-07-program-equilibrium", "Programs that read each other's code", "Program equilibrium"),
     ("week-08-bounded-lob", "Löb's theorem with a budget", "Bounded proofs"),
-    ("week-09-floatlib-benchmarks", "FloatLib 4.1.0 on other people's benchmarks", "Benchmarks"),
+    ("week-09-floatlib-benchmarks", "So, how fast is numerical computation in Lean?", "Benchmarks"),
 )
 TEXT_SUFFIXES = {".lean", ".md", ".py", ".sh", ".cpp", ".c", ".h", ".cu", ".json", ".svg", ".toml"}
 LEAN_LEXER = get_lexer_by_name('lean4')

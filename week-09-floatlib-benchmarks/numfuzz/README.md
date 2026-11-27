@@ -36,7 +36,7 @@ the times of the tools are not measured on one machine.
 
 ![Two panels sharing 17 rows, one per program, each row holding up to four markers one above the other. In the left panel the FloatLib circles lie between 2 and 20 units; they sit on the NumFuzz squares in 13 rows and left of them in 4, and the Gappa diamonds sit on them in 10 rows and left of them in 7. The FPTaylor triangles lie right of the circles in 13 rows, on them in 1 and left of them in 2; in 7 of those rows they are open triangles at the right edge, and 1 more row has a cross there. In the right panel the NumFuzz squares stand between 0.002 and 0.008 seconds, the Gappa diamonds between 0.034 and 2.2, the FPTaylor triangles between 3.2 and 109 and the FloatLib circles between 1.7 and 68.](figures/01-bounds-and-time.svg)
 
-**Figure 1.** Relative error bounds and analysis times of the 17 small benchmarks of the NumFuzz paper (its Table 3): FloatLib's `roundoff` against the published numbers of NumFuzz, Gappa and FPTaylor. Panel (a) gives each tool's bound on the relative error in units of 2^-52, the unit roundoff of binary64 rounded toward plus infinity, and panel (b) the time of each analysis in seconds; both axes are logarithmic, and left is tighter in (a) and faster in (b). FloatLib's bound is the one Lean accepted on the box [0.1, 1000] that the paper gave Gappa and FPTaylor, and its time is Lean's elaboration of the forward theorem and of that bound, measured on 2026-11-21 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs) with Lean 4.36.0 on FloatLib 4.1.0. The other tools' numbers are the paper's, measured on a MacBook with a 1.4 GHz processor.
+**Figure 1.** Relative error bounds and analysis times of the 17 small benchmarks of the NumFuzz paper (its Table 3): FloatLib's `roundoff` against the published numbers of NumFuzz, Gappa and FPTaylor. Panel (a) gives each tool's bound on the relative error in units of 2^-52, the unit roundoff of binary64 rounded toward plus infinity, and panel (b) the time of each analysis in seconds; both axes are logarithmic, and left is tighter in (a) and faster in (b). FloatLib's bound is the one Lean accepted on the box [0.1, 1000] that the paper gave Gappa and FPTaylor, and its time is Lean's elaboration of the forward theorem and of that bound, measured on 2026-11-21 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs) with Lean 4.36.0 on FloatLib. The other tools' numbers are the paper's, measured on a MacBook with a 1.4 GHz processor.
 
 **Table 1. The 17 small benchmarks (the paper's Table 3).** "yes" and "no": Lean proved the case or not. "f c b":
 `roundoff mixed theorem` (forward), `roundoff closed theorem`, `roundoff (backward := true) theorem`. Times are
@@ -101,7 +101,7 @@ loop theorem at the program's size.
 
 ![Three panels with logarithmic axes and one blue line each, rising one for one with the size: from 2 to 100 fused multiply-adds, from 4 to 128 pairs and from 7 to 1,023 additions. In the first and third panels the circles on the line sit inside the NumFuzz squares at every size that has one, inside Gappa diamonds at the small sizes and under textbook plus signs at the large ones; open triangles at the top edge of the first panel mark FPTaylor's bounds, and one FPTaylor triangle stands far above the line at the small sum. In the middle panel the plus signs sit on the circles and the NumFuzz squares lie about a factor two above the line.](figures/02-sums-horner-dot.svg)
 
-**Figure 2.** Relative error bounds of the three families of long programs in the NumFuzz benchmarks, against their size: (a) Horner's rule with one fused multiply-add per coefficient, (b) the dot product behind each entry of a matrix product, (c) the serial sum. The line is FloatLib's theorem for every size, proved once by `roundoff` on the program written as a loop, and its circles are the sizes of the benchmarks; the other marks are the published bounds of NumFuzz, Gappa and FPTaylor and the textbook bounds that the paper quotes. Bounds are in units of 2^-52, both axes are logarithmic, and lower is tighter. FloatLib's bounds hold for nonnegative binary64 inputs when no operation overflows, with the underflow of the products and fused operations kept as a separate absolute term; they come from Lean 4.36.0 on FloatLib 4.1.0, run on 2026-11-21 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs).
+**Figure 2.** Relative error bounds of the three families of long programs in the NumFuzz benchmarks, against their size: (a) Horner's rule with one fused multiply-add per coefficient, (b) the dot product behind each entry of a matrix product, (c) the serial sum. The line is FloatLib's theorem for every size, proved once by `roundoff` on the program written as a loop, and its circles are the sizes of the benchmarks; the other marks are the published bounds of NumFuzz, Gappa and FPTaylor and the textbook bounds that the paper quotes. Bounds are in units of 2^-52, both axes are logarithmic, and lower is tighter. FloatLib's bounds hold for nonnegative binary64 inputs when no operation overflows, with the underflow of the products and fused operations kept as a separate absolute term; they come from Lean 4.36.0 on FloatLib, run on 2026-11-21 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs).
 
 **Table 4. Loop forms at the sizes of the benchmarks.**
 
@@ -169,7 +169,7 @@ case over all positive inputs, the reported bound is not the smallest that the t
 
 | | |
 | --- | --- |
-| FloatLib | 4.1.0 ([release](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0)), Lean 4.36.0, Mathlib v4.36.0 |
+| FloatLib | `main` at [`fc2fad1f`](https://github.com/lean-dojo/FloatLib/commit/fc2fad1f9c7de970f0a10a44c58cdf2909a867b4), Lean 4.36.0, Mathlib v4.36.0 |
 | NumFuzz artifact | <https://github.com/ak-2485/NumFuzz>, `main` at `80c54f35348c60b8a1e95f1881adda8d2e9c1dfb` (2024-12-05), GPL-3.0. Read as data, not vendored here |
 | Published numbers | the paper's Tables 3, 4 and 5 (arXiv:2405.04612v2), transcribed in [`scripts/gen.py`](scripts/gen.py) and checked against the PDF text. The paper ran everything on "a MacBook with a 1.4 GHz processor and 8 GB of memory", with FPTaylor 0.9.4 and Gappa 1.4.2 |
 | Date and machine | 2026-11-21, an Intel Xeon Platinum 8275CL (2 sockets, 96 hardware threads, 1.1 TB), Amazon Linux 2023, shared with other jobs. Between 28 and 94 percent of the 96 threads were busy (median 66) |
@@ -203,7 +203,7 @@ NumFuzz, FPTaylor, Gappa and Satire and the textbook bounds. Nothing was tuned t
 ## Run it again
 
 ```bash
-lake build                                                  # in the week's directory: FloatLib 4.1.0
+lake build                                                  # in the week's directory: FloatLib
 bash numfuzz/scripts/fetch.sh                               # the NumFuzz artifact, pinned
 F=$PWD/.lake/packages/floatlib; N=numfuzz/run; P=numfuzz/scripts
 python3 -I $P/gen.py $N/dl/NumFuzz/examples $F $N/work

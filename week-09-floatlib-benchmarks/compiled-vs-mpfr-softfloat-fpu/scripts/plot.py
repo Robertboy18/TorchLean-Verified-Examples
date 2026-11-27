@@ -100,7 +100,7 @@ def fig_public() -> None:
          "the next operands, and its whisker runs from the fastest to the slowest trial; the operations are "
          "addition, subtraction, multiplication, division, square root and fused multiply-add, rounded to "
          "nearest even. The time axis is logarithmic, and lower is faster. "
-         f"Measured on FloatLib 4.1.0 on {facts['date']} in one run on one pinned core of {MACHINE} with Lean "
+         f"Measured on FloatLib on {facts['date']} in one run on one pinned core of {MACHINE} with Lean "
          f"{facts['lean']}.",
          "Two panels, binary32 above binary64, each with six groups of four markers, FloatLib, MPFR, "
          f"SoftFloat and the host FPU from left to right, on a logarithmic time axis: in every group the host "
@@ -163,7 +163,7 @@ def fig_widths() -> None:
          "exponent range and rounding, from 32 to 4,096 bits. A marker is the median of "
          f"{facts['trials']} trials of the time per operation, in nanoseconds, of a loop in which each result selects "
          "the next operands, with a whisker from the fastest to the slowest trial. Both axes are logarithmic, "
-         f"and lower is faster. Measured on FloatLib 4.1.0 on {facts['date']} in one run on one pinned core of "
+         f"and lower is faster. Measured on FloatLib on {facts['date']} in one run on one pinned core of "
          f"{MACHINE} with Lean {facts['lean']}.",
          "Six panels, one per operation, each with a FloatLib line and an MPFR line against format width "
          "from 32 to 4,096 bits on logarithmic axes: the two lines are close at 32 and 64 bits, the FloatLib "

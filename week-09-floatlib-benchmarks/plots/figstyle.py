@@ -1,6 +1,6 @@
 """Shared style for every figure of this week.
 
-This is FloatLib's figure style, `site/content/assets/figures/figstyle.py` of FloatLib 4.1.0
+This is FloatLib's figure style, `site/content/assets/figures/figstyle.py` of FloatLib
 (https://github.com/lean-dojo/FloatLib, MIT), with its output path made relative to this file.
 Every plot script of the week imports it, so that all figures have one look. A script draws one
 figure or a small family from the CSV files of its suite's `results/` directory and writes the

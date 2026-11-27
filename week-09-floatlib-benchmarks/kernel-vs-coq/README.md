@@ -9,7 +9,7 @@ operands, from 32 to 4,096 bits.
 
 ![Five panels of lines, one per operation, against format width from 32 to 4,096 bits on logarithmic axes: the FloatLib line is nearly flat near the bottom of each panel, the vm_compute line starts just above it, climbs steeply and ends at 256 or 512 bits, the lazy line starts higher, climbs more slowly and reaches 4,096 bits, and crosses along the top edge mark the widths where Coq gave no result.](figures/01-kernel-coq-flocq.svg)
 
-**Figure 1.** Time of one floating-point operation inside the proof checker: FloatLib in Lean's kernel against Flocq 4.2.2 in Coq 8.20.1 under vm_compute and under lazy, from 32 to 4,096 bits. A point is the time per operation, in milliseconds, in a loop of 100 operations (10 from 512 bits on) on the same operands; a cross at the top marks a width where Coq gave no result within 8 GB and 300 seconds. Both axes are logarithmic, and lower is faster. The Lean times are the median of 5 runs of FloatLib 4.1.0 on 2026-11-20 with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs); the Coq times are the recorded run of 2026-11-15 on the same machine, in a container with 8 GB and two CPUs, and do not depend on FloatLib.
+**Figure 1.** Time of one floating-point operation inside the proof checker: FloatLib in Lean's kernel against Flocq 4.2.2 in Coq 8.20.1 under vm_compute and under lazy, from 32 to 4,096 bits. A point is the time per operation, in milliseconds, in a loop of 100 operations (10 from 512 bits on) on the same operands; a cross at the top marks a width where Coq gave no result within 8 GB and 300 seconds. Both axes are logarithmic, and lower is faster. The Lean times are the median of 5 runs of FloatLib on 2026-11-20 with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs); the Coq times are the recorded run of 2026-11-15 on the same machine, in a container with 8 GB and two CPUs, and do not depend on FloatLib.
 
 | operation | width (bits) | FloatLib in Lean's kernel (µs) | Coq + Flocq, `vm_compute` (ms) | Coq + Flocq, `lazy` (ms) |
 | --- | ---: | ---: | ---: | ---: |
@@ -65,7 +65,7 @@ what each library costs when you use it for proof by computation, not as a ranki
 
 | | |
 | --- | --- |
-| FloatLib | 4.1.0 ([release](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0)), Lean 4.36.0 |
+| FloatLib | `main` at [`fc2fad1f`](https://github.com/lean-dojo/FloatLib/commit/fc2fad1f9c7de970f0a10a44c58cdf2909a867b4), Lean 4.36.0 |
 | Coq and Flocq | Coq 8.20.1 with Flocq 4.2.2: `Bplus`, `Bmult`, `Bdiv`, `Bsqrt` and `Bfma` of `BinarySingleNaN` with `mode_NE` |
 | Date and machine | Lean: 2026-11-20, 5 runs between 20:50Z and 21:18Z on an Intel Xeon Platinum 8275CL (2 sockets, 96 hardware threads, 1.1 TB), Amazon Linux 2023, shared with other jobs, 43 to 66 percent idle. Coq: the recorded run of 2026-11-15 on the same machine, in a container with 8 GB and two CPUs. The Coq times do not depend on FloatLib |
 
@@ -95,7 +95,7 @@ the ratios.
 ## Run it again
 
 ```bash
-export FLOATLIB_DIR=/path/to/FloatLib            # at v4.1.0, built, with its benchmark workspace
+export FLOATLIB_DIR=/path/to/FloatLib            # at fc2fad1f, built, with its benchmark workspace
 for n in 1 2 3 4 5; do python3 kernel-vs-coq/scripts/run_kernel_sections.py kernel-vs-coq/work/timing$n; done
 python3 kernel-vs-coq/scripts/collect.py kernel-vs-coq/work/timing{1,2,3,4,5}
 python3 kernel-vs-coq/scripts/plot.py

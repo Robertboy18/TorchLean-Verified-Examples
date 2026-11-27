@@ -9,7 +9,7 @@ conjecture. Each goal is translated to one Lean goal and given to FloatLib's `in
 
 ![Four horizontal bars on an axis from 0 to 100 percent, for MetiTarski and Flyspeck with interval alone and with the constraint engine. The blue part, the proved goals, is largest, about a third, for MetiTarski with the constraint engine; the Flyspeck bars are mostly hatched, not translated. Each bar ends in its count.](figures/01-metitarski-flyspeck-interval.svg)
 
-**Figure 1.** What FloatLib's interval tactic proves on the MetiTarski problems and on Flyspeck's nonlinear inequalities. A bar is one route over a whole suite, split into the goals proved, not proved and not translated to Lean, with the number proved at its end: 948 MetiTarski goals and 164 Flyspeck records, one tactic call each. Run on 2026-11-20 with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs); these are the suite runs recorded in the repository of FloatLib 4.1.0.
+**Figure 1.** What FloatLib's interval tactic proves on the MetiTarski problems and on Flyspeck's nonlinear inequalities. A bar is one route over a whole suite, split into the goals proved, not proved and not translated to Lean, with the number proved at its end: 948 MetiTarski goals and 164 Flyspeck records, one tactic call each. Run on 2026-11-20 with Lean 4.36.0 on an Intel Xeon Platinum 8275CL (96 threads, shared with other jobs); these are the suite runs recorded in the repository of FloatLib.
 
 | suite and route | proved | not proved | not translated | goals |
 | --- | ---: | ---: | ---: | ---: |
@@ -34,7 +34,7 @@ A count says what the tactic did on these suites, not what it does on all goals.
 
 | | |
 | --- | --- |
-| FloatLib | 4.1.0 ([release](https://github.com/lean-dojo/FloatLib/releases/tag/v4.1.0)), Lean 4.36.0 |
+| FloatLib | `main` at [`fc2fad1f`](https://github.com/lean-dojo/FloatLib/commit/fc2fad1f9c7de970f0a10a44c58cdf2909a867b4), Lean 4.36.0 |
 | MetiTarski | <https://bitbucket.org/lcpaulson/metitarski-git/> at `5a63f3ecb8c8edf721f0051431db3e0f689d5c17`, MIT |
 | Flyspeck | <https://github.com/flyspeck/flyspeck> at `32948714cdf06d700af2c993c9a92b7b551d7af5`, MIT |
 | Limits | 20 seconds and 4 GB per goal, one goal per Lean process |
@@ -46,7 +46,7 @@ translator reads arithmetic and transcendental symbols over the reals and proves
 not add the prover's analytic axiom files as Lean axioms. No sampled evaluation is counted as a proof: a goal counts
 only when Lean accepts it with `propext`, `Classical.choice` and `Quot.sound`. Not proved means refused or over the
 limits, and not translated means the translator refuses the goal. The suite was not run again for this week. The
-library sources of the recorded run differ from the 4.1.0 tag by one added corollary and the version number, and no
+library sources of the recorded run differ from the commit `fc2fad1f` by one added corollary and the version number, and no
 tactic differs.
 
 **From Lean:** every proof and its axioms. **From scripts:** the translation and the counts.
@@ -59,7 +59,7 @@ tactic differs.
 
 ## Run it again
 
-The harness is FloatLib's. In a FloatLib checkout at `v4.1.0`:
+The harness is FloatLib's. In a FloatLib checkout at `fc2fad1f`:
 
 ```bash
 FLOATLIB_SUITE_RESULTS=$PWD/suite-results bash benchmarks/suites/run.sh inequalities

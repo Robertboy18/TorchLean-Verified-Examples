@@ -54,7 +54,7 @@ def fig_llm2cert() -> None:
          "three standard axioms only, panel (b) the 81 certificates all of whose obligations are closed, and "
          "panel (c) is the time Lean ran, in hours on a linear axis: for interval the sum over all 291 files, "
          "for LLM2Cert the time on the obligations it closed, to which its "
-         f"{float(theirs['tokens']) / 1e6:.2f} million model tokens are added. interval was run on FloatLib 4.1.0 "
+         f"{float(theirs['tokens']) / 1e6:.2f} million model tokens are added. interval was run on FloatLib "
          f"on {facts['date']} with Lean {facts['lean']} on {MACHINE}; LLM2Cert's numbers are those of its "
          "published records.",
          "Three panels of three horizontal bars each, two blue bars for interval with Lean's default limits and "

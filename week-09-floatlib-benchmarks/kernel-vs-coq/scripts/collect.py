@@ -89,7 +89,7 @@ def main():
                                 "native_min_ms", "native_max_ms", "runs"], out)
     facts = [json.loads((raw / "facts.json").read_text()) for raw in raws]
     assert len({fact["lean"] for fact in facts}) == 1
-    run = [["date", facts[0]["date"]], ["floatlib", "4.1.0"], ["lean", facts[0]["lean"]], ["runs", len(raws)],
+    run = [["date", facts[0]["date"]], ["floatlib", "fc2fad1f"], ["lean", facts[0]["lean"]], ["runs", len(raws)],
            ["core_scheduling_cookie", all(fact["core_scheduling_cookie"] for fact in facts)],
            ["started_utc", " ".join(fact["started_utc"] for fact in facts)],
            ["finished_utc", " ".join(fact["finished_utc"] for fact in facts)],

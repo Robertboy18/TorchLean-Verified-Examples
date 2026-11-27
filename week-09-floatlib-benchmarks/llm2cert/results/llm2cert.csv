@@ -1,4 +1,4 @@
 key,tool,label,closed,certificates,hours,time_label,tokens,median_s,drawn,source
-mode-a-defaults,FloatLib,"interval alone, Lean's default limits",281,71,0.7308,43.8 min,0,3.8,yes,"measured here, FloatLib 4.1.0"
-mode-a-raised,FloatLib,"interval alone, raised limits",282,72,0.8244,49.5 min,0,3.9,yes,"measured here, FloatLib 4.1.0"
+mode-a-defaults,FloatLib,"interval alone, Lean's default limits",281,71,0.7308,43.8 min,0,3.8,yes,"measured here, FloatLib"
+mode-a-raised,FloatLib,"interval alone, raised limits",282,72,0.8244,49.5 min,0,3.9,yes,"measured here, FloatLib"
 llm2cert-all-lean,LLM2Cert,"LLM2Cert All-Lean, a model writes the proofs",274,64,13.6142,13.6 h,1942231,,yes,their lean_records.json (script count)

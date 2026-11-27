@@ -94,7 +94,7 @@ def fig_verdicts() -> None:
          "depends on rounding, and those rejected; the number at its end is the files confirmed in one of the "
          "first three ways. Each network was evaluated with FloatLib's compiled binary32 operations in four "
          "orders of summation and in exact arithmetic, and the property was decided on exact rationals. "
-         f"Evaluated on 2026-11-21 with FloatLib 4.1.0 and Lean 4.36.0 on {MACHINE}.",
+         f"Evaluated on 2026-11-21 with FloatLib and Lean 4.36.0 on {MACHINE}.",
          f"{len(rows)} horizontal bars on an axis from 0 to 100 percent, one per benchmark family. Most bars are "
          "dark blue, the reported point is a counterexample, and light blue, the point had to be moved into "
          "the box, in varying shares. The SoundnessBench bar is light blue with a short orange end, depends on "
@@ -212,7 +212,7 @@ def fig_margins() -> None:
          "A marker is one counterexample file; the margin is the absolute slack of the output property at the "
          "exact rational output, and the rounding error is the largest absolute difference between a binary32 "
          "output and that exact output, both in the units of the network's output. Both axes are logarithmic. "
-         f"Evaluated on 2026-11-21 with FloatLib 4.1.0 and Lean 4.36.0 on {MACHINE}.",
+         f"Evaluated on 2026-11-21 with FloatLib and Lean 4.36.0 on {MACHINE}.",
          "A scatter plot on two logarithmic axes with a dashed diagonal where the margin equals the rounding "
          "error. The confirmed files of ACAS Xu and of the other families lie far above the diagonal, by a "
          "factor of more than a hundred for all but two of them; those of SoundnessBench lie on both sides of "

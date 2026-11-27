@@ -30,7 +30,7 @@ idle_percent_start_defaults,48.58
 idle_percent_end_defaults,61.24
 date,2026-11-20
 lean,4.36.0
-floatlib,4.1.0
+floatlib,fc2fad1f
 workers,"6, timeout 600 s, LEAN_NUM_THREADS 16"
 start_raised,2026-11-20T21:02:38Z
 end_raised,2026-11-20T21:13:31Z

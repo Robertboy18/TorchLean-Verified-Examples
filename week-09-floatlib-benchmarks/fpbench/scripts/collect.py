@@ -2,7 +2,7 @@
 
     python3 scripts/collect.py fpbench|inequalities [RESULTS_DIR]
 
-Reads `benchmarks/results/suites/counts.csv` and `provenance.json` of a FloatLib 4.1.0 checkout
+Reads `benchmarks/results/suites/counts.csv` and `provenance.json` of a FloatLib checkout
 (`FLOATLIB_DIR`, by default the copy that Lake keeps for this week, `.lake/packages/floatlib`) and
 writes `counts.csv` and `run.csv` into RESULTS_DIR (by default `results/` of the suite). Every number
 is copied; nothing is measured or estimated here. To make the counts again, run FloatLib's own driver,
@@ -79,7 +79,7 @@ def main():
     provenance = json.loads((FLOATLIB / "benchmarks/results/suites/provenance.json").read_text())[which]
     name = "FPBench" if which == "fpbench" else "inequalities"
     write(out, "run.csv", ["key", "value"],
-          [["date", provenance["first_utc"][:10]], ["floatlib", "4.1.0"],
+          [["date", provenance["first_utc"][:10]], ["floatlib", "fc2fad1f"],
            ["lean", lean_version(provenance["lean_version"])],
            ["measured_utc", f"{name} {provenance['first_utc']} to {provenance['last_utc']}"]])
 

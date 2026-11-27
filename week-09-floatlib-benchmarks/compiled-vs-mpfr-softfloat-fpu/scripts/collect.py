@@ -55,7 +55,7 @@ def main():
     load = read(f"{run}-load.csv")
     column = lambda name: [float(row[name]) for row in load]
     facts = [
-        ["date", launch["started_utc"][:10]], ["floatlib", "4.1.0"], ["started_utc", launch["started_utc"]],
+        ["date", launch["started_utc"][:10]], ["floatlib", "fc2fad1f"], ["started_utc", launch["started_utc"]],
         ["finished_utc", launch["finished_utc"]], ["seconds", launch["seconds"]], ["trials", metadata["runs"]],
         ["lean", lean_version(metadata["leanVersion"])], ["mpfr", metadata["mpfr"]],
         ["softfloat_commit", metadata["softfloatCommit"]], ["compiler", metadata["compiler"]],

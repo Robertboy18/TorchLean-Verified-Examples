@@ -3,7 +3,7 @@ import FloatLib
 /-!
 # FloatLib's benchmarks: a first check
 
-`lake build` in this directory builds FloatLib 4.1.0 and this file. Each benchmark suite then runs its
+`lake build` in this directory builds FloatLib and this file. Each benchmark suite then runs its
 generated files with `lake env lean` from its own `scripts/` directory.
 -/
 

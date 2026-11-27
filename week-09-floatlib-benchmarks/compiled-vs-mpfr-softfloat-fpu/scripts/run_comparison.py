@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 SUITE = Path(__file__).resolve().parents[1]
-# A FloatLib 4.1.0 checkout with its benchmark workspace; by default the copy Lake keeps for this week.
+# A FloatLib checkout with its benchmark workspace; by default the copy Lake keeps for this week.
 CHECKOUT = Path(os.environ.get("FLOATLIB_DIR", SUITE.parent / ".lake/packages/floatlib")).resolve()
 WORK = Path(os.environ.get("WORK", SUITE / "work")).resolve()      # generated harness and executable
 sys.dont_write_bytecode = True

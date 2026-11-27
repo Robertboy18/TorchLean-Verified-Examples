@@ -38,7 +38,7 @@ def fig_inequalities() -> None:
          "inequalities. A bar is one route over a whole suite, split into the goals proved, not proved and not "
          "translated to Lean, with the number proved at its end: 948 MetiTarski goals and 164 Flyspeck "
          f"records, one tactic call each. Run on {facts['date']} with Lean {facts['lean']} on {MACHINE}; these "
-         "are the suite runs recorded in the repository of FloatLib 4.1.0.",
+         "are the suite runs recorded in the repository of FloatLib.",
          "Four horizontal bars on an axis from 0 to 100 percent, for MetiTarski and Flyspeck with interval "
          "alone and with the constraint engine. The blue part, the proved goals, is largest, about a third, "
          "for MetiTarski with the constraint engine; the Flyspeck bars are mostly hatched, not translated. "
@@ -52,7 +52,7 @@ def fig_inequalities() -> None:
          "means the translator refuses the goal. A count says what the tactic did on these suites, not what "
          "it does on all goals. From Lean: every proof and its axioms. From scripts: the translation and the "
          "counts. The counts are `benchmarks/results/suites/counts.csv` of FloatLib's repository "
-         f"({facts['measured_utc']}); the library sources of that run differ from the 4.1.0 tag by one added "
+         f"({facts['measured_utc']}); the library sources of that run differ from the commit `fc2fad1f` by one added "
          "corollary and the version number, and no tactic differs. Source: `results/counts.csv`.")
 
 

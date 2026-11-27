@@ -2,16 +2,16 @@ import Lake
 open Lake DSL
 
 /-!
-The benchmarks of this week run against FloatLib 4.1.0. This Lake project is separate from the
+The benchmarks of this week run against FloatLib. This Lake project is separate from the
 repository's root project, which follows TorchLean on another toolchain: `lake build` here fetches
-FloatLib at its release tag, with the Mathlib that FloatLib pins, and `lake env lean FILE` then checks
+FloatLib's main branch, with the Mathlib that FloatLib pins, and `lake env lean FILE` then checks
 a generated benchmark file against it.
 -/
 
 package floatlibBenchmarks where
   leanOptions := #[⟨`autoImplicit, false⟩, ⟨`relaxedAutoImplicit, false⟩]
 
-require floatlib from git "https://github.com/lean-dojo/FloatLib" @ "v4.1.0"
+require floatlib from git "https://github.com/lean-dojo/FloatLib" @ "main"
 
 -- A first check that the library is there: one calculation proved in Lean's kernel.
 @[default_target]
